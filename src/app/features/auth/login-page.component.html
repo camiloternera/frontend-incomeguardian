@@ -1,0 +1,108 @@
+<main data-testid="login-shell" class="min-h-screen bg-ig-canvas p-4 text-ig-text transition-colors duration-200 sm:p-8" [attr.data-theme]="theme()">
+  <header class="mx-auto mb-6 flex max-w-[1920px] flex-col items-start justify-between gap-4 sm:flex-row">
+    <a class="flex items-center gap-2.5 text-ig-text no-underline" href="/" aria-label="Income Guardian home">
+      <span class="grid size-6 shrink-0 place-items-center rounded-md bg-ig-accent text-[11px] font-extrabold text-ig-on-accent">IG</span>
+      <span>
+        <strong class="block font-roboto text-2xl leading-none tracking-tight">Income Guardian</strong>
+        <small class="mt-1 block text-[9px] tracking-[0.02em] text-ig-muted">WEB AUTHENTICATION / THEME STUDY</small>
+      </span>
+    </a>
+
+    <div class="flex items-center gap-1.5 self-end rounded-full border border-ig-border/55 bg-ig-surface/60 px-2.5 py-1.5 text-ig-muted sm:self-auto" aria-label="Choose visual theme" role="group">
+      <span class="size-1.5 rounded-full bg-ig-accent" aria-hidden="true"></span>
+      <span class="mr-1 text-[11px] tracking-[0.02em]">3 visual modes</span>
+      @for (option of themes; track option.id) {
+        <button
+          class="min-h-6 min-w-6 rounded-xl border border-transparent px-1.5 text-[11px] tracking-[0.02em] text-ig-muted hover:border-ig-border hover:text-ig-text focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+          [class.border-ig-border]="theme() === option.id"
+          [class.text-ig-text]="theme() === option.id"
+          [attr.aria-pressed]="theme() === option.id"
+          [attr.aria-label]="'Use ' + option.label + ' theme'"
+          type="button"
+          (click)="setTheme(option.id)"
+        >
+          {{ option.number }}
+        </button>
+      }
+    </div>
+  </header>
+
+  <section class="mx-auto grid min-h-[525px] w-full max-w-[1260px] overflow-hidden rounded-2xl border border-ig-border/55 bg-ig-surface shadow-[0_24px_80px_rgb(0_0_0_/_24%)] md:grid-cols-[36%_1fr]" aria-labelledby="login-title">
+    <aside class="flex min-h-[310px] flex-col justify-between bg-ig-surface/88 p-6 md:min-h-[525px]">
+      <div class="flex items-center gap-2">
+        <span class="grid size-6 shrink-0 place-items-center rounded-md bg-ig-accent text-[11px] font-extrabold text-ig-on-accent">IG</span>
+        <span class="text-[11px] font-bold tracking-[0.02em]">income guardian<small class="ml-0.5 font-normal text-ig-muted">{{ theme() === 'forest' ? '01' : theme() === 'paper' ? '02' : '03' }}</small></span>
+      </div>
+
+      <div class="my-auto py-8">
+        <p class="mb-3 text-[11px] font-extrabold tracking-[0.02em] text-ig-accent">{{ theme() === 'forest' ? 'PRIVATE BY DESIGN' : theme() === 'paper' ? 'CLARITY FIRST' : 'SIGNAL SECURE' }}</p>
+        <h1 class="max-w-[280px] font-roboto text-[clamp(36px,4vw,52px)] font-bold leading-[0.98] tracking-[-0.045em]">{{ theme() === 'forest' ? 'Your money.' : theme() === 'paper' ? 'Make room.' : 'Own the move.' }}</h1>
+        <p class="mt-[18px] text-[13px] text-ig-muted">{{ theme() === 'forest' ? 'Keep your view clear.' : theme() === 'paper' ? 'Clarity for every decision.' : 'Your rules. Your signal.' }}</p>
+      </div>
+
+      <div class="text-[11px] tracking-[0.02em] text-ig-muted">
+        <p class="mb-2.5 flex items-center gap-1.5"><span class="size-1.5 rounded-full bg-ig-accent" aria-hidden="true"></span>{{ theme() === 'paper' ? 'Your data stays yours' : theme() === 'noir' ? 'Encrypted and private' : 'Private by design' }}</p>
+        <small class="text-[10px]">© 2026 Income Guardian</small>
+      </div>
+    </aside>
+
+    <div class="mx-auto w-full max-w-[640px] self-center px-6 py-9 sm:px-12 sm:py-14 lg:px-24">
+      <div>
+        <p class="mb-3 text-[11px] font-extrabold tracking-[0.02em] text-ig-accent">WELCOME BACK</p>
+        <h2 id="login-title" class="max-w-[520px] font-roboto text-[clamp(32px,4vw,48px)] font-bold leading-[1.02] tracking-[-0.045em]">Pick up where you left off.</h2>
+        <p class="mt-[18px] text-[13px] text-ig-muted">Sign in to your financial home base.</p>
+      </div>
+
+      <form class="mt-8" [formGroup]="loginForm" (ngSubmit)="submit()" novalidate>
+        <div>
+          <label class="mb-1.5 block text-[11px] font-bold tracking-[0.02em]" for="email">Email address</label>
+          <input class="min-h-11 w-full rounded-lg border border-ig-border bg-ig-surface-raised px-3 text-[13px] text-ig-text outline-none placeholder:text-ig-muted focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" id="email" formControlName="email" type="email" placeholder="you@example.com" autocomplete="email" />
+          @if (loginForm.controls.email.touched && loginForm.controls.email.invalid) {
+            <p class="mt-1 text-[11px] text-ig-accent" role="alert">Enter a valid email address.</p>
+          }
+        </div>
+
+        <div class="mt-4">
+          <div class="flex items-center justify-between gap-3">
+            <label class="mb-1.5 block text-[11px] font-bold tracking-[0.02em]" for="password">Password</label>
+            <a class="text-[11px] tracking-[0.02em] text-ig-accent no-underline hover:underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" href="/forgot-password">Forgot password?</a>
+          </div>
+          <div class="relative">
+            <input
+              class="min-h-11 w-full rounded-lg border border-ig-border bg-ig-surface-raised px-3 pr-16 text-[13px] text-ig-text outline-none placeholder:text-ig-muted focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+              id="password"
+              data-testid="password"
+              formControlName="password"
+              [type]="showPassword() ? 'text' : 'password'"
+              placeholder="Enter your password"
+              autocomplete="current-password"
+            />
+            <button data-testid="password-toggle" class="absolute right-3 top-1/2 min-h-8 -translate-y-1/2 border-0 bg-transparent p-0 text-[11px] font-bold tracking-[0.02em] text-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" type="button" (click)="togglePassword()" [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'">
+              {{ showPassword() ? 'HIDE' : 'SHOW' }}
+            </button>
+          </div>
+          @if (loginForm.controls.password.touched && loginForm.controls.password.invalid) {
+            <p class="mt-1 text-[11px] text-ig-accent" role="alert">Password must be at least 8 characters.</p>
+          }
+        </div>
+
+         @if (loginError()) {
+           <p class="mb-3 text-[11px] text-ig-accent" role="alert">{{ loginError() }}</p>
+         }
+
+         <button class="mt-[18px] min-h-11 w-full rounded-lg border border-ig-accent bg-ig-accent text-[13px] font-extrabold text-ig-on-accent transition-transform duration-150 hover:-translate-y-px focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60" type="submit" [disabled]="isSubmitting()">
+           {{ isSubmitting() ? 'Signing in...' : 'Sign in' }}
+         </button>
+
+        <div class="separator my-6 flex items-center gap-3 text-[10px] text-ig-muted" role="separator"><span>OR</span></div>
+
+        <div class="grid gap-2">
+          <button class="relative min-h-11 w-full rounded-lg border border-ig-border bg-transparent text-[13px] text-ig-text transition-transform duration-150 hover:-translate-y-px hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" type="button"><span class="absolute left-3.5 font-extrabold">G</span>Continue with Google</button>
+          <button class="relative min-h-11 w-full rounded-lg border border-ig-border bg-transparent text-[13px] text-ig-text transition-transform duration-150 hover:-translate-y-px hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" type="button"><span class="absolute left-3.5 font-extrabold">f</span>Continue with Facebook</button>
+        </div>
+
+        <p class="mt-6 text-[11px] tracking-[0.02em] text-ig-muted">New here? <a class="text-ig-accent no-underline hover:underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" href="/register">Create an account</a></p>
+      </form>
+    </div>
+  </section>
+</main>

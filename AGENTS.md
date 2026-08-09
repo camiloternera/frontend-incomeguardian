@@ -49,6 +49,9 @@ Usar para dashboards de alto contraste, alertas de foco y experiencias avanzadas
 ## Reglas de implementacion
 
 - Definir los colores como tokens semanticos, no como valores aislados dentro de componentes.
+- Usar Tailwind CSS como primera opcion para layout, espaciado, tipografia, colores y responsive; reservar CSS de componente para tokens dinamicos, pseudoelementos o comportamientos que no se expresen claramente con utilidades.
+- Exponer los tokens de tema mediante `@theme inline` y consumirlos con utilidades Tailwind semanticas, evitando clases con colores directos.
+- Todas las vistas deben usar la fuente Roboto local definida en `public/fonts/` mediante la utilidad `font-roboto`; no usar `font-serif`, fuentes externas, Google Fonts ni familias adicionales salvo autorizacion explicita.
 - Mantener el verde como accion primaria, enlace activo y estado positivo.
 - Los campos deben usar la superficie del tema, borde de 1px y radio de 8px.
 - Los botones primarios deben tener altura minima de 44px, radio de 8px y texto de peso 700.
