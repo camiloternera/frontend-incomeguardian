@@ -11,9 +11,7 @@ export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly loginUrl = `${environment.apiUrl}/api/v1/User/login`;
 
-  login(credentials: LoginRequest): Observable<LoginResponse> {
-    console.log({credentials});
-    
+  login(credentials: LoginRequest): Observable<LoginResponse> {  
     return this.http.post<LoginResponse>(this.loginUrl, credentials).pipe(
       tap((session) => sessionStorage.setItem(SESSION_KEY, JSON.stringify(session))),
     );
