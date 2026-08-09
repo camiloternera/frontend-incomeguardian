@@ -10,6 +10,17 @@
 /node_modules
 npm-debug.log
 yarn-error.log
+pnpm-debug.log
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Local HTTPS certificates and secrets
+*.pem
+*.key
+*.crt
 
 # IDEs and editors
 .idea/
@@ -39,6 +50,9 @@ testem.log
 /typings
 __screenshots__/
 
-# System files
+# Logs and local tooling
+*.log
+.eslintcache
+.stylelintcache
 .DS_Store
 Thumbs.db

@@ -1,59 +1,108 @@
-# FrontendIncomeguardianWeb
+# Income Guardian Web
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.1.
+Frontend web de Income Guardian, una aplicación financiera enfocada en claridad, privacidad y control. Está construido con Angular 21, TypeScript, Tailwind CSS 4 y Roboto local.
 
-## Development server
+## Estado actual
 
-To start a local development server, run:
+- Login conectado a `POST /api/v1/User/login`.
+- Validación de email y password en el formulario.
+- Sesión temporal guardada en `sessionStorage`.
+- Redirección a `/home` después de un login exitoso. Esta ruta muestra actualmente una página vacía.
+- Tres temas visuales disponibles: Forest, Paper y Noir.
 
-```bash
-ng serve
-```
+## Requisitos
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+- Node.js compatible con Angular 21.
+- pnpm `11.17.0`.
+- Backend de Income Guardian ejecutándose localmente.
 
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+## Instalación
 
 ```bash
-ng generate --help
+pnpm install
 ```
 
-## Building
+## Configuración local
 
-To build the project run:
+La URL de desarrollo del backend es:
+
+```text
+https://localhost:7151
+```
+
+El endpoint utilizado por el login es:
+
+```text
+https://localhost:7151/api/v1/User/login
+```
+
+La variable `API_URL` se documenta en `.env.example`. Los archivos `.env` locales están ignorados para evitar subir configuraciones específicas del equipo. La configuración efectiva de Angular se encuentra en `src/environments/environment.ts`.
+
+Si el certificado HTTPS local del backend no es confiable, instala el certificado de desarrollo o utiliza temporalmente `http://localhost:5250` y actualiza la configuración correspondiente.
+
+## Desarrollo
+
+Inicia el servidor de desarrollo con:
 
 ```bash
-ng build
+pnpm start
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+Abre `http://localhost:4200/`. Angular recarga automáticamente la aplicación al detectar cambios.
 
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+## Comandos disponibles
 
 ```bash
-ng test
+pnpm start
+pnpm build
+pnpm test
+pnpm exec ng generate component features/example
 ```
 
-## Running end-to-end tests
+`pnpm build` genera los artefactos en `dist/`. `pnpm test` ejecuta las pruebas unitarias con Vitest y jsdom.
 
-For end-to-end (e2e) testing, run:
+## Estructura principal
 
-```bash
-ng e2e
+```text
+src/
+  app/
+    core/auth/             Servicio y modelos de autenticación
+    features/auth/         Vista y pruebas del login
+    features/home/         Página temporal posterior al login
+    app.config.ts          Providers globales
+    app.routes.ts          Configuración de rutas
+  environments/            Configuración de API
+  styles.css               Tokens de temas y estilos globales
+public/fonts/              Fuentes Roboto locales
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+## Autenticación
 
-## Additional Resources
+El backend recibe un cuerpo con esta forma:
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+```json
+{
+  "email": "user@example.com",
+  "password": "password"
+}
+```
+
+La respuesta contiene `UserId`, `Email`, `Name`, `AccessToken`, `RefreshToken` y `ExpiresAt`. Durante esta primera integración se guarda la respuesta completa en `sessionStorage`, por lo que la sesión se elimina al cerrar la pestaña o el navegador según el comportamiento del navegador.
+
+Para una versión de producción se recomienda mover el refresh token a una cookie `HttpOnly`, `Secure` y `SameSite`, y mantener el access token en memoria.
+
+## Convenciones de UI
+
+- Usar Tailwind CSS como primera opción para layout, espaciado y responsive.
+- Consumir tokens semánticos de los temas en lugar de colores aislados.
+- Usar exclusivamente la fuente Roboto local mediante `font-roboto`.
+- Mantener layouts desktop-first que colapsen a una columna en mobile.
+- Conservar foco visible y contraste WCAG AA.
+
+## Archivos ignorados
+
+No se deben subir al repositorio credenciales, archivos `.env` locales, certificados, claves privadas, logs, cobertura, cachés, builds ni configuraciones específicas del IDE. `.env.example` sí se versiona porque solo contiene valores de referencia.
+
+## Licencia
+
+Proyecto privado de Income Guardian.
