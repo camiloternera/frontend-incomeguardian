@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { GENERIC_ERROR } from '@core/http/api-error';
 import { ThemeService } from '@core/theme/theme.service';
@@ -25,11 +25,11 @@ export class RegisterPageComponent {
     private readonly registerUser = inject(RegisterUserUseCase);
     private readonly formBuilder = inject(NonNullableFormBuilder);
     private readonly themeService = inject(ThemeService);
+    private readonly router = inject(Router);
 
     protected readonly theme = this.themeService.theme;
     protected readonly showPassword = signal(false);
     protected readonly isSubmitting = signal(false);
-    protected readonly isRegistered = signal(false);
     protected readonly registerError = signal('');
 
     protected readonly registerForm = this.formBuilder.group(
@@ -81,7 +81,8 @@ export class RegisterPageComponent {
         .execute(request)
         .pipe(finalize(() => this.isSubmitting.set(false)))
         .subscribe({
-          next: () => this.isRegistered.set(true),
+          next: () =>
+            void this.router.navigate(['/confirm-email'], { state: { email: request.email } }),
           error: (error: unknown) =>
             this.registerError.set(error instanceof AuthError ? error.message : GENERIC_ERROR),
         });

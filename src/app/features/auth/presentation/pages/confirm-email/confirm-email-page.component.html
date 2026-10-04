@@ -1,0 +1,99 @@
+<main
+  data-testid="confirm-email-shell"
+  class="flex min-h-screen flex-col bg-ig-canvas p-4 text-ig-text transition-colors duration-200 sm:p-8"
+  [attr.data-theme]="theme()"
+>
+  <header class="mx-auto mb-6 flex w-full max-w-[1920px] flex-col items-start justify-between gap-4 sm:flex-row">
+    <a class="flex items-center gap-2.5 text-ig-text no-underline" routerLink="/login" aria-label="Income Guardian home">
+      <span class="grid size-6 shrink-0 place-items-center rounded-md bg-ig-accent text-[11px] font-extrabold text-ig-on-accent">IG</span>
+      <span>
+        <strong class="block font-roboto text-2xl leading-none tracking-tight">Income Guardian</strong>
+        <small class="mt-1 block text-[9px] tracking-[0.02em] text-ig-muted">WEB AUTHENTICATION / CONFIRM EMAIL</small>
+      </span>
+    </a>
+
+    <app-theme-switcher />
+  </header>
+
+  <section class="flex flex-grow items-center justify-center py-6">
+    <div
+      class="w-full max-w-[560px] rounded-2xl border border-ig-border/55 bg-ig-surface p-6 text-center shadow-[0_24px_80px_rgb(0_0_0_/_24%)] sm:p-12"
+      aria-labelledby="confirm-email-title"
+    >
+      <div class="flex justify-center">
+        <span class="grid size-16 place-items-center rounded-2xl border border-ig-border bg-ig-surface-raised">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class="text-ig-accent" aria-hidden="true">
+            <rect x="2.5" y="4.5" width="19" height="15" rx="2.5"></rect>
+            <path d="M3 7l9 6 9-6"></path>
+          </svg>
+        </span>
+      </div>
+
+      <p class="mb-3 mt-6 text-[11px] font-extrabold tracking-[0.02em] text-ig-accent-text">ONE MORE STEP</p>
+      <h1 id="confirm-email-title" class="font-roboto text-[clamp(32px,4vw,40px)] font-bold leading-[1.02] tracking-[-0.045em]">Check your inbox.</h1>
+      <p class="mt-[18px] text-[13px] text-ig-muted">We sent a 6-digit code to</p>
+      <p data-testid="confirm-email-address" class="mt-2 text-[15px] font-bold">{{ emailLabel }}</p>
+
+      <form class="mt-8" [formGroup]="codeForm" (ngSubmit)="submit()" novalidate>
+        <fieldset class="m-0 border-0 p-0" formArrayName="code" [attr.aria-describedby]="showError ? 'code-error' : null">
+          <legend class="mb-3 block w-full text-[11px] font-bold tracking-[0.02em]">Confirmation code</legend>
+
+          <div class="flex justify-center gap-1.5 sm:gap-3">
+            @for (digit of digits.controls; track $index) {
+              <input
+                #digitInput
+                class="h-12 w-full min-w-0 max-w-14 flex-1 rounded-lg border border-ig-border bg-ig-surface-raised text-center font-roboto text-[20px] font-bold text-ig-text outline-none focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 sm:h-14"
+                [attr.data-testid]="'digit-' + $index"
+                [formControlName]="$index"
+                [attr.aria-label]="'Digit ' + ($index + 1) + ' of 6'"
+                [attr.autocomplete]="$index === 0 ? 'one-time-code' : 'off'"
+                type="text"
+                inputmode="numeric"
+                maxlength="1"
+                (input)="onInput($index, $event)"
+                (paste)="onPaste($index, $event)"
+                (keydown)="onKeydown($index, $event)"
+              />
+            }
+          </div>
+        </fieldset>
+
+        @if (showError) {
+          <p id="code-error" data-testid="code-error" class="mt-3 text-[11px] text-ig-accent-text" role="alert">Enter the 6-digit code from your email.</p>
+        }
+
+        <button
+          data-testid="verify"
+          class="mt-8 min-h-11 w-full rounded-lg border border-ig-accent bg-ig-accent text-[13px] font-extrabold text-ig-on-accent transition-transform duration-150 hover:-translate-y-px focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+          type="submit"
+          [disabled]="!isComplete()"
+        >
+          Verify email
+        </button>
+
+        <button
+          data-testid="resend"
+          class="mt-3 min-h-11 w-full rounded-lg border border-ig-border bg-transparent text-[13px] font-bold text-ig-text transition-transform duration-150 hover:-translate-y-px hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+          type="button"
+          [disabled]="!canResend()"
+          (click)="resend()"
+        >
+          {{ resendLabel() }}
+        </button>
+      </form>
+
+      <div class="my-7 h-px bg-ig-border" role="separator"></div>
+
+      <p class="text-[11px] leading-relaxed text-ig-muted">The code expires in 30 minutes. Nothing in your inbox? Look in spam or promotions.</p>
+      <p class="mt-3 text-[11px] text-ig-muted">
+        Wrong address?
+        <a class="text-ig-accent-text no-underline hover:underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" routerLink="/register">Use a different email</a>
+      </p>
+    </div>
+  </section>
+
+  <p class="pb-2 text-center text-[11px] text-ig-muted">
+    Already confirmed?
+    <a class="text-ig-accent-text no-underline hover:underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" routerLink="/login">Sign in</a>
+  </p>
+</main>
