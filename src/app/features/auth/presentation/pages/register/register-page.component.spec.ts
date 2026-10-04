@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { RegisterPageComponent } from './register-page.component';
 import { routes } from '../../../../../app.routes';
 import { provideAuth } from '../../../auth.providers';
@@ -88,9 +88,11 @@ describe('RegisterPageComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="password-mismatch"]')).toBeTruthy();
   });
 
-  it('shows the success state when the envelope reports success', () => {
+  it('goes to the confirmation screen with the email when the envelope reports success', () => {
     const fixture = TestBed.createComponent(RegisterPageComponent);
     const http = TestBed.inject(HttpTestingController);
+    const router = TestBed.inject(Router);
+    const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     fixture.detectChanges();
 
     fill(fixture.nativeElement);
@@ -105,7 +107,9 @@ describe('RegisterPageComponent', () => {
     });
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('[data-testid="register-success"]')).toBeTruthy();
+    expect(navigateSpy).toHaveBeenCalledWith(['/confirm-email'], {
+      state: { email: 'camilo@example.com' },
+    });
   });
 
   it('maps a known backend error code to the English copy', () => {

@@ -24,5 +24,5 @@ export function resolveApiError(error: unknown, messageByCode: Record<string, st
   const first = envelope.errors?.[0];
   const mapped = first?.code ? messageByCode[first.code] : undefined;
 
-  return mapped ?? first?.message ?? envelope.messageKey ?? GENERIC_ERROR;
+  return mapped ?? first?.message ?? envelope.message ?? envelope.messageKey ?? GENERIC_ERROR;
 }

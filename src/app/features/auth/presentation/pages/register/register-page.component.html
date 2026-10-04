@@ -41,20 +41,6 @@
     </aside>
 
     <div class="mx-auto w-full max-w-[640px] self-center px-6 py-9 sm:px-12 sm:py-14 lg:px-20">
-      @if (isRegistered()) {
-        <div data-testid="register-success">
-          <p class="mb-3 text-[11px] font-extrabold tracking-[0.02em] text-ig-accent-text">ACCOUNT CREATED</p>
-          <h2 id="register-title" class="max-w-[520px] font-roboto text-[clamp(32px,4vw,48px)] font-bold leading-[1.02] tracking-[-0.045em]">You are all set.</h2>
-          <p class="mt-[18px] text-[13px] text-ig-muted">Your account is ready. Sign in to start tracking what comes in and what goes out.</p>
-
-          <a
-            class="mt-8 inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-accent bg-ig-accent px-5 text-[13px] font-extrabold text-ig-on-accent no-underline transition-transform duration-150 hover:-translate-y-px focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
-            routerLink="/login"
-          >
-            Go to sign in
-          </a>
-        </div>
-      } @else {
         <div>
           <p class="mb-3 text-[11px] font-extrabold tracking-[0.02em] text-ig-accent-text">CREATE ACCOUNT</p>
           <h2 id="register-title" class="max-w-[520px] font-roboto text-[clamp(32px,4vw,48px)] font-bold leading-[1.02] tracking-[-0.045em]">Set up your financial home base.</h2>
@@ -214,7 +200,6 @@
             <a class="text-ig-accent-text no-underline hover:underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" routerLink="/login">Sign in</a>
           </p>
         </form>
-      }
     </div>
   </section>
 </main>
