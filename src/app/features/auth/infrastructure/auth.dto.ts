@@ -7,3 +7,12 @@ export interface LoginResponseDto {
   RefreshToken: string;
   ExpiresAt: string;
 }
+
+export interface ConfirmedUserDto {
+  id: string;
+  state: boolean;
+  name: string;
+  surname: string;
+  email: string;
+  phoneNumber: string;
+}

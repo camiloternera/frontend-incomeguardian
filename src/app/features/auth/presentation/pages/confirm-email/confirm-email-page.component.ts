@@ -8,8 +8,10 @@ import {
   viewChildren,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { finalize } from 'rxjs';
+import { GENERIC_ERROR } from '@core/http/api-error';
 import { ThemeService } from '@core/theme/theme.service';
 import { ThemeSwitcherComponent } from '@shared/ui/theme-switcher.component';
 import {
@@ -17,6 +19,8 @@ import {
   isConfirmationCodeComplete,
   onlyDigits,
 } from '../../../domain/confirmation-code';
+import { ConfirmEmailUseCase } from '../../../application/confirm-email.use-case';
+import { AuthError } from '../../../domain/auth-error';
 import { confirmationCodeComplete } from '../../validators/confirmation-code.validator';
 
 const RESEND_SECONDS = 60;
@@ -32,7 +36,9 @@ function countdown(seconds: number): string {
   styleUrls: ['./confirm-email-page.component.css'],
 })
 export class ConfirmEmailPageComponent {
+  private readonly confirmEmail = inject(ConfirmEmailUseCase);
   private readonly formBuilder = inject(NonNullableFormBuilder);
+  private readonly router = inject(Router);
   private readonly themeService = inject(ThemeService);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -54,11 +60,16 @@ export class ConfirmEmailPageComponent {
   protected readonly theme = this.themeService.theme;
   protected readonly digitInputs = viewChildren<ElementRef<HTMLInputElement>>('digitInput');
 
-  protected readonly email = this.navigationEmail;
+  /** Without an address in the navigation the view has to ask for one (direct visit, reload). */
+  protected readonly hasNavigationEmail = this.navigationEmail !== '';
   protected readonly emailLabel = this.navigationEmail || 'the email you signed up with';
+
+  protected readonly isSubmitting = signal(false);
+  protected readonly confirmError = signal('');
 
   protected readonly codeForm = this.formBuilder.group(
     {
+      email: [this.navigationEmail, [Validators.required, Validators.email]],
       code: this.formBuilder.array(
         Array.from({ length: CONFIRMATION_CODE_LENGTH }, () => this.formBuilder.control('')),
       ),
@@ -154,13 +165,22 @@ export class ConfirmEmailPageComponent {
   }
 
   protected submit(): void {
-    this.digits.markAllAsTouched();
+    this.confirmError.set('');
+    this.codeForm.markAllAsTouched();
 
     if (this.codeForm.invalid) {
       return;
     }
 
-    // TODO: hand the code to a ConfirmEmailUseCase once the backend endpoint exists.
+    this.isSubmitting.set(true);
+    this.confirmEmail
+      .execute({ email: this.codeForm.controls.email.value, code: this.code() })
+      .pipe(finalize(() => this.isSubmitting.set(false)))
+      .subscribe({
+        next: () => void this.router.navigate(['/login'], { state: { emailConfirmed: true } }),
+        error: (error: unknown) =>
+          this.confirmError.set(error instanceof AuthError ? error.message : GENERIC_ERROR),
+      });
   }
 
   private fillFrom(start: number, digits: string): void {

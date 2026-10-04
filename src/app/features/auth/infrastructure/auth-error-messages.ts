@@ -4,4 +4,5 @@ export const AUTH_ERROR_MESSAGES: Record<string, string> = {
   USER_ALREADY_EXISTS: 'That email is already registered.',
   USER_EMAIL_ALREADY_EXISTS: 'That email is already registered.',
   USER_EMAIL_NOT_CONFIRMED: 'Confirm your email address before you sign in.',
+  VERIFICATION_CODE_EXPIRED: 'That code is wrong or has expired. Ask for a new one.',
 };

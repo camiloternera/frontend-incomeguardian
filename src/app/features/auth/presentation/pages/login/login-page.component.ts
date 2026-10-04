@@ -19,6 +19,16 @@ export class LoginPageComponent {
   private readonly router = inject(Router);
   private readonly themeService = inject(ThemeService);
 
+  /** Set when the user lands here straight after confirming their email. */
+  protected readonly emailConfirmed = ((): boolean => {
+    const previous = this.router.lastSuccessfulNavigation;
+    const navigation =
+      this.router.getCurrentNavigation() ?? (typeof previous === 'function' ? previous() : previous);
+    const state = navigation?.extras.state as { emailConfirmed?: boolean } | undefined;
+
+    return state?.emailConfirmed === true;
+  })();
+
   protected readonly theme = this.themeService.theme;
   protected readonly showPassword = signal(false);
   protected readonly isSubmitting = signal(false);

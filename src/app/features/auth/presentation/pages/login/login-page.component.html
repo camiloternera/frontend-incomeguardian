@@ -32,6 +32,13 @@
 
     <div class="mx-auto w-full max-w-[640px] self-center px-6 py-9 sm:px-12 sm:py-14 lg:px-24">
       <div>
+        @if (emailConfirmed) {
+          <p data-testid="email-confirmed" class="mb-4 flex items-center gap-2 rounded-lg border border-ig-border bg-ig-surface-raised px-3 py-2.5 text-[11px] tracking-[0.02em] text-ig-text" role="status">
+            <span class="size-1.5 shrink-0 rounded-full bg-ig-accent" aria-hidden="true"></span>
+            Email confirmed. Sign in to get started.
+          </p>
+        }
+
         <p class="mb-3 text-[11px] font-extrabold tracking-[0.02em] text-ig-accent">WELCOME BACK</p>
         <h2 id="login-title" class="max-w-[520px] font-roboto text-[clamp(32px,4vw,48px)] font-bold leading-[1.02] tracking-[-0.045em]">Pick up where you left off.</h2>
         <p class="mt-[18px] text-[13px] text-ig-muted">Sign in to your financial home base.</p>

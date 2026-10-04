@@ -35,6 +35,24 @@
       <p data-testid="confirm-email-address" class="mt-2 text-[15px] font-bold">{{ emailLabel }}</p>
 
       <form class="mt-8" [formGroup]="codeForm" (ngSubmit)="submit()" novalidate>
+        @if (!hasNavigationEmail) {
+          <div class="mb-6 text-left">
+            <label class="mb-1.5 block text-[11px] font-bold tracking-[0.02em]" for="confirm-email-input">Email address</label>
+            <input
+              class="min-h-11 w-full rounded-lg border border-ig-border bg-ig-surface-raised px-3 text-[13px] text-ig-text outline-none placeholder:text-ig-muted focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+              id="confirm-email-input"
+              data-testid="email"
+              formControlName="email"
+              type="email"
+              placeholder="you@example.com"
+              autocomplete="email"
+            />
+            @if (codeForm.controls.email.touched && codeForm.controls.email.invalid) {
+              <p class="mt-1 text-[11px] text-ig-accent-text" role="alert">Enter the email address you signed up with.</p>
+            }
+          </div>
+        }
+
         <fieldset class="m-0 border-0 p-0" formArrayName="code" [attr.aria-describedby]="showError ? 'code-error' : null">
           <legend class="mb-3 block w-full text-[11px] font-bold tracking-[0.02em]">Confirmation code</legend>
 
@@ -62,13 +80,17 @@
           <p id="code-error" data-testid="code-error" class="mt-3 text-[11px] text-ig-accent-text" role="alert">Enter the 6-digit code from your email.</p>
         }
 
+        @if (confirmError()) {
+          <p data-testid="confirm-error" class="mt-4 text-[11px] text-ig-accent-text" role="alert">{{ confirmError() }}</p>
+        }
+
         <button
           data-testid="verify"
           class="mt-8 min-h-11 w-full rounded-lg border border-ig-accent bg-ig-accent text-[13px] font-extrabold text-ig-on-accent transition-transform duration-150 hover:-translate-y-px focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
           type="submit"
-          [disabled]="!isComplete()"
+          [disabled]="!isComplete() || isSubmitting()"
         >
-          Verify email
+          {{ isSubmitting() ? 'Verifying...' : 'Verify email' }}
         </button>
 
         <button

@@ -8,9 +8,10 @@ import { AuthError } from '../domain/auth-error';
 import { AuthRepository } from '../domain/auth.repository';
 import { AuthSession } from '../domain/auth-session';
 import { Credentials } from '../domain/credentials';
+import { EmailConfirmation } from '../domain/email-confirmation';
 import { NewUser } from '../domain/new-user';
 import { AUTH_ERROR_MESSAGES } from './auth-error-messages';
-import { LoginResponseDto } from './auth.dto';
+import { ConfirmedUserDto, LoginResponseDto } from './auth.dto';
 
 function toSession(dto: LoginResponseDto): AuthSession {
   return {
@@ -28,6 +29,7 @@ export class AuthHttpRepository extends AuthRepository {
   private readonly http = inject(HttpClient);
   private readonly loginUrl = `${environment.apiUrl}/api/v1/User/login`;
   private readonly registerUrl = `${environment.apiUrl}/api/v1/User`;
+  private readonly confirmUrl = `${environment.apiUrl}/api/v1/User/confirm`;
 
   login(credentials: Credentials): Observable<AuthSession> {
     return this.http.post<LoginResponseDto>(this.loginUrl, credentials).pipe(map(toSession));
@@ -38,6 +40,20 @@ export class AuthHttpRepository extends AuthRepository {
       map((response) => {
         // The API answers 200 with `isSuccess: false` for business failures.
         if (!response?.isSuccess) {
+          throw response;
+        }
+      }),
+      catchError((error: unknown) =>
+        throwError(() => new AuthError(resolveApiError(error, AUTH_ERROR_MESSAGES))),
+      ),
+    );
+  }
+
+  confirmEmail(confirmation: EmailConfirmation): Observable<void> {
+    return this.http.post<ApiResponse<ConfirmedUserDto>>(this.confirmUrl, confirmation).pipe(
+      map((response) => {
+        // A 2xx is a success unless the envelope says otherwise.
+        if (response && response.isSuccess === false) {
           throw response;
         }
       }),
