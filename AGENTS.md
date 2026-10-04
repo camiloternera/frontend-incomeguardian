@@ -67,3 +67,25 @@ Usar para dashboards de alto contraste, alertas de foco y experiencias avanzadas
 - Antes de crear una nueva vista, revisar los mockups en `income-guardian-web-mockups.fig`.
 - Crear componentes reutilizables para botones, campos, separadores y acciones sociales.
 - Exportar una vista de verificacion antes de cerrar cambios y comprobar que no hay texto cortado, bordes sin contraste ni controles sin foco visible.
+
+## Arquitectura de carpetas
+
+El codigo se organiza por dominio de negocio. Cada dominio vive en `src/app/features/<dominio>/` con cuatro capas:
+
+```
+features/<dominio>/
+  domain/           # modelos, puertos (clases abstractas) y reglas puras. TypeScript puro.
+  application/      # casos de uso inyectables que orquestan los puertos.
+  infrastructure/   # adaptadores: HTTP, DTOs del API, storage, mapas de errores del backend.
+  presentation/     # pages/<nombre>/, components/, validators/ de formularios.
+  <dominio>.routes.ts
+  <dominio>.providers.ts   # enlaza puertos con adaptadores (provideX()), registrado en app.config.ts
+```
+
+- Dependencias permitidas: `presentation → application → domain` e `infrastructure → domain`. Presentation nunca importa infrastructure ni `HttpClient`.
+- `domain` no importa `@angular/*`; solo `rxjs` para firmas `Observable` de los puertos.
+- Un dominio no importa de otro dominio. Lo tecnico y transversal va en `core/` (http, theme); la UI reutilizable sin negocio va en `shared/ui/`.
+- Los DTOs del backend (PascalCase) se mapean a modelos de dominio (camelCase) en infrastructure y no salen de esa capa.
+- Los errores de negocio se traducen a copy de UI en infrastructure (`resolveApiError(error, MAPA_DEL_DOMINIO)`) y llegan a presentation como error de dominio.
+- Usar los alias `@core/*`, `@shared/*`, `@features/*` y `@env/*` para imports fuera del propio dominio; imports relativos dentro del dominio.
+- Dominios actuales: `auth`, `dashboard`. Previstos: `incomes`, `expenses`, `budgets` (crear la carpeta solo al implementarlos).

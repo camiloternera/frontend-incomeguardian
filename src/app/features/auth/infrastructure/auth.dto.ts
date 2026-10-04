@@ -1,9 +1,5 @@
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
-
-export interface LoginResponse {
+/** Shapes exactly as the backend sends them. Never leave this layer. */
+export interface LoginResponseDto {
   UserId: string;
   Email: string;
   Name: string;

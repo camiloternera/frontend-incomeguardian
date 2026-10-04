@@ -49,6 +49,7 @@
   --color-ig-muted: var(--ig-muted);
   --color-ig-border: var(--ig-border);
   --color-ig-accent: var(--ig-accent);
+  --color-ig-accent-text: var(--ig-accent-text);
   --color-ig-on-accent: var(--ig-on-accent);
 }
 
@@ -60,6 +61,7 @@
   --ig-muted: #a9bdb0;
   --ig-border: #2a5b43;
   --ig-accent: #25e27b;
+  --ig-accent-text: #25e27b;
   --ig-on-accent: #07160d;
   font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color-scheme: dark;
@@ -76,6 +78,7 @@
   --ig-muted: #6c756f;
   --ig-border: #d9ded8;
   --ig-accent: #25c76a;
+  --ig-accent-text: #0f7a42;
   --ig-on-accent: #07160d;
 }
 
@@ -87,6 +90,7 @@
   --ig-muted: #8a938d;
   --ig-border: #2a332f;
   --ig-accent: #25e27b;
+  --ig-accent-text: #25e27b;
   --ig-on-accent: #07160d;
 }
 

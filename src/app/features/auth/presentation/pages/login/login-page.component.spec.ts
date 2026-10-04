@@ -3,7 +3,8 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { provideRouter, Router } from '@angular/router';
 import { LoginPageComponent } from './login-page.component';
-import { routes } from '../../app.routes';
+import { routes } from '../../../../../app.routes';
+import { provideAuth } from '../../../auth.providers';
 
 describe('LoginPageComponent', () => {
   beforeEach(async () => {
@@ -14,6 +15,7 @@ describe('LoginPageComponent', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter(routes),
+        provideAuth(),
       ],
     }).compileComponents();
   });
@@ -80,7 +82,7 @@ describe('LoginPageComponent', () => {
     });
 
     expect(navigateSpy).toHaveBeenCalledWith('/home');
-    expect(JSON.parse(sessionStorage.getItem('income-guardian.session') ?? '{}').AccessToken).toBe('access-token');
+    expect(JSON.parse(sessionStorage.getItem('income-guardian.session') ?? '{}').accessToken).toBe('access-token');
   });
 
   it('shows an error when the login request fails', () => {

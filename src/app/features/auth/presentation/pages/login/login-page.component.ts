@@ -1,29 +1,25 @@
 import { Component, inject, signal } from '@angular/core';
 import { ReactiveFormsModule, Validators, NonNullableFormBuilder } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
-import { AuthService } from '../../core/auth/auth.service';
-
-type ThemeName = 'forest' | 'paper' | 'noir';
-
-interface ThemeOption {
-  id: ThemeName;
-  label: string;
-  number: string;
-}
+import { ThemeService } from '@core/theme/theme.service';
+import { ThemeSwitcherComponent } from '@shared/ui/theme-switcher.component';
+import { LoginUseCase } from '../../../application/login.use-case';
 
 @Component({
   selector: 'app-login-page',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, RouterLink, ThemeSwitcherComponent],
   templateUrl: './login-page.component.html',
-  styleUrl: './login-page.component.css',
+  styleUrls: ['./login-page.component.css'],
 })
+
 export class LoginPageComponent {
-  private readonly authService = inject(AuthService);
+  private readonly login = inject(LoginUseCase);
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly router = inject(Router);
+  private readonly themeService = inject(ThemeService);
 
-  protected readonly theme = signal<ThemeName>('forest');
+  protected readonly theme = this.themeService.theme;
   protected readonly showPassword = signal(false);
   protected readonly isSubmitting = signal(false);
   protected readonly loginError = signal('');
@@ -32,16 +28,6 @@ export class LoginPageComponent {
     email: ['', [Validators.required, Validators.email]],
     password: ['', Validators.required],
   });
-
-  protected readonly themes: ThemeOption[] = [
-    { id: 'forest', label: 'Forest', number: '01' },
-    { id: 'paper', label: 'Paper', number: '02' },
-    { id: 'noir', label: 'Noir', number: '03' },
-  ];
-
-  protected setTheme(theme: ThemeName): void {
-    this.theme.set(theme);
-  }
 
   protected togglePassword(): void {
     this.showPassword.update((visible) => !visible);
@@ -56,7 +42,7 @@ export class LoginPageComponent {
     }
 
     this.isSubmitting.set(true);
-    this.authService.login(this.loginForm.getRawValue()).pipe(
+    this.login.execute(this.loginForm.getRawValue()).pipe(
       finalize(() => this.isSubmitting.set(false)),
     ).subscribe({
       next: () => void this.router.navigateByUrl('/home'),

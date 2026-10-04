@@ -8,23 +8,7 @@
       </span>
     </a>
 
-    <div class="flex items-center gap-1.5 self-end rounded-full border border-ig-border/55 bg-ig-surface/60 px-2.5 py-1.5 text-ig-muted sm:self-auto" aria-label="Choose visual theme" role="group">
-      <span class="size-1.5 rounded-full bg-ig-accent" aria-hidden="true"></span>
-      <span class="mr-1 text-[11px] tracking-[0.02em]">3 visual modes</span>
-      @for (option of themes; track option.id) {
-        <button
-          class="min-h-6 min-w-6 rounded-xl border border-transparent px-1.5 text-[11px] tracking-[0.02em] text-ig-muted hover:border-ig-border hover:text-ig-text focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
-          [class.border-ig-border]="theme() === option.id"
-          [class.text-ig-text]="theme() === option.id"
-          [attr.aria-pressed]="theme() === option.id"
-          [attr.aria-label]="'Use ' + option.label + ' theme'"
-          type="button"
-          (click)="setTheme(option.id)"
-        >
-          {{ option.number }}
-        </button>
-      }
-    </div>
+    <app-theme-switcher />
   </header>
 
   <section class="mx-auto grid min-h-[525px] w-full max-w-[1260px] overflow-hidden rounded-2xl border border-ig-border/55 bg-ig-surface shadow-[0_24px_80px_rgb(0_0_0_/_24%)] md:grid-cols-[36%_1fr]" aria-labelledby="login-title">
@@ -101,7 +85,7 @@
           <button class="relative min-h-11 w-full rounded-lg border border-ig-border bg-transparent text-[13px] text-ig-text transition-transform duration-150 hover:-translate-y-px hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" type="button"><span class="absolute left-3.5 font-extrabold">f</span>Continue with Facebook</button>
         </div>
 
-        <p class="mt-6 text-[11px] tracking-[0.02em] text-ig-muted">New here? <a class="text-ig-accent no-underline hover:underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" href="/register">Create an account</a></p>
+        <p class="mt-6 text-[11px] tracking-[0.02em] text-ig-muted">New here? <a class="text-ig-accent no-underline hover:underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" routerLink="/register">Create an account</a></p>
       </form>
     </div>
   </section>

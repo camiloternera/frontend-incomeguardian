@@ -1,0 +1,220 @@
+<main
+  data-testid="register-shell"
+  class="min-h-screen bg-ig-canvas p-4 text-ig-text transition-colors duration-200 sm:p-8"
+  [attr.data-theme]="theme()"
+>
+  <header class="mx-auto mb-6 flex max-w-[1920px] flex-col items-start justify-between gap-4 sm:flex-row">
+    <a class="flex items-center gap-2.5 text-ig-text no-underline" routerLink="/login" aria-label="Income Guardian home">
+      <span class="grid size-6 shrink-0 place-items-center rounded-md bg-ig-accent text-[11px] font-extrabold text-ig-on-accent">IG</span>
+      <span>
+        <strong class="block font-roboto text-2xl leading-none tracking-tight">Income Guardian</strong>
+        <small class="mt-1 block text-[9px] tracking-[0.02em] text-ig-muted">WEB AUTHENTICATION / CREATE ACCOUNT</small>
+      </span>
+    </a>
+
+    <app-theme-switcher />
+  </header>
+
+  <section
+    class="mx-auto grid min-h-[525px] w-full max-w-[1260px] overflow-hidden rounded-2xl border border-ig-border/55 bg-ig-surface shadow-[0_24px_80px_rgb(0_0_0_/_24%)] md:grid-cols-[36%_1fr]"
+    aria-labelledby="register-title"
+  >
+    <aside class="flex min-h-[310px] flex-col justify-between bg-ig-surface/88 p-6 md:min-h-[525px]">
+      <div class="flex items-center gap-2">
+        <span class="grid size-6 shrink-0 place-items-center rounded-md bg-ig-accent text-[11px] font-extrabold text-ig-on-accent">IG</span>
+        <span class="text-[11px] font-bold tracking-[0.02em]">income guardian</span>
+      </div>
+
+      <div class="my-auto py-8">
+        <p class="mb-3 text-[11px] font-extrabold tracking-[0.02em] text-ig-accent-text">PRIVATE BY DESIGN</p>
+        <h1 class="max-w-[280px] font-roboto text-[clamp(36px,4vw,52px)] font-bold leading-[0.98] tracking-[-0.045em]">Start with a clean slate.</h1>
+        <p class="mt-[18px] max-w-[280px] text-[13px] text-ig-muted">Two minutes to set up. Nothing to connect until you want to.</p>
+      </div>
+
+      <ul class="m-0 list-none space-y-2.5 p-0 text-[11px] tracking-[0.02em] text-ig-muted">
+        <li class="flex items-start gap-1.5"><span class="mt-1.5 size-1.5 shrink-0 rounded-full bg-ig-accent" aria-hidden="true"></span>We never sell or share your financial data.</li>
+        <li class="flex items-start gap-1.5"><span class="mt-1.5 size-1.5 shrink-0 rounded-full bg-ig-accent" aria-hidden="true"></span>Bank-grade encryption at rest and in transit.</li>
+        <li class="flex items-start gap-1.5"><span class="mt-1.5 size-1.5 shrink-0 rounded-full bg-ig-accent" aria-hidden="true"></span>Delete your account and all data at any time.</li>
+      </ul>
+
+      <small class="mt-4 block text-[10px] text-ig-muted">&copy; 2026 Income Guardian</small>
+    </aside>
+
+    <div class="mx-auto w-full max-w-[640px] self-center px-6 py-9 sm:px-12 sm:py-14 lg:px-20">
+      @if (isRegistered()) {
+        <div data-testid="register-success">
+          <p class="mb-3 text-[11px] font-extrabold tracking-[0.02em] text-ig-accent-text">ACCOUNT CREATED</p>
+          <h2 id="register-title" class="max-w-[520px] font-roboto text-[clamp(32px,4vw,48px)] font-bold leading-[1.02] tracking-[-0.045em]">You are all set.</h2>
+          <p class="mt-[18px] text-[13px] text-ig-muted">Your account is ready. Sign in to start tracking what comes in and what goes out.</p>
+
+          <a
+            class="mt-8 inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-accent bg-ig-accent px-5 text-[13px] font-extrabold text-ig-on-accent no-underline transition-transform duration-150 hover:-translate-y-px focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+            routerLink="/login"
+          >
+            Go to sign in
+          </a>
+        </div>
+      } @else {
+        <div>
+          <p class="mb-3 text-[11px] font-extrabold tracking-[0.02em] text-ig-accent-text">CREATE ACCOUNT</p>
+          <h2 id="register-title" class="max-w-[520px] font-roboto text-[clamp(32px,4vw,48px)] font-bold leading-[1.02] tracking-[-0.045em]">Set up your financial home base.</h2>
+          <p class="mt-[18px] text-[13px] text-ig-muted">It takes about two minutes.</p>
+        </div>
+
+        <form class="mt-8" [formGroup]="registerForm" (ngSubmit)="submit()" novalidate>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label class="mb-1.5 block text-[11px] font-bold tracking-[0.02em]" for="name">First name</label>
+              <input
+                class="min-h-11 w-full rounded-lg border border-ig-border bg-ig-surface-raised px-3 text-[13px] text-ig-text outline-none placeholder:text-ig-muted focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                id="name"
+                formControlName="name"
+                type="text"
+                placeholder="Camilo"
+                autocomplete="given-name"
+              />
+              @if (registerForm.controls.name.touched && registerForm.controls.name.invalid) {
+                <p class="mt-1 text-[11px] text-ig-accent-text" role="alert">Enter your first name.</p>
+              }
+            </div>
+
+            <div>
+              <label class="mb-1.5 block text-[11px] font-bold tracking-[0.02em]" for="surname">Last name</label>
+              <input
+                class="min-h-11 w-full rounded-lg border border-ig-border bg-ig-surface-raised px-3 text-[13px] text-ig-text outline-none placeholder:text-ig-muted focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                id="surname"
+                formControlName="surname"
+                type="text"
+                placeholder="Ternera"
+                autocomplete="family-name"
+              />
+              @if (registerForm.controls.surname.touched && registerForm.controls.surname.invalid) {
+                <p class="mt-1 text-[11px] text-ig-accent-text" role="alert">Enter your last name.</p>
+              }
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <label class="mb-1.5 block text-[11px] font-bold tracking-[0.02em]" for="email">Email address</label>
+            <input
+              class="min-h-11 w-full rounded-lg border border-ig-border bg-ig-surface-raised px-3 text-[13px] text-ig-text outline-none placeholder:text-ig-muted focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+              id="email"
+              formControlName="email"
+              type="email"
+              placeholder="you@example.com"
+              autocomplete="email"
+            />
+            @if (registerForm.controls.email.touched && registerForm.controls.email.invalid) {
+              <p class="mt-1 text-[11px] text-ig-accent-text" role="alert">Enter a valid email address.</p>
+            }
+          </div>
+
+          <div class="mt-4">
+            <label class="mb-1.5 block text-[11px] font-bold tracking-[0.02em]" for="phoneNumber">Phone number</label>
+            <input
+              class="min-h-11 w-full rounded-lg border border-ig-border bg-ig-surface-raised px-3 text-[13px] text-ig-text outline-none placeholder:text-ig-muted focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+              id="phoneNumber"
+              formControlName="phoneNumber"
+              type="tel"
+              placeholder="+57 300 000 0000"
+              autocomplete="tel"
+            />
+            @if (registerForm.controls.phoneNumber.touched && registerForm.controls.phoneNumber.invalid) {
+              <p class="mt-1 text-[11px] text-ig-accent-text" role="alert">Enter your phone number.</p>
+            }
+          </div>
+
+          <div class="mt-4">
+            <label class="mb-1.5 block text-[11px] font-bold tracking-[0.02em]" for="password">Password</label>
+            <div class="relative">
+              <input
+                class="min-h-11 w-full rounded-lg border border-ig-border bg-ig-surface-raised px-3 pr-16 text-[13px] text-ig-text outline-none placeholder:text-ig-muted focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                id="password"
+                data-testid="password"
+                formControlName="password"
+                [type]="showPassword() ? 'text' : 'password'"
+                placeholder="At least 8 characters"
+                autocomplete="new-password"
+              />
+              <button
+                data-testid="password-toggle"
+                class="absolute right-3 top-1/2 min-h-8 -translate-y-1/2 border-0 bg-transparent p-0 text-[11px] font-bold tracking-[0.02em] text-ig-accent-text focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                type="button"
+                (click)="togglePassword()"
+                [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+              >
+                {{ showPassword() ? 'HIDE' : 'SHOW' }}
+              </button>
+            </div>
+
+            <div class="mt-2.5 flex items-center gap-1.5" aria-hidden="true">
+              @for (segment of strengthSegments(); track $index) {
+                <span class="h-1 flex-1 rounded-full" [class]="segment.filled ? 'bg-ig-accent' : 'bg-ig-border'"></span>
+              }
+              <span class="ml-1.5 text-[11px] font-bold text-ig-accent-text">{{ strengthLabel() }}</span>
+            </div>
+
+            @if (registerForm.controls.password.touched && registerForm.controls.password.invalid) {
+              <p class="mt-1 text-[11px] text-ig-accent-text" role="alert">Password must be at least 8 characters.</p>
+            }
+          </div>
+
+          <div class="mt-4">
+            <label class="mb-1.5 block text-[11px] font-bold tracking-[0.02em]" for="confirmPassword">Confirm password</label>
+            <input
+              class="min-h-11 w-full rounded-lg border border-ig-border bg-ig-surface-raised px-3 text-[13px] text-ig-text outline-none placeholder:text-ig-muted focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+              id="confirmPassword"
+              data-testid="confirm-password"
+              formControlName="confirmPassword"
+              [type]="showPassword() ? 'text' : 'password'"
+              placeholder="Repeat your password"
+              autocomplete="new-password"
+            />
+            @if (passwordMismatch) {
+              <p data-testid="password-mismatch" class="mt-1 text-[11px] text-ig-accent-text" role="alert">Both passwords must match.</p>
+            }
+          </div>
+
+          <div class="mt-4 flex items-start gap-2.5">
+            <input
+              class="mt-0.5 size-[18px] shrink-0 accent-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+              id="acceptTerms"
+              formControlName="acceptTerms"
+              type="checkbox"
+            />
+            <label class="text-[11px] leading-relaxed tracking-[0.02em] text-ig-muted" for="acceptTerms">
+              I agree to the
+              <a class="text-ig-accent-text no-underline hover:underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" href="/terms">Terms of Service</a>
+              and the
+              <a class="text-ig-accent-text no-underline hover:underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" href="/privacy">Privacy Policy</a>.
+            </label>
+          </div>
+
+          @if (registerError()) {
+            <p data-testid="register-error" class="mt-4 text-[11px] text-ig-accent-text" role="alert">{{ registerError() }}</p>
+          }
+
+          <button
+            class="mt-[18px] min-h-11 w-full rounded-lg border border-ig-accent bg-ig-accent text-[13px] font-extrabold text-ig-on-accent transition-transform duration-150 hover:-translate-y-px focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+            type="submit"
+            [disabled]="isSubmitting()"
+          >
+            {{ isSubmitting() ? 'Creating account...' : 'Create account' }}
+          </button>
+
+          <div class="separator my-6 flex items-center gap-3 text-[10px] text-ig-muted" role="separator"><span>OR</span></div>
+
+          <div class="grid gap-2">
+            <button class="relative min-h-11 w-full rounded-lg border border-ig-border bg-transparent text-[13px] text-ig-text transition-transform duration-150 hover:-translate-y-px hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" type="button"><span class="absolute left-3.5 font-extrabold">G</span>Continue with Google</button>
+            <button class="relative min-h-11 w-full rounded-lg border border-ig-border bg-transparent text-[13px] text-ig-text transition-transform duration-150 hover:-translate-y-px hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" type="button"><span class="absolute left-3.5 font-extrabold">f</span>Continue with Facebook</button>
+          </div>
+
+          <p class="mt-6 text-[11px] tracking-[0.02em] text-ig-muted">
+            Already have an account?
+            <a class="text-ig-accent-text no-underline hover:underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" routerLink="/login">Sign in</a>
+          </p>
+        </form>
+      }
+    </div>
+  </section>
+</main>
