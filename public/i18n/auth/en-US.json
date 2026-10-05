@@ -1,0 +1,114 @@
+{
+  "common": {
+    "emailLabel": "Email address",
+    "emailPlaceholder": "you@example.com",
+    "emailInvalid": "Enter a valid email address.",
+    "passwordLabel": "Password",
+    "passwordTooShort": "Password must be at least 8 characters.",
+    "show": "SHOW",
+    "hide": "HIDE",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "continueWithGoogle": "Continue with Google",
+    "continueWithFacebook": "Continue with Facebook",
+    "signIn": "Sign in"
+  },
+  "errors": {
+    "USER_INVALID_CREDENTIALS": "The email or password is incorrect.",
+    "USER_ALREADY_EXISTS": "That email is already registered.",
+    "USER_EMAIL_ALREADY_EXISTS": "That email is already registered.",
+    "USER_EMAIL_NOT_CONFIRMED": "Confirm your email address before you sign in.",
+    "VERIFICATION_CODE_EXPIRED": "That code is wrong or has expired. Ask for a new one."
+  },
+  "login": {
+    "kicker": "WEB AUTHENTICATION / THEME STUDY",
+    "hero": {
+      "forest": {
+        "eyebrow": "PRIVATE BY DESIGN",
+        "title": "Your money.",
+        "subtitle": "Keep your view clear.",
+        "note": "Private by design"
+      },
+      "paper": {
+        "eyebrow": "CLARITY FIRST",
+        "title": "Make room.",
+        "subtitle": "Clarity for every decision.",
+        "note": "Your data stays yours"
+      },
+      "noir": {
+        "eyebrow": "SIGNAL SECURE",
+        "title": "Own the move.",
+        "subtitle": "Your rules. Your signal.",
+        "note": "Encrypted and private"
+      }
+    },
+    "emailConfirmed": "Email confirmed. Sign in to get started.",
+    "eyebrow": "WELCOME BACK",
+    "title": "Pick up where you left off.",
+    "subtitle": "Sign in to your financial home base.",
+    "forgotPassword": "Forgot password?",
+    "passwordPlaceholder": "Enter your password",
+    "submit": "Sign in",
+    "submitting": "Signing in...",
+    "error": "Unable to sign in. Check your credentials and try again.",
+    "newHere": "New here?",
+    "createAccount": "Create an account"
+  },
+  "register": {
+    "kicker": "WEB AUTHENTICATION / CREATE ACCOUNT",
+    "heroEyebrow": "PRIVATE BY DESIGN",
+    "heroTitle": "Start with a clean slate.",
+    "heroSubtitle": "Two minutes to set up. Nothing to connect until you want to.",
+    "promiseNoSelling": "We never sell or share your financial data.",
+    "promiseEncryption": "Bank-grade encryption at rest and in transit.",
+    "promiseDelete": "Delete your account and all data at any time.",
+    "eyebrow": "CREATE ACCOUNT",
+    "title": "Set up your financial home base.",
+    "subtitle": "It takes about two minutes.",
+    "nameLabel": "First name",
+    "namePlaceholder": "Camilo",
+    "nameRequired": "Enter your first name.",
+    "surnameLabel": "Last name",
+    "surnamePlaceholder": "Ternera",
+    "surnameRequired": "Enter your last name.",
+    "phoneLabel": "Phone number",
+    "phonePlaceholder": "+57 300 000 0000",
+    "phoneRequired": "Enter your phone number.",
+    "passwordPlaceholder": "At least 8 characters",
+    "passwordStrength": {
+      "0": "",
+      "1": "Weak",
+      "2": "Fair",
+      "3": "Good"
+    },
+    "confirmPasswordLabel": "Confirm password",
+    "confirmPasswordPlaceholder": "Repeat your password",
+    "passwordMismatch": "Both passwords must match.",
+    "termsPrefix": "I agree to the",
+    "terms": "Terms of Service",
+    "termsJoin": "and the",
+    "privacy": "Privacy Policy",
+    "submit": "Create account",
+    "submitting": "Creating account...",
+    "haveAccount": "Already have an account?"
+  },
+  "confirmEmail": {
+    "kicker": "WEB AUTHENTICATION / CONFIRM EMAIL",
+    "eyebrow": "ONE MORE STEP",
+    "title": "Check your inbox.",
+    "sentTo": "We sent a 6-digit code to",
+    "fallbackEmail": "the email you signed up with",
+    "emailInvalid": "Enter the email address you signed up with.",
+    "codeLegend": "Confirmation code",
+    "digit": "Digit {{position}} of {{total}}",
+    "codeIncomplete": "Enter the 6-digit code from your email.",
+    "submit": "Verify email",
+    "submitting": "Verifying...",
+    "resend": "Resend email",
+    "resendIn": "Resend in {{time}}",
+    "expiry": "The code expires in 30 minutes. Nothing in your inbox? Look in spam or promotions.",
+    "wrongAddress": "Wrong address?",
+    "useDifferentEmail": "Use a different email",
+    "alreadyConfirmed": "Already confirmed?"
+  }
+}

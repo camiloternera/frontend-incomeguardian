@@ -10,9 +10,11 @@ import {
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { finalize } from 'rxjs';
-import { GENERIC_ERROR } from '@core/http/api-error';
+import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { ThemeService } from '@core/theme/theme.service';
+import { LanguageSwitcherComponent } from '@shared/ui/language-switcher.component';
 import { ThemeSwitcherComponent } from '@shared/ui/theme-switcher.component';
 import {
   CONFIRMATION_CODE_LENGTH,
@@ -31,7 +33,7 @@ function countdown(seconds: number): string {
 
 @Component({
   selector: 'app-confirm-email-page',
-  imports: [ReactiveFormsModule, RouterLink, ThemeSwitcherComponent],
+  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective, LanguageSwitcherComponent, ThemeSwitcherComponent],
   templateUrl: './confirm-email-page.component.html',
   styleUrls: ['./confirm-email-page.component.css'],
 })
@@ -41,12 +43,13 @@ export class ConfirmEmailPageComponent {
   private readonly router = inject(Router);
   private readonly themeService = inject(ThemeService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly transloco = inject(TranslocoService);
 
   /**
    * The address comes through router state, never a query param: it is personal
    * data and does not belong in the URL or the browser history.
    */
-  private readonly navigationEmail = ((): string => {
+  protected readonly navigationEmail = ((): string => {
     const router = inject(Router);
     // `lastSuccessfulNavigation` is a signal in Angular 21; it covers a refresh of this route.
     const previous = router.lastSuccessfulNavigation;
@@ -62,7 +65,6 @@ export class ConfirmEmailPageComponent {
 
   /** Without an address in the navigation the view has to ask for one (direct visit, reload). */
   protected readonly hasNavigationEmail = this.navigationEmail !== '';
-  protected readonly emailLabel = this.navigationEmail || 'the email you signed up with';
 
   protected readonly isSubmitting = signal(false);
   protected readonly confirmError = signal('');
@@ -86,9 +88,7 @@ export class ConfirmEmailPageComponent {
 
   protected readonly secondsLeft = signal(RESEND_SECONDS);
   protected readonly canResend = computed(() => this.secondsLeft() === 0);
-  protected readonly resendLabel = computed(() =>
-    this.canResend() ? 'Resend email' : `Resend in ${countdown(this.secondsLeft())}`,
-  );
+  protected readonly countdown = computed(() => countdown(this.secondsLeft()));
 
   constructor() {
     const timer = setInterval(() => {
@@ -179,7 +179,7 @@ export class ConfirmEmailPageComponent {
       .subscribe({
         next: () => void this.router.navigate(['/login'], { state: { emailConfirmed: true } }),
         error: (error: unknown) =>
-          this.confirmError.set(error instanceof AuthError ? error.message : GENERIC_ERROR),
+          this.confirmError.set(error instanceof AuthError ? error.message : this.transloco.translate(GENERIC_ERROR_KEY)),
       });
   }
 

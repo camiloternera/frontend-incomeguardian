@@ -2,13 +2,15 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { finalize } from 'rxjs';
-import { GENERIC_ERROR } from '@core/http/api-error';
+import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { ThemeService } from '@core/theme/theme.service';
+import { LanguageSwitcherComponent } from '@shared/ui/language-switcher.component';
 import { ThemeSwitcherComponent } from '@shared/ui/theme-switcher.component';
 import { RegisterUserUseCase } from '../../../application/register-user.use-case';
 import { AuthError } from '../../../domain/auth-error';
-import { PASSWORD_STRENGTH_LABELS, passwordStrength } from '../../../domain/password-strength';
+import { passwordStrength } from '../../../domain/password-strength';
 import { passwordsMatch } from '../../validators/passwords-match.validator';
 
 interface StrengthSegment {
@@ -17,7 +19,7 @@ interface StrengthSegment {
 
 @Component({
   selector: 'app-register-page',
-  imports: [ReactiveFormsModule, RouterLink, ThemeSwitcherComponent],
+  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective, LanguageSwitcherComponent, ThemeSwitcherComponent],
   templateUrl: './register-page.component.html',
   styleUrls: ['./register-page.component.css'],
 })
@@ -26,6 +28,7 @@ export class RegisterPageComponent {
     private readonly formBuilder = inject(NonNullableFormBuilder);
     private readonly themeService = inject(ThemeService);
     private readonly router = inject(Router);
+    private readonly transloco = inject(TranslocoService);
 
     protected readonly theme = this.themeService.theme;
     protected readonly showPassword = signal(false);
@@ -50,8 +53,6 @@ export class RegisterPageComponent {
     });
 
     protected readonly strength = computed(() => passwordStrength(this.password()));
-
-    protected readonly strengthLabel = computed(() => PASSWORD_STRENGTH_LABELS[this.strength()]);
 
     protected readonly strengthSegments = computed<StrengthSegment[]>(() =>
       [0, 1, 2].map((index) => ({ filled: index < this.strength() })),
@@ -84,7 +85,7 @@ export class RegisterPageComponent {
           next: () =>
             void this.router.navigate(['/confirm-email'], { state: { email: request.email } }),
           error: (error: unknown) =>
-            this.registerError.set(error instanceof AuthError ? error.message : GENERIC_ERROR),
+            this.registerError.set(error instanceof AuthError ? error.message : this.transloco.translate(GENERIC_ERROR_KEY)),
         });
     }
 }

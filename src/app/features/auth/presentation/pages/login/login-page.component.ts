@@ -1,14 +1,16 @@
 import { Component, inject, signal } from '@angular/core';
 import { ReactiveFormsModule, Validators, NonNullableFormBuilder } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { finalize } from 'rxjs';
 import { ThemeService } from '@core/theme/theme.service';
+import { LanguageSwitcherComponent } from '@shared/ui/language-switcher.component';
 import { ThemeSwitcherComponent } from '@shared/ui/theme-switcher.component';
 import { LoginUseCase } from '../../../application/login.use-case';
 
 @Component({
   selector: 'app-login-page',
-  imports: [ReactiveFormsModule, RouterLink, ThemeSwitcherComponent],
+  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective, LanguageSwitcherComponent, ThemeSwitcherComponent],
   templateUrl: './login-page.component.html',
   styleUrls: ['./login-page.component.css'],
 })
@@ -18,6 +20,7 @@ export class LoginPageComponent {
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly router = inject(Router);
   private readonly themeService = inject(ThemeService);
+  private readonly transloco = inject(TranslocoService);
 
   /** Set when the user lands here straight after confirming their email. */
   protected readonly emailConfirmed = ((): boolean => {
@@ -56,7 +59,7 @@ export class LoginPageComponent {
       finalize(() => this.isSubmitting.set(false)),
     ).subscribe({
       next: () => void this.router.navigateByUrl('/home'),
-      error: () => this.loginError.set('Unable to sign in. Check your credentials and try again.'),
+      error: () => this.loginError.set(this.transloco.translate('auth.login.error')),
     });
   }
 }

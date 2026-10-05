@@ -1,14 +1,17 @@
-<main data-testid="login-shell" class="min-h-screen bg-ig-canvas p-4 text-ig-text transition-colors duration-200 sm:p-8" [attr.data-theme]="theme()">
+<main *transloco="let t" data-testid="login-shell" class="min-h-screen bg-ig-canvas p-4 text-ig-text transition-colors duration-200 sm:p-8" [attr.data-theme]="theme()">
   <header class="mx-auto mb-6 flex max-w-[1920px] flex-col items-start justify-between gap-4 sm:flex-row">
-    <a class="flex items-center gap-2.5 text-ig-text no-underline" href="/" aria-label="Income Guardian home">
+    <a class="flex items-center gap-2.5 text-ig-text no-underline" href="/" [attr.aria-label]="t('brand.home')">
       <span class="grid size-6 shrink-0 place-items-center rounded-md bg-ig-accent text-[11px] font-extrabold text-ig-on-accent">IG</span>
       <span>
-        <strong class="block font-roboto text-2xl leading-none tracking-tight">Income Guardian</strong>
-        <small class="mt-1 block text-[9px] tracking-[0.02em] text-ig-muted">WEB AUTHENTICATION / THEME STUDY</small>
+        <strong class="block font-roboto text-2xl leading-none tracking-tight">{{ t('brand.name') }}</strong>
+        <small class="mt-1 block text-[9px] tracking-[0.02em] text-ig-muted">{{ t('auth.login.kicker') }}</small>
       </span>
     </a>
 
-    <app-theme-switcher />
+    <div class="flex flex-wrap items-center justify-end gap-2 self-end sm:self-auto">
+      <app-language-switcher />
+      <app-theme-switcher />
+    </div>
   </header>
 
   <section class="mx-auto grid min-h-[525px] w-full max-w-[1260px] overflow-hidden rounded-2xl border border-ig-border/55 bg-ig-surface shadow-[0_24px_80px_rgb(0_0_0_/_24%)] md:grid-cols-[36%_1fr]" aria-labelledby="login-title">
@@ -19,14 +22,14 @@
       </div>
 
       <div class="my-auto py-8">
-        <p class="mb-3 text-[11px] font-extrabold tracking-[0.02em] text-ig-accent">{{ theme() === 'forest' ? 'PRIVATE BY DESIGN' : theme() === 'paper' ? 'CLARITY FIRST' : 'SIGNAL SECURE' }}</p>
-        <h1 class="max-w-[280px] font-roboto text-[clamp(36px,4vw,52px)] font-bold leading-[0.98] tracking-[-0.045em]">{{ theme() === 'forest' ? 'Your money.' : theme() === 'paper' ? 'Make room.' : 'Own the move.' }}</h1>
-        <p class="mt-[18px] text-[13px] text-ig-muted">{{ theme() === 'forest' ? 'Keep your view clear.' : theme() === 'paper' ? 'Clarity for every decision.' : 'Your rules. Your signal.' }}</p>
+        <p class="mb-3 text-[11px] font-extrabold tracking-[0.02em] text-ig-accent">{{ t('auth.login.hero.' + theme() + '.eyebrow') }}</p>
+        <h1 class="max-w-[280px] font-roboto text-[clamp(36px,4vw,52px)] font-bold leading-[0.98] tracking-[-0.045em]">{{ t('auth.login.hero.' + theme() + '.title') }}</h1>
+        <p class="mt-[18px] text-[13px] text-ig-muted">{{ t('auth.login.hero.' + theme() + '.subtitle') }}</p>
       </div>
 
       <div class="text-[11px] tracking-[0.02em] text-ig-muted">
-        <p class="mb-2.5 flex items-center gap-1.5"><span class="size-1.5 rounded-full bg-ig-accent" aria-hidden="true"></span>{{ theme() === 'paper' ? 'Your data stays yours' : theme() === 'noir' ? 'Encrypted and private' : 'Private by design' }}</p>
-        <small class="text-[10px]">© 2026 Income Guardian</small>
+        <p class="mb-2.5 flex items-center gap-1.5"><span class="size-1.5 rounded-full bg-ig-accent" aria-hidden="true"></span>{{ t('auth.login.hero.' + theme() + '.note') }}</p>
+        <small class="text-[10px]">{{ t('brand.copyright') }}</small>
       </div>
     </aside>
 
@@ -35,28 +38,28 @@
         @if (emailConfirmed) {
           <p data-testid="email-confirmed" class="mb-4 flex items-center gap-2 rounded-lg border border-ig-border bg-ig-surface-raised px-3 py-2.5 text-[11px] tracking-[0.02em] text-ig-text" role="status">
             <span class="size-1.5 shrink-0 rounded-full bg-ig-accent" aria-hidden="true"></span>
-            Email confirmed. Sign in to get started.
+            {{ t('auth.login.emailConfirmed') }}
           </p>
         }
 
-        <p class="mb-3 text-[11px] font-extrabold tracking-[0.02em] text-ig-accent">WELCOME BACK</p>
-        <h2 id="login-title" class="max-w-[520px] font-roboto text-[clamp(32px,4vw,48px)] font-bold leading-[1.02] tracking-[-0.045em]">Pick up where you left off.</h2>
-        <p class="mt-[18px] text-[13px] text-ig-muted">Sign in to your financial home base.</p>
+        <p class="mb-3 text-[11px] font-extrabold tracking-[0.02em] text-ig-accent">{{ t('auth.login.eyebrow') }}</p>
+        <h2 id="login-title" class="max-w-[520px] font-roboto text-[clamp(32px,4vw,48px)] font-bold leading-[1.02] tracking-[-0.045em]">{{ t('auth.login.title') }}</h2>
+        <p class="mt-[18px] text-[13px] text-ig-muted">{{ t('auth.login.subtitle') }}</p>
       </div>
 
       <form class="mt-8" [formGroup]="loginForm" (ngSubmit)="submit()" novalidate>
         <div>
-          <label class="mb-1.5 block text-[11px] font-bold tracking-[0.02em]" for="email">Email address</label>
-          <input class="min-h-11 w-full rounded-lg border border-ig-border bg-ig-surface-raised px-3 text-[13px] text-ig-text outline-none placeholder:text-ig-muted focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" id="email" formControlName="email" type="email" placeholder="you@example.com" autocomplete="email" />
+          <label class="mb-1.5 block text-[11px] font-bold tracking-[0.02em]" for="email">{{ t('auth.common.emailLabel') }}</label>
+          <input class="min-h-11 w-full rounded-lg border border-ig-border bg-ig-surface-raised px-3 text-[13px] text-ig-text outline-none placeholder:text-ig-muted focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" id="email" formControlName="email" type="email" [placeholder]="t('auth.common.emailPlaceholder')" autocomplete="email" />
           @if (loginForm.controls.email.touched && loginForm.controls.email.invalid) {
-            <p class="mt-1 text-[11px] text-ig-accent" role="alert">Enter a valid email address.</p>
+            <p class="mt-1 text-[11px] text-ig-accent" role="alert">{{ t('auth.common.emailInvalid') }}</p>
           }
         </div>
 
         <div class="mt-4">
           <div class="flex items-center justify-between gap-3">
-            <label class="mb-1.5 block text-[11px] font-bold tracking-[0.02em]" for="password">Password</label>
-            <a class="text-[11px] tracking-[0.02em] text-ig-accent no-underline hover:underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" href="/forgot-password">Forgot password?</a>
+            <label class="mb-1.5 block text-[11px] font-bold tracking-[0.02em]" for="password">{{ t('auth.common.passwordLabel') }}</label>
+            <a class="text-[11px] tracking-[0.02em] text-ig-accent no-underline hover:underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" href="/forgot-password">{{ t('auth.login.forgotPassword') }}</a>
           </div>
           <div class="relative">
             <input
@@ -65,15 +68,15 @@
               data-testid="password"
               formControlName="password"
               [type]="showPassword() ? 'text' : 'password'"
-              placeholder="Enter your password"
+              [placeholder]="t('auth.login.passwordPlaceholder')"
               autocomplete="current-password"
             />
-            <button data-testid="password-toggle" class="absolute right-3 top-1/2 min-h-8 -translate-y-1/2 border-0 bg-transparent p-0 text-[11px] font-bold tracking-[0.02em] text-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" type="button" (click)="togglePassword()" [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'">
-              {{ showPassword() ? 'HIDE' : 'SHOW' }}
+            <button data-testid="password-toggle" class="absolute right-3 top-1/2 min-h-8 -translate-y-1/2 border-0 bg-transparent p-0 text-[11px] font-bold tracking-[0.02em] text-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" type="button" (click)="togglePassword()" [attr.aria-label]="showPassword() ? t('auth.common.hidePassword') : t('auth.common.showPassword')">
+              {{ showPassword() ? t('auth.common.hide') : t('auth.common.show') }}
             </button>
           </div>
           @if (loginForm.controls.password.touched && loginForm.controls.password.invalid) {
-            <p class="mt-1 text-[11px] text-ig-accent" role="alert">Password must be at least 8 characters.</p>
+            <p class="mt-1 text-[11px] text-ig-accent" role="alert">{{ t('auth.common.passwordTooShort') }}</p>
           }
         </div>
 
@@ -82,17 +85,17 @@
          }
 
          <button class="mt-[18px] min-h-11 w-full rounded-lg border border-ig-accent bg-ig-accent text-[13px] font-extrabold text-ig-on-accent transition-transform duration-150 hover:-translate-y-px focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60" type="submit" [disabled]="isSubmitting()">
-           {{ isSubmitting() ? 'Signing in...' : 'Sign in' }}
+           {{ isSubmitting() ? t('auth.login.submitting') : t('auth.login.submit') }}
          </button>
 
-        <div class="separator my-6 flex items-center gap-3 text-[10px] text-ig-muted" role="separator"><span>OR</span></div>
+        <div class="separator my-6 flex items-center gap-3 text-[10px] text-ig-muted" role="separator"><span>{{ t('common.or') }}</span></div>
 
         <div class="grid gap-2">
-          <button class="relative min-h-11 w-full rounded-lg border border-ig-border bg-transparent text-[13px] text-ig-text transition-transform duration-150 hover:-translate-y-px hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" type="button"><span class="absolute left-3.5 font-extrabold">G</span>Continue with Google</button>
-          <button class="relative min-h-11 w-full rounded-lg border border-ig-border bg-transparent text-[13px] text-ig-text transition-transform duration-150 hover:-translate-y-px hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" type="button"><span class="absolute left-3.5 font-extrabold">f</span>Continue with Facebook</button>
+          <button class="relative min-h-11 w-full rounded-lg border border-ig-border bg-transparent text-[13px] text-ig-text transition-transform duration-150 hover:-translate-y-px hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" type="button"><span class="absolute left-3.5 font-extrabold" aria-hidden="true">G</span>{{ t('auth.common.continueWithGoogle') }}</button>
+          <button class="relative min-h-11 w-full rounded-lg border border-ig-border bg-transparent text-[13px] text-ig-text transition-transform duration-150 hover:-translate-y-px hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" type="button"><span class="absolute left-3.5 font-extrabold" aria-hidden="true">f</span>{{ t('auth.common.continueWithFacebook') }}</button>
         </div>
 
-        <p class="mt-6 text-[11px] tracking-[0.02em] text-ig-muted">New here? <a class="text-ig-accent no-underline hover:underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" routerLink="/register">Create an account</a></p>
+        <p class="mt-6 text-[11px] tracking-[0.02em] text-ig-muted">{{ t('auth.login.newHere') }} <a class="text-ig-accent no-underline hover:underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" routerLink="/register">{{ t('auth.login.createAccount') }}</a></p>
       </form>
     </div>
   </section>

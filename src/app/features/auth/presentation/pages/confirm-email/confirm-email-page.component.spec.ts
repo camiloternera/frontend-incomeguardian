@@ -3,6 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { Navigation, Router, provideRouter } from '@angular/router';
 import { ConfirmEmailPageComponent } from './confirm-email-page.component';
+import { translocoTesting } from '@core/i18n/i18n.testing';
 import { provideAuth } from '../../../auth.providers';
 
 const CONFIRM_URL = 'https://localhost:7151/api/v1/User/confirm';
@@ -45,7 +46,7 @@ describe('ConfirmEmailPageComponent', () => {
   beforeEach(async () => {
     localStorage.clear();
     await TestBed.configureTestingModule({
-      imports: [ConfirmEmailPageComponent],
+      imports: [ConfirmEmailPageComponent, translocoTesting()],
       providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideAuth()],
     }).compileComponents();
   });

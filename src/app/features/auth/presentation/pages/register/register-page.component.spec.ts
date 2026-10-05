@@ -4,6 +4,7 @@ import { provideHttpClientTesting, HttpTestingController } from '@angular/common
 import { provideRouter, Router } from '@angular/router';
 import { RegisterPageComponent } from './register-page.component';
 import { routes } from '../../../../../app.routes';
+import { translocoTesting } from '@core/i18n/i18n.testing';
 import { provideAuth } from '../../../auth.providers';
 
 const REGISTER_URL = 'https://localhost:7151/api/v1/User';
@@ -49,7 +50,7 @@ describe('RegisterPageComponent', () => {
   beforeEach(async () => {
     localStorage.clear();
     await TestBed.configureTestingModule({
-      imports: [RegisterPageComponent],
+      imports: [RegisterPageComponent, translocoTesting()],
       providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter(routes), provideAuth()],
     }).compileComponents();
   });
