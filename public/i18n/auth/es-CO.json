@@ -1,0 +1,114 @@
+{
+  "common": {
+    "emailLabel": "Correo electrónico",
+    "emailPlaceholder": "tu@ejemplo.com",
+    "emailInvalid": "Ingresa un correo electrónico válido.",
+    "passwordLabel": "Contraseña",
+    "passwordTooShort": "La contraseña debe tener al menos 8 caracteres.",
+    "show": "MOSTRAR",
+    "hide": "OCULTAR",
+    "showPassword": "Mostrar contraseña",
+    "hidePassword": "Ocultar contraseña",
+    "continueWithGoogle": "Continuar con Google",
+    "continueWithFacebook": "Continuar con Facebook",
+    "signIn": "Inicia sesión"
+  },
+  "errors": {
+    "USER_INVALID_CREDENTIALS": "El correo o la contraseña no son correctos.",
+    "USER_ALREADY_EXISTS": "Ese correo ya está registrado.",
+    "USER_EMAIL_ALREADY_EXISTS": "Ese correo ya está registrado.",
+    "USER_EMAIL_NOT_CONFIRMED": "Confirma tu correo electrónico antes de iniciar sesión.",
+    "VERIFICATION_CODE_EXPIRED": "El código es incorrecto o ya expiró. Solicita uno nuevo."
+  },
+  "login": {
+    "kicker": "AUTENTICACIÓN WEB / ESTUDIO DE TEMAS",
+    "hero": {
+      "forest": {
+        "eyebrow": "PRIVADO POR DISEÑO",
+        "title": "Tu dinero.",
+        "subtitle": "Mantén tu panorama claro.",
+        "note": "Privado por diseño"
+      },
+      "paper": {
+        "eyebrow": "CLARIDAD PRIMERO",
+        "title": "Haz espacio.",
+        "subtitle": "Claridad para cada decisión.",
+        "note": "Tus datos son tuyos"
+      },
+      "noir": {
+        "eyebrow": "SEÑAL SEGURA",
+        "title": "Toma el control.",
+        "subtitle": "Tus reglas. Tu señal.",
+        "note": "Cifrado y privado"
+      }
+    },
+    "emailConfirmed": "Correo confirmado. Inicia sesión para empezar.",
+    "eyebrow": "BIENVENIDO DE NUEVO",
+    "title": "Retoma donde lo dejaste.",
+    "subtitle": "Inicia sesión en tu base financiera.",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "passwordPlaceholder": "Ingresa tu contraseña",
+    "submit": "Iniciar sesión",
+    "submitting": "Iniciando sesión...",
+    "error": "No pudimos iniciar sesión. Revisa tus datos e inténtalo de nuevo.",
+    "newHere": "¿Eres nuevo?",
+    "createAccount": "Crea una cuenta"
+  },
+  "register": {
+    "kicker": "AUTENTICACIÓN WEB / CREAR CUENTA",
+    "heroEyebrow": "PRIVADO POR DISEÑO",
+    "heroTitle": "Empieza desde cero.",
+    "heroSubtitle": "Dos minutos para configurarlo. Nada que conectar hasta que tú quieras.",
+    "promiseNoSelling": "Nunca vendemos ni compartimos tus datos financieros.",
+    "promiseEncryption": "Cifrado de nivel bancario en reposo y en tránsito.",
+    "promiseDelete": "Elimina tu cuenta y todos tus datos cuando quieras.",
+    "eyebrow": "CREAR CUENTA",
+    "title": "Configura tu base financiera.",
+    "subtitle": "Toma unos dos minutos.",
+    "nameLabel": "Nombre",
+    "namePlaceholder": "Camilo",
+    "nameRequired": "Ingresa tu nombre.",
+    "surnameLabel": "Apellido",
+    "surnamePlaceholder": "Ternera",
+    "surnameRequired": "Ingresa tu apellido.",
+    "phoneLabel": "Número de teléfono",
+    "phonePlaceholder": "+57 300 000 0000",
+    "phoneRequired": "Ingresa tu número de teléfono.",
+    "passwordPlaceholder": "Al menos 8 caracteres",
+    "passwordStrength": {
+      "0": "",
+      "1": "Débil",
+      "2": "Aceptable",
+      "3": "Buena"
+    },
+    "confirmPasswordLabel": "Confirma la contraseña",
+    "confirmPasswordPlaceholder": "Repite tu contraseña",
+    "passwordMismatch": "Las contraseñas deben coincidir.",
+    "termsPrefix": "Acepto los",
+    "terms": "Términos del servicio",
+    "termsJoin": "y la",
+    "privacy": "Política de privacidad",
+    "submit": "Crear cuenta",
+    "submitting": "Creando cuenta...",
+    "haveAccount": "¿Ya tienes una cuenta?"
+  },
+  "confirmEmail": {
+    "kicker": "AUTENTICACIÓN WEB / CONFIRMAR CORREO",
+    "eyebrow": "UN PASO MÁS",
+    "title": "Revisa tu bandeja de entrada.",
+    "sentTo": "Enviamos un código de 6 dígitos a",
+    "fallbackEmail": "el correo con el que te registraste",
+    "emailInvalid": "Ingresa el correo con el que te registraste.",
+    "codeLegend": "Código de confirmación",
+    "digit": "Dígito {{position}} de {{total}}",
+    "codeIncomplete": "Ingresa el código de 6 dígitos de tu correo.",
+    "submit": "Verificar correo",
+    "submitting": "Verificando...",
+    "resend": "Reenviar correo",
+    "resendIn": "Reenviar en {{time}}",
+    "expiry": "El código expira en 30 minutos. ¿No ves nada en tu bandeja? Revisa spam o promociones.",
+    "wrongAddress": "¿Correo equivocado?",
+    "useDifferentEmail": "Usa otro correo",
+    "alreadyConfirmed": "¿Ya lo confirmaste?"
+  }
+}

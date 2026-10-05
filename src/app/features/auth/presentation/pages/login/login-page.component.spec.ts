@@ -4,13 +4,15 @@ import { provideHttpClientTesting, HttpTestingController } from '@angular/common
 import { provideRouter, Router } from '@angular/router';
 import { LoginPageComponent } from './login-page.component';
 import { routes } from '../../../../../app.routes';
+import { translocoTesting } from '@core/i18n/i18n.testing';
 import { provideAuth } from '../../../auth.providers';
 
 describe('LoginPageComponent', () => {
   beforeEach(async () => {
     sessionStorage.clear();
+    localStorage.clear();
     await TestBed.configureTestingModule({
-      imports: [LoginPageComponent],
+      imports: [LoginPageComponent, translocoTesting()],
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
@@ -35,6 +37,24 @@ describe('LoginPageComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('[data-testid="login-shell"]').dataset.theme).toBe('noir');
+  });
+
+  it('switches the copy to Spanish without reloading', () => {
+    const fixture = TestBed.createComponent(LoginPageComponent);
+    fixture.detectChanges();
+
+    (fixture.nativeElement.querySelector('[aria-label="Español"]') as HTMLButtonElement).click();
+    TestBed.tick();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('#login-title').textContent).toContain('Retoma donde lo dejaste.');
+    expect(document.documentElement.lang).toBe('es-CO');
+
+    (fixture.nativeElement.querySelector('[aria-label="English"]') as HTMLButtonElement).click();
+    TestBed.tick();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('#login-title').textContent).toContain('Pick up where you left off.');
   });
 
   it('toggles password visibility', () => {

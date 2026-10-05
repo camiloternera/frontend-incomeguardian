@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { TranslocoService } from '@jsverse/transloco';
 import { Observable, catchError, map, throwError } from 'rxjs';
 import { environment } from '@env/environment';
 import { ApiResponse } from '@core/http/api-response';
@@ -10,7 +11,7 @@ import { AuthSession } from '../domain/auth-session';
 import { Credentials } from '../domain/credentials';
 import { EmailConfirmation } from '../domain/email-confirmation';
 import { NewUser } from '../domain/new-user';
-import { AUTH_ERROR_MESSAGES } from './auth-error-messages';
+import { AUTH_ERROR_KEYS } from './auth-error-messages';
 import { ConfirmedUserDto, LoginResponseDto } from './auth.dto';
 
 function toSession(dto: LoginResponseDto): AuthSession {
@@ -27,6 +28,7 @@ function toSession(dto: LoginResponseDto): AuthSession {
 @Injectable()
 export class AuthHttpRepository extends AuthRepository {
   private readonly http = inject(HttpClient);
+  private readonly transloco = inject(TranslocoService);
   private readonly loginUrl = `${environment.apiUrl}/api/v1/User/login`;
   private readonly registerUrl = `${environment.apiUrl}/api/v1/User`;
   private readonly confirmUrl = `${environment.apiUrl}/api/v1/User/confirm`;
@@ -44,7 +46,7 @@ export class AuthHttpRepository extends AuthRepository {
         }
       }),
       catchError((error: unknown) =>
-        throwError(() => new AuthError(resolveApiError(error, AUTH_ERROR_MESSAGES))),
+        throwError(() => new AuthError(this.toMessage(error))),
       ),
     );
   }
@@ -58,8 +60,12 @@ export class AuthHttpRepository extends AuthRepository {
         }
       }),
       catchError((error: unknown) =>
-        throwError(() => new AuthError(resolveApiError(error, AUTH_ERROR_MESSAGES))),
+        throwError(() => new AuthError(this.toMessage(error))),
       ),
     );
+  }
+
+  private toMessage(error: unknown): string {
+    return resolveApiError(error, AUTH_ERROR_KEYS, (key) => this.transloco.translate(key));
   }
 }

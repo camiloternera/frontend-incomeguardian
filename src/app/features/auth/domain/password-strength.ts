@@ -1,12 +1,5 @@
 export type PasswordStrength = 0 | 1 | 2 | 3;
 
-export const PASSWORD_STRENGTH_LABELS: Record<PasswordStrength, string> = {
-  0: '',
-  1: 'Weak',
-  2: 'Fair',
-  3: 'Good',
-};
-
 export function passwordStrength(password: string): PasswordStrength {
   if (!password) {
     return 0;

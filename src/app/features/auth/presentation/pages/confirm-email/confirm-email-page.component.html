@@ -1,18 +1,22 @@
 <main
+  *transloco="let t"
   data-testid="confirm-email-shell"
   class="flex min-h-screen flex-col bg-ig-canvas p-4 text-ig-text transition-colors duration-200 sm:p-8"
   [attr.data-theme]="theme()"
 >
   <header class="mx-auto mb-6 flex w-full max-w-[1920px] flex-col items-start justify-between gap-4 sm:flex-row">
-    <a class="flex items-center gap-2.5 text-ig-text no-underline" routerLink="/login" aria-label="Income Guardian home">
+    <a class="flex items-center gap-2.5 text-ig-text no-underline" routerLink="/login" [attr.aria-label]="t('brand.home')">
       <span class="grid size-6 shrink-0 place-items-center rounded-md bg-ig-accent text-[11px] font-extrabold text-ig-on-accent">IG</span>
       <span>
-        <strong class="block font-roboto text-2xl leading-none tracking-tight">Income Guardian</strong>
-        <small class="mt-1 block text-[9px] tracking-[0.02em] text-ig-muted">WEB AUTHENTICATION / CONFIRM EMAIL</small>
+        <strong class="block font-roboto text-2xl leading-none tracking-tight">{{ t('brand.name') }}</strong>
+        <small class="mt-1 block text-[9px] tracking-[0.02em] text-ig-muted">{{ t('auth.confirmEmail.kicker') }}</small>
       </span>
     </a>
 
-    <app-theme-switcher />
+    <div class="flex flex-wrap items-center justify-end gap-2 self-end sm:self-auto">
+      <app-language-switcher />
+      <app-theme-switcher />
+    </div>
   </header>
 
   <section class="flex flex-grow items-center justify-center py-6">
@@ -29,32 +33,32 @@
         </span>
       </div>
 
-      <p class="mb-3 mt-6 text-[11px] font-extrabold tracking-[0.02em] text-ig-accent-text">ONE MORE STEP</p>
-      <h1 id="confirm-email-title" class="font-roboto text-[clamp(32px,4vw,40px)] font-bold leading-[1.02] tracking-[-0.045em]">Check your inbox.</h1>
-      <p class="mt-[18px] text-[13px] text-ig-muted">We sent a 6-digit code to</p>
-      <p data-testid="confirm-email-address" class="mt-2 text-[15px] font-bold">{{ emailLabel }}</p>
+      <p class="mb-3 mt-6 text-[11px] font-extrabold tracking-[0.02em] text-ig-accent-text">{{ t('auth.confirmEmail.eyebrow') }}</p>
+      <h1 id="confirm-email-title" class="font-roboto text-[clamp(32px,4vw,40px)] font-bold leading-[1.02] tracking-[-0.045em]">{{ t('auth.confirmEmail.title') }}</h1>
+      <p class="mt-[18px] text-[13px] text-ig-muted">{{ t('auth.confirmEmail.sentTo') }}</p>
+      <p data-testid="confirm-email-address" class="mt-2 text-[15px] font-bold">{{ navigationEmail || t('auth.confirmEmail.fallbackEmail') }}</p>
 
       <form class="mt-8" [formGroup]="codeForm" (ngSubmit)="submit()" novalidate>
         @if (!hasNavigationEmail) {
           <div class="mb-6 text-left">
-            <label class="mb-1.5 block text-[11px] font-bold tracking-[0.02em]" for="confirm-email-input">Email address</label>
+            <label class="mb-1.5 block text-[11px] font-bold tracking-[0.02em]" for="confirm-email-input">{{ t('auth.common.emailLabel') }}</label>
             <input
               class="min-h-11 w-full rounded-lg border border-ig-border bg-ig-surface-raised px-3 text-[13px] text-ig-text outline-none placeholder:text-ig-muted focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
               id="confirm-email-input"
               data-testid="email"
               formControlName="email"
               type="email"
-              placeholder="you@example.com"
+              [placeholder]="t('auth.common.emailPlaceholder')"
               autocomplete="email"
             />
             @if (codeForm.controls.email.touched && codeForm.controls.email.invalid) {
-              <p class="mt-1 text-[11px] text-ig-accent-text" role="alert">Enter the email address you signed up with.</p>
+              <p class="mt-1 text-[11px] text-ig-accent-text" role="alert">{{ t('auth.confirmEmail.emailInvalid') }}</p>
             }
           </div>
         }
 
         <fieldset class="m-0 border-0 p-0" formArrayName="code" [attr.aria-describedby]="showError ? 'code-error' : null">
-          <legend class="mb-3 block w-full text-[11px] font-bold tracking-[0.02em]">Confirmation code</legend>
+          <legend class="mb-3 block w-full text-[11px] font-bold tracking-[0.02em]">{{ t('auth.confirmEmail.codeLegend') }}</legend>
 
           <div class="flex justify-center gap-1.5 sm:gap-3">
             @for (digit of digits.controls; track $index) {
@@ -63,7 +67,7 @@
                 class="h-12 w-full min-w-0 max-w-14 flex-1 rounded-lg border border-ig-border bg-ig-surface-raised text-center font-roboto text-[20px] font-bold text-ig-text outline-none focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 sm:h-14"
                 [attr.data-testid]="'digit-' + $index"
                 [formControlName]="$index"
-                [attr.aria-label]="'Digit ' + ($index + 1) + ' of 6'"
+                [attr.aria-label]="t('auth.confirmEmail.digit', { position: $index + 1, total: digits.length })"
                 [attr.autocomplete]="$index === 0 ? 'one-time-code' : 'off'"
                 type="text"
                 inputmode="numeric"
@@ -77,7 +81,7 @@
         </fieldset>
 
         @if (showError) {
-          <p id="code-error" data-testid="code-error" class="mt-3 text-[11px] text-ig-accent-text" role="alert">Enter the 6-digit code from your email.</p>
+          <p id="code-error" data-testid="code-error" class="mt-3 text-[11px] text-ig-accent-text" role="alert">{{ t('auth.confirmEmail.codeIncomplete') }}</p>
         }
 
         @if (confirmError()) {
@@ -90,7 +94,7 @@
           type="submit"
           [disabled]="!isComplete() || isSubmitting()"
         >
-          {{ isSubmitting() ? 'Verifying...' : 'Verify email' }}
+          {{ isSubmitting() ? t('auth.confirmEmail.submitting') : t('auth.confirmEmail.submit') }}
         </button>
 
         <button
@@ -100,22 +104,22 @@
           [disabled]="!canResend()"
           (click)="resend()"
         >
-          {{ resendLabel() }}
+          {{ canResend() ? t('auth.confirmEmail.resend') : t('auth.confirmEmail.resendIn', { time: countdown() }) }}
         </button>
       </form>
 
       <div class="my-7 h-px bg-ig-border" role="separator"></div>
 
-      <p class="text-[11px] leading-relaxed text-ig-muted">The code expires in 30 minutes. Nothing in your inbox? Look in spam or promotions.</p>
+      <p class="text-[11px] leading-relaxed text-ig-muted">{{ t('auth.confirmEmail.expiry') }}</p>
       <p class="mt-3 text-[11px] text-ig-muted">
-        Wrong address?
-        <a class="text-ig-accent-text no-underline hover:underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" routerLink="/register">Use a different email</a>
+        {{ t('auth.confirmEmail.wrongAddress') }}
+        <a class="text-ig-accent-text no-underline hover:underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" routerLink="/register">{{ t('auth.confirmEmail.useDifferentEmail') }}</a>
       </p>
     </div>
   </section>
 
   <p class="pb-2 text-center text-[11px] text-ig-muted">
-    Already confirmed?
-    <a class="text-ig-accent-text no-underline hover:underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" routerLink="/login">Sign in</a>
+    {{ t('auth.confirmEmail.alreadyConfirmed') }}
+    <a class="text-ig-accent-text no-underline hover:underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" routerLink="/login">{{ t('auth.common.signIn') }}</a>
   </p>
 </main>

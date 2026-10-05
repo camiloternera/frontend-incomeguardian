@@ -89,3 +89,17 @@ features/<dominio>/
 - Los errores de negocio se traducen a copy de UI en infrastructure (`resolveApiError(error, MAPA_DEL_DOMINIO)`) y llegan a presentation como error de dominio.
 - Usar los alias `@core/*`, `@shared/*`, `@features/*` y `@env/*` para imports fuera del propio dominio; imports relativos dentro del dominio.
 - Dominios actuales: `auth`, `dashboard`. Previstos: `incomes`, `expenses`, `budgets` (crear la carpeta solo al implementarlos).
+
+## Internacionalizacion
+
+La web soporta `es-CO` y `en-US` con Transloco, las mismas culturas que declara el backend.
+
+- No escribir copy literal en plantillas ni en componentes: todo texto visible, `placeholder`, `aria-label` y mensaje de error sale de los JSON de `public/i18n/`.
+- Copy transversal (marca, tema, idioma, errores genericos) en `public/i18n/<lang>.json`; copy de un dominio en `public/i18n/<dominio>/<lang>.json`, cargado como scope con `provideTranslocoScope('<dominio>')` en `<dominio>.routes.ts`.
+- Claves en camelCase con la forma `<dominio>.<pagina>.<texto>` (por ejemplo `auth.login.title`); los codigos de error del backend se usan tal cual en `<dominio>.errors.<CODIGO>`.
+- Todo texto nuevo se agrega en los dos idiomas en el mismo cambio.
+- `domain` no contiene copy: expone valores (por ejemplo `PasswordStrength`) y la plantilla los traduce.
+- En plantillas usar `*transloco="let t"` en el elemento raiz de la vista; en infrastructure/presentation usar `TranslocoService.translate` solo para errores.
+- El idioma lo gestiona `LanguageService` (`@core/i18n`): se detecta del navegador, se guarda en localStorage y el interceptor `acceptLanguageInterceptor` lo envia como `Accept-Language` a la API.
+- Los tests importan `translocoTesting()` de `@core/i18n/i18n.testing` para usar las traducciones reales.
+- Revisar cada vista en ambos idiomas: el espanol suele ser 20-30% mas largo y no debe cortar texto en botones ni titulares.
