@@ -10,7 +10,20 @@ if (!apiUrl) {
   process.exit(1);
 }
 
-const target = fileURLToPath(new URL('../src/environments/environment.prod.ts', import.meta.url));
+// En un build desplegado (Vercel/CI) el navegador del usuario no puede alcanzar
+// el loopback del servidor: se corta el build en vez de publicar una URL inalcanzable.
+const isDeployBuild = Boolean(process.env.VERCEL || process.env.CI);
+const { hostname } = new URL(apiUrl);
+const isLoopback = ['localhost', '127.0.0.1', '[::1]'].includes(hostname);
+
+if (isDeployBuild && isLoopback) {
+  console.error(
+    `[set-env] API_URL=${apiUrl} apunta a loopback; configura la URL publica del API en las variables del despliegue.`,
+  );
+  process.exit(1);
+}
+
+const target =fileURLToPath(new URL('../src/environments/environment.prod.ts', import.meta.url));
 
 writeFileSync(
   target,
