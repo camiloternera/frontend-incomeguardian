@@ -1,9 +1,17 @@
 // Genera src/environments/environment.prod.ts a partir de las variables de entorno
 // del proceso de build (cualquier host o CI). Angular no lee .env en tiempo de ejecucion.
+// Se ejecuta en `postinstall` (--optional) para que un `ng build` directo encuentre el
+// archivo, y en `pnpm build` en modo estricto.
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
+const optional = process.argv.includes('--optional');
 const apiUrl = process.env.API_URL?.trim().replace(/\/+$/, '');
+
+if (!apiUrl && optional) {
+  console.warn('[set-env] API_URL no definida; se omite environment.prod.ts (ng serve usa environment.ts).');
+  process.exit(0);
+}
 
 if (!apiUrl) {
   console.error('[set-env] Falta la variable de entorno API_URL para el build de produccion.');

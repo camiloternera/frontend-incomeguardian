@@ -63,9 +63,8 @@ pnpm exec ng generate component features/example
 
 ## Despliegue
 
-El proyecto no depende de un proveedor de hosting. Cualquier plataforma debe cumplir dos requisitos:
+El proyecto no depende de un proveedor de hosting ni de un comando de build concreto. `scripts/set-env.mjs` genera `src/environments/environment.prod.ts`, que no se versiona, en la instalación (`postinstall`) y en `pnpm build`, así que funciona tanto `pnpm build` como `ng build`. El único requisito del host es definir, antes de instalar dependencias:
 
-- Comando de build: `pnpm build` (no `ng build`). El script `scripts/set-env.mjs` genera `src/environments/environment.prod.ts`, que no se versiona; si se ejecuta `ng build` directamente, Angular falla porque ese archivo no existe.
 - Variable `API_URL` con la URL pública HTTPS del API, sin barra final. Cuando la variable `CI` está definida (la definen los hosts y pipelines habituales), el build falla si `API_URL` apunta a `localhost`, ya que el navegador del usuario no puede alcanzarla.
 
 El directorio de salida es `dist/frontend-incomeguardian-web/browser`.
