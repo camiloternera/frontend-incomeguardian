@@ -1,5 +1,5 @@
 // Genera src/environments/environment.prod.ts a partir de las variables de entorno
-// del proceso de build (Vercel u otro CI). Angular no lee .env en tiempo de ejecucion.
+// del proceso de build (cualquier host o CI). Angular no lee .env en tiempo de ejecucion.
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -10,9 +10,9 @@ if (!apiUrl) {
   process.exit(1);
 }
 
-// En un build desplegado (Vercel/CI) el navegador del usuario no puede alcanzar
+// En un build desplegado (CI) el navegador del usuario no puede alcanzar
 // el loopback del servidor: se corta el build en vez de publicar una URL inalcanzable.
-const isDeployBuild = Boolean(process.env.VERCEL || process.env.CI);
+const isDeployBuild = Boolean(process.env.CI);
 const { hostname } = new URL(apiUrl);
 const isLoopback = ['localhost', '127.0.0.1', '[::1]'].includes(hostname);
 
