@@ -1,0 +1,179 @@
+<main
+  *transloco="let t"
+  data-testid="home-page"
+  class="min-h-screen bg-ig-canvas text-ig-text transition-colors duration-200 lg:grid lg:grid-cols-[248px_minmax(0,1fr)]"
+  [attr.data-theme]="theme()"
+  [attr.aria-label]="t('dashboard.home.label')"
+>
+  <aside class="flex flex-col justify-between gap-6 border-ig-border bg-ig-surface p-4 lg:border-r lg:p-6">
+    <div>
+      <div class="flex items-center gap-2.5 px-1.5 pb-6">
+        <span class="grid size-6 shrink-0 place-items-center rounded-md bg-ig-accent text-[11px] font-extrabold text-ig-on-accent">IG</span>
+        <span class="text-[13px] font-bold tracking-[-0.01em]">{{ t('brand.name') }}</span>
+      </div>
+
+      <nav [attr.aria-label]="t('dashboard.home.nav.label')">
+        <ul class="m-0 flex list-none flex-wrap gap-1 p-0 lg:flex-col">
+          @for (item of nav; track item.key) {
+            <li>
+              @if (item.active) {
+                <span
+                  class="flex min-h-11 items-center gap-2 rounded-lg border border-ig-border bg-ig-surface-raised px-3.5 text-[13px] font-bold text-ig-text"
+                  aria-current="page"
+                >
+                  {{ t('dashboard.home.nav.' + item.key) }}
+                </span>
+              } @else {
+                <span class="flex min-h-11 items-center gap-2 rounded-lg border border-transparent px-3.5 text-[13px] text-ig-muted">
+                  {{ t('dashboard.home.nav.' + item.key) }}
+                  <small class="rounded-full border border-ig-border px-1.5 py-0.5 text-[9px] tracking-[0.06em] text-ig-muted">{{ t('dashboard.home.nav.soon') }}</small>
+                </span>
+              }
+            </li>
+          }
+        </ul>
+      </nav>
+    </div>
+
+    @if (userName) {
+      <div class="flex items-center gap-2.5 rounded-lg border border-ig-border bg-ig-surface-raised p-3">
+        <span class="grid size-8 shrink-0 place-items-center rounded-full bg-ig-accent text-[12px] font-extrabold text-ig-on-accent" aria-hidden="true">{{ initials }}</span>
+        <span class="min-w-0">
+          <strong class="block truncate text-[12px] font-bold">{{ userName }}</strong>
+          <small class="block truncate text-[10px] text-ig-muted">{{ userEmail }}</small>
+        </span>
+      </div>
+    }
+  </aside>
+
+  <div class="flex flex-col gap-6 p-4 sm:p-8">
+    <header class="flex flex-col items-start justify-between gap-4 lg:flex-row lg:items-center">
+      <div>
+        @if (monthDate(); as month) {
+          <p class="mb-2 text-[11px] font-extrabold uppercase tracking-[0.02em] text-ig-accent-text">{{ month | date: 'LLLL yyyy' : undefined : locale() }}</p>
+        }
+        <h1 class="font-roboto text-[clamp(28px,3vw,34px)] font-bold leading-[1.05] tracking-[-0.04em]">{{ t('dashboard.home.title') }}</h1>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-end gap-2">
+        <app-language-switcher />
+        <app-theme-switcher />
+        <button
+          class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-ig-border bg-transparent px-5 text-[13px] font-bold text-ig-text disabled:cursor-not-allowed disabled:opacity-60"
+          type="button"
+          disabled
+        >
+          {{ t('dashboard.home.addIncome') }}
+        </button>
+        <button
+          class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-ig-accent bg-ig-accent px-5 text-[13px] font-extrabold text-ig-on-accent disabled:cursor-not-allowed disabled:opacity-60"
+          type="button"
+          disabled
+        >
+          {{ t('dashboard.home.addExpense') }}
+        </button>
+      </div>
+    </header>
+
+    @if (overview(); as data) {
+      <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" [attr.aria-label]="t('dashboard.home.kpi.label')">
+        @for (kpi of kpis(); track kpi.key) {
+          <article class="rounded-2xl border border-ig-border bg-ig-surface p-5">
+            <p class="m-0 text-[11px] font-bold tracking-[0.02em] text-ig-muted">{{ t('dashboard.home.kpi.' + kpi.key) }}</p>
+            <p class="m-0 mt-3.5 font-roboto text-[clamp(24px,2.4vw,34px)] font-bold leading-none tracking-[-0.045em]" [attr.data-testid]="'kpi-' + kpi.key">
+              @if (kpi.isRate) {
+                {{ kpi.value | percent: '1.0-1' : locale() }}
+              } @else {
+                {{ kpi.value | currency: data.currency : 'symbol-narrow' : '1.0-0' : locale() }}
+              }
+            </p>
+            <p class="m-0 mt-3 text-[11px] font-bold" [class]="kpi.good ? 'text-ig-accent-text' : 'text-ig-muted'">
+              <span aria-hidden="true">{{ kpi.change >= 0 ? '▲' : '▼' }}</span>
+              @if (kpi.isRate) {
+                {{ kpi.change | percent: '1.0-1' : locale() }}
+              } @else {
+                {{ kpi.change | percent: '1.0-1' : locale() }}
+              }
+              {{ t('dashboard.home.kpi.vsLastMonth') }}
+            </p>
+          </article>
+        }
+      </section>
+
+      <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <section class="overflow-hidden rounded-2xl border border-ig-border bg-ig-surface p-6">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <h2 class="m-0 text-[15px] font-bold tracking-[-0.01em]">{{ t('dashboard.home.cashFlow.title') }}</h2>
+            <div class="flex items-center gap-4">
+              <span class="inline-flex items-center gap-1.5 text-[11px] text-ig-muted"><span class="size-2.5 rounded-sm bg-ig-accent" aria-hidden="true"></span>{{ t('dashboard.home.cashFlow.income') }}</span>
+              <span class="inline-flex items-center gap-1.5 text-[11px] text-ig-muted"><span class="size-2.5 rounded-sm bg-ig-muted" aria-hidden="true"></span>{{ t('dashboard.home.cashFlow.expenses') }}</span>
+            </div>
+          </div>
+
+          <div class="mt-4 overflow-x-auto">
+            <app-cash-flow-chart [bars]="bars()" [chartLabel]="t('dashboard.home.cashFlow.chartLabel')" [formatTick]="formatTick()" />
+          </div>
+        </section>
+
+        <section class="rounded-2xl border border-ig-border bg-ig-surface p-6">
+          <h2 class="m-0 text-[15px] font-bold tracking-[-0.01em]">{{ t('dashboard.home.categories.title') }}</h2>
+
+          <ul class="m-0 mt-5 flex list-none flex-col gap-4 p-0">
+            @for (category of data.categories; track category.key) {
+              <li>
+                <div class="flex items-baseline justify-between gap-3">
+                  <span class="text-[13px]">{{ t('dashboard.categories.' + category.key) }}</span>
+                  <span class="text-[12px] text-ig-muted">
+                    {{ category.amount | currency: data.currency : 'symbol-narrow' : '1.0-0' : locale() }} ·
+                    {{ category.share | percent: '1.0-0' : locale() }}
+                  </span>
+                </div>
+                <div class="mt-2 h-1.5 overflow-hidden rounded-full border border-ig-border bg-ig-surface-raised">
+                  <span class="block h-full rounded-full bg-ig-accent" [style.width.%]="category.share * 100"></span>
+                </div>
+              </li>
+            }
+          </ul>
+        </section>
+      </div>
+
+      <section class="rounded-2xl border border-ig-border bg-ig-surface p-6">
+        <h2 class="m-0 text-[15px] font-bold tracking-[-0.01em]">{{ t('dashboard.home.recent.title') }}</h2>
+
+        <div class="mt-4 overflow-x-auto">
+          <table class="w-full min-w-[720px] border-collapse">
+            <caption class="sr-only">{{ t('dashboard.home.recent.title') }}</caption>
+            <thead>
+              <tr>
+                <th scope="col" class="w-20 border-b border-ig-border pb-3 text-left text-[10px] font-bold uppercase tracking-[0.06em] text-ig-muted">{{ t('dashboard.home.recent.date') }}</th>
+                <th scope="col" class="border-b border-ig-border pb-3 text-left text-[10px] font-bold uppercase tracking-[0.06em] text-ig-muted">{{ t('dashboard.home.recent.description') }}</th>
+                <th scope="col" class="w-44 border-b border-ig-border pb-3 text-left text-[10px] font-bold uppercase tracking-[0.06em] text-ig-muted">{{ t('dashboard.home.recent.category') }}</th>
+                <th scope="col" class="w-36 border-b border-ig-border pb-3 text-left text-[10px] font-bold uppercase tracking-[0.06em] text-ig-muted">{{ t('dashboard.home.recent.account') }}</th>
+                <th scope="col" class="w-32 border-b border-ig-border pb-3 text-right text-[10px] font-bold uppercase tracking-[0.06em] text-ig-muted">{{ t('dashboard.home.recent.amount') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (movement of data.recent; track movement.id) {
+                <tr>
+                  <td class="border-b border-ig-border py-3.5 text-[13px] text-ig-muted">{{ movement.date | date: 'MMM d' : undefined : locale() }}</td>
+                  <td class="border-b border-ig-border py-3.5 text-[13px] font-medium">{{ movement.description }}</td>
+                  <td class="border-b border-ig-border py-3.5 text-[13px] text-ig-muted">{{ t('dashboard.categories.' + movement.category) }}</td>
+                  <td class="border-b border-ig-border py-3.5 text-[13px] text-ig-muted">{{ movement.account }}</td>
+                  <td
+                    class="whitespace-nowrap border-b border-ig-border py-3.5 text-right text-[13px] font-bold"
+                    [class]="movement.kind === 'income' ? 'text-ig-accent-text' : 'text-ig-text'"
+                  >
+                    {{ movement.kind === 'income' ? '+' : '−' }}
+                    {{ movement.amount | currency: data.currency : 'symbol-narrow' : '1.0-0' : locale() }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    } @else {
+      <p class="text-[13px] text-ig-muted" role="status">{{ t('dashboard.home.loading') }}</p>
+    }
+  </div>
+</main>

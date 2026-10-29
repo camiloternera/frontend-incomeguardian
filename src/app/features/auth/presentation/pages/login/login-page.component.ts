@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { ReactiveFormsModule, Validators, NonNullableFormBuilder } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
+import { LucideEye, LucideEyeOff } from '@lucide/angular';
 import { finalize } from 'rxjs';
 import { ThemeService } from '@core/theme/theme.service';
 import { LanguageSwitcherComponent } from '@shared/ui/language-switcher.component';
@@ -10,7 +11,7 @@ import { LoginUseCase } from '../../../application/login.use-case';
 
 @Component({
   selector: 'app-login-page',
-  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective, LanguageSwitcherComponent, ThemeSwitcherComponent],
+  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective, LanguageSwitcherComponent, ThemeSwitcherComponent, LucideEye, LucideEyeOff],
   templateUrl: './login-page.component.html',
   styleUrls: ['./login-page.component.css'],
 })

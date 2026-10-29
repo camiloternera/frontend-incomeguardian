@@ -63,7 +63,7 @@
           </div>
           <div class="relative">
             <input
-              class="min-h-11 w-full rounded-lg border border-ig-border bg-ig-surface-raised px-3 pr-16 text-[13px] text-ig-text outline-none placeholder:text-ig-muted focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+              class="min-h-11 w-full rounded-lg border border-ig-border bg-ig-surface-raised px-3 pr-11 text-[13px] text-ig-text outline-none placeholder:text-ig-muted focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
               id="password"
               data-testid="password"
               formControlName="password"
@@ -71,8 +71,12 @@
               [placeholder]="t('auth.login.passwordPlaceholder')"
               autocomplete="current-password"
             />
-            <button data-testid="password-toggle" class="absolute right-3 top-1/2 min-h-8 -translate-y-1/2 border-0 bg-transparent p-0 text-[11px] font-bold tracking-[0.02em] text-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" type="button" (click)="togglePassword()" [attr.aria-label]="showPassword() ? t('auth.common.hidePassword') : t('auth.common.showPassword')">
-              {{ showPassword() ? t('auth.common.hide') : t('auth.common.show') }}
+            <button data-testid="password-toggle" class="absolute right-2 top-1/2 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-lg border-0 bg-transparent p-0 text-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" type="button" (click)="togglePassword()" [attr.aria-label]="showPassword() ? t('auth.common.hidePassword') : t('auth.common.showPassword')">
+              @if (showPassword()) {
+                <svg lucideEyeOff [size]="18" aria-hidden="true"></svg>
+              } @else {
+                <svg lucideEye [size]="18" aria-hidden="true"></svg>
+              }
             </button>
           </div>
           @if (loginForm.controls.password.touched && loginForm.controls.password.invalid) {

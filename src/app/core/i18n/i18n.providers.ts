@@ -2,6 +2,7 @@ import { EnvironmentProviders, Provider, inject, isDevMode, provideAppInitialize
 import { provideTransloco } from '@jsverse/transloco';
 import { LANGUAGES, LanguageService } from './language.service';
 import { TranslocoHttpLoader } from './transloco-http.loader';
+import './locale-data';
 
 /** Registers Transloco and applies the stored or detected language at startup. */
 export function provideI18n(): (Provider | EnvironmentProviders)[] {

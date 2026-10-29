@@ -6,6 +6,7 @@ import authEsCO from '../../../../public/i18n/auth/es-CO.json';
 import dashboardEnUS from '../../../../public/i18n/dashboard/en-US.json';
 import dashboardEsCO from '../../../../public/i18n/dashboard/es-CO.json';
 import { LANGUAGES } from './language.service';
+import './locale-data';
 
 /** Real translations, loaded synchronously and merged the way the scopes are at runtime. */
 export function translocoTesting(options: TranslocoTestingOptions = {}) {
