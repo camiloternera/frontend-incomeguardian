@@ -89,6 +89,27 @@ describe('RegisterPageComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="password-mismatch"]')).toBeTruthy();
   });
 
+  it('hides the strength meter and asks for a password while it is empty', () => {
+    const fixture = TestBed.createComponent(RegisterPageComponent);
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    const password = element.querySelector('#password') as HTMLInputElement;
+    password.dispatchEvent(new Event('blur'));
+    fixture.detectChanges();
+
+    expect(element.querySelector('[data-testid="password-strength"]')).toBeNull();
+    expect(element.textContent).toContain('Enter a password.');
+    expect(element.textContent).not.toContain('auth.register.passwordStrength');
+
+    password.value = 'abc1';
+    password.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    expect(element.querySelector('[data-testid="password-strength"]')).toBeTruthy();
+    expect(element.textContent).toContain('Password must be at least 8 characters.');
+  });
+
   it('goes to the confirmation screen with the email when the envelope reports success', () => {
     const fixture = TestBed.createComponent(RegisterPageComponent);
     const http = TestBed.inject(HttpTestingController);

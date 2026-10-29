@@ -3,6 +3,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
+import { LucideEye, LucideEyeOff } from '@lucide/angular';
 import { finalize } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { ThemeService } from '@core/theme/theme.service';
@@ -19,7 +20,7 @@ interface StrengthSegment {
 
 @Component({
   selector: 'app-register-page',
-  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective, LanguageSwitcherComponent, ThemeSwitcherComponent],
+  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective, LanguageSwitcherComponent, ThemeSwitcherComponent, LucideEye, LucideEyeOff],
   templateUrl: './register-page.component.html',
   styleUrls: ['./register-page.component.css'],
 })

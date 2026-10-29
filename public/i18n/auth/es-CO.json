@@ -5,8 +5,6 @@
     "emailInvalid": "Ingresa un correo electrónico válido.",
     "passwordLabel": "Contraseña",
     "passwordTooShort": "La contraseña debe tener al menos 8 caracteres.",
-    "show": "MOSTRAR",
-    "hide": "OCULTAR",
     "showPassword": "Mostrar contraseña",
     "hidePassword": "Ocultar contraseña",
     "continueWithGoogle": "Continuar con Google",
@@ -75,8 +73,8 @@
     "phonePlaceholder": "+57 300 000 0000",
     "phoneRequired": "Ingresa tu número de teléfono.",
     "passwordPlaceholder": "Al menos 8 caracteres",
+    "passwordRequired": "Ingresa una contraseña.",
     "passwordStrength": {
-      "0": "",
       "1": "Débil",
       "2": "Aceptable",
       "3": "Buena"

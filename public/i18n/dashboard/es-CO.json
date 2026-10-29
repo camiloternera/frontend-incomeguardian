@@ -1,5 +1,55 @@
 {
   "home": {
-    "label": "Inicio autenticado"
+    "label": "Inicio autenticado",
+    "title": "Resumen",
+    "loading": "Cargando tu mes…",
+    "addIncome": "Registrar ingreso",
+    "addExpense": "Registrar gasto",
+    "nav": {
+      "label": "Secciones",
+      "overview": "Resumen",
+      "transactions": "Movimientos",
+      "income": "Ingresos",
+      "expenses": "Gastos",
+      "reports": "Informes",
+      "settings": "Ajustes",
+      "soon": "PRONTO"
+    },
+    "kpi": {
+      "label": "Tu mes de un vistazo",
+      "balance": "Saldo neto",
+      "income": "Ingresos del mes",
+      "expenses": "Gastos del mes",
+      "savingsRate": "Tasa de ahorro",
+      "vsLastMonth": "frente al mes pasado"
+    },
+    "cashFlow": {
+      "title": "Flujo de caja",
+      "income": "Ingresos",
+      "expenses": "Gastos",
+      "chartLabel": "Ingresos y gastos de los últimos seis meses"
+    },
+    "categories": {
+      "title": "En qué se fue"
+    },
+    "recent": {
+      "title": "Movimientos recientes",
+      "date": "Fecha",
+      "description": "Descripción",
+      "category": "Categoría",
+      "account": "Cuenta",
+      "amount": "Monto"
+    }
+  },
+  "categories": {
+    "housing": "Vivienda",
+    "food": "Comida y mercado",
+    "transport": "Transporte",
+    "subscriptions": "Suscripciones",
+    "health": "Salud",
+    "other": "Lo demás",
+    "salary": "Salario",
+    "freelance": "Trabajo independiente",
+    "investment": "Inversión"
   }
 }

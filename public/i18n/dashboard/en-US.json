@@ -1,5 +1,55 @@
 {
   "home": {
-    "label": "Authenticated home"
+    "label": "Authenticated home",
+    "title": "Overview",
+    "loading": "Loading your month…",
+    "addIncome": "Add income",
+    "addExpense": "Add expense",
+    "nav": {
+      "label": "Sections",
+      "overview": "Overview",
+      "transactions": "Transactions",
+      "income": "Income",
+      "expenses": "Expenses",
+      "reports": "Reports",
+      "settings": "Settings",
+      "soon": "SOON"
+    },
+    "kpi": {
+      "label": "This month at a glance",
+      "balance": "Net balance",
+      "income": "Income this month",
+      "expenses": "Expenses this month",
+      "savingsRate": "Savings rate",
+      "vsLastMonth": "vs last month"
+    },
+    "cashFlow": {
+      "title": "Cash flow",
+      "income": "Income",
+      "expenses": "Expenses",
+      "chartLabel": "Income and expenses over the last six months"
+    },
+    "categories": {
+      "title": "Where it went"
+    },
+    "recent": {
+      "title": "Recent transactions",
+      "date": "Date",
+      "description": "Description",
+      "category": "Category",
+      "account": "Account",
+      "amount": "Amount"
+    }
+  },
+  "categories": {
+    "housing": "Housing",
+    "food": "Food & groceries",
+    "transport": "Transport",
+    "subscriptions": "Subscriptions",
+    "health": "Health",
+    "other": "Everything else",
+    "salary": "Salary",
+    "freelance": "Freelance",
+    "investment": "Investment"
   }
 }

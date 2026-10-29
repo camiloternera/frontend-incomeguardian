@@ -21,7 +21,17 @@ if (!apiUrl) {
 // En un build desplegado (CI) el navegador del usuario no puede alcanzar
 // el loopback del servidor: se corta el build en vez de publicar una URL inalcanzable.
 const isDeployBuild = Boolean(process.env.CI);
-const { hostname } = new URL(apiUrl);
+let hostname;
+try {
+  const url = new URL(apiUrl);
+  if (!['http:', 'https:'].includes(url.protocol)) throw new Error();
+  hostname = url.hostname;
+} catch {
+  console.error(
+    '[set-env] API_URL no es una URL absoluta valida; usa la forma https://dominio (sin comillas, ruta ni "API_URL=").',
+  );
+  process.exit(1);
+}
 const isLoopback = ['localhost', '127.0.0.1', '[::1]'].includes(hostname);
 
 if (isDeployBuild && isLoopback) {

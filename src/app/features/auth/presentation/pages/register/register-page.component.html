@@ -118,7 +118,7 @@
             <label class="mb-1.5 block text-[11px] font-bold tracking-[0.02em]" for="password">{{ t('auth.common.passwordLabel') }}</label>
             <div class="relative">
               <input
-                class="min-h-11 w-full rounded-lg border border-ig-border bg-ig-surface-raised px-3 pr-16 text-[13px] text-ig-text outline-none placeholder:text-ig-muted focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                class="min-h-11 w-full rounded-lg border border-ig-border bg-ig-surface-raised px-3 pr-11 text-[13px] text-ig-text outline-none placeholder:text-ig-muted focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
                 id="password"
                 data-testid="password"
                 formControlName="password"
@@ -128,24 +128,32 @@
               />
               <button
                 data-testid="password-toggle"
-                class="absolute right-3 top-1/2 min-h-8 -translate-y-1/2 border-0 bg-transparent p-0 text-[11px] font-bold tracking-[0.02em] text-ig-accent-text focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                class="absolute right-2 top-1/2 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-lg border-0 bg-transparent p-0 text-ig-accent-text focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
                 type="button"
                 (click)="togglePassword()"
                 [attr.aria-label]="showPassword() ? t('auth.common.hidePassword') : t('auth.common.showPassword')"
               >
-                {{ showPassword() ? t('auth.common.hide') : t('auth.common.show') }}
+                @if (showPassword()) {
+                  <svg lucideEyeOff [size]="18" aria-hidden="true"></svg>
+                } @else {
+                  <svg lucideEye [size]="18" aria-hidden="true"></svg>
+                }
               </button>
             </div>
 
-            <div class="mt-2.5 flex items-center gap-1.5" aria-hidden="true">
-              @for (segment of strengthSegments(); track $index) {
-                <span class="h-1 flex-1 rounded-full" [class]="segment.filled ? 'bg-ig-accent' : 'bg-ig-border'"></span>
-              }
-              <span class="ml-1.5 text-[11px] font-bold text-ig-accent-text">{{ t('auth.register.passwordStrength.' + strength()) }}</span>
-            </div>
+            @if (strength() > 0) {
+              <div data-testid="password-strength" class="mt-2.5 flex items-center gap-1.5" aria-hidden="true">
+                @for (segment of strengthSegments(); track $index) {
+                  <span class="h-1 flex-1 rounded-full" [class]="segment.filled ? 'bg-ig-accent' : 'bg-ig-border'"></span>
+                }
+                <span class="ml-1.5 text-[11px] font-bold text-ig-accent-text">{{ t('auth.register.passwordStrength.' + strength()) }}</span>
+              </div>
+            }
 
             @if (registerForm.controls.password.touched && registerForm.controls.password.invalid) {
-              <p class="mt-1 text-[11px] text-ig-accent-text" role="alert">{{ t('auth.common.passwordTooShort') }}</p>
+              <p class="mt-1 text-[11px] text-ig-accent-text" role="alert">
+                {{ registerForm.controls.password.hasError('required') ? t('auth.register.passwordRequired') : t('auth.common.passwordTooShort') }}
+              </p>
             }
           </div>
 
