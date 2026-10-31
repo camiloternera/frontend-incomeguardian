@@ -1,0 +1,184 @@
+<main
+  *transloco="let t"
+  data-testid="category-list-page"
+  class="min-h-screen bg-ig-canvas text-ig-text transition-colors duration-200"
+  [attr.data-theme]="theme()"
+>
+  <div class="mx-auto flex w-full max-w-[1120px] flex-col gap-8 p-4 sm:p-8">
+    <app-categories-header />
+
+    <div class="flex flex-col items-start justify-between gap-6 border-b border-ig-border pb-8 lg:flex-row lg:items-end">
+      <div class="max-w-[620px]">
+        <p class="mb-2 text-[11px] font-extrabold uppercase tracking-[0.02em] text-ig-accent-text">{{ t('categories.list.eyebrow') }}</p>
+        <h1 class="m-0 font-roboto text-[clamp(28px,3vw,40px)] font-bold leading-[1.05] tracking-[-0.04em]">{{ t('categories.list.title') }}</h1>
+        <p class="m-0 mt-4 text-[13px] leading-relaxed text-ig-muted">{{ t('categories.list.subtitle') }}</p>
+      </div>
+
+      <a
+        data-testid="new-category"
+        class="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-ig-accent bg-ig-accent px-5 text-[13px] font-bold text-ig-on-accent no-underline transition-transform duration-150 hover:-translate-y-px focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+        routerLink="new"
+      >
+        <svg lucidePlus [size]="16" aria-hidden="true"></svg>
+        {{ t('categories.list.create') }}
+      </a>
+    </div>
+
+    @if (notice(); as current) {
+      <div
+        data-testid="category-notice"
+        class="flex items-center justify-between gap-4 rounded-lg border border-ig-accent/60 bg-ig-surface px-4 py-3"
+        role="status"
+      >
+        <p class="m-0 flex items-center gap-2.5 text-[13px]">
+          <span class="size-2 shrink-0 rounded-full bg-ig-accent" aria-hidden="true"></span>
+          {{ t('categories.list.notice.' + current.kind, { name: current.name }) }}
+        </p>
+        <button
+          class="min-h-11 shrink-0 rounded-lg border border-transparent bg-transparent px-3 text-[12px] font-bold text-ig-muted hover:text-ig-text focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+          type="button"
+          (click)="dismissNotice()"
+        >
+          {{ t('categories.list.notice.dismiss') }}
+        </button>
+      </div>
+    }
+
+    @if (categories(); as all) {
+      <section #listTop class="flex scroll-mt-8 flex-col gap-4" [attr.aria-label]="t('categories.list.title')">
+        <div class="flex flex-wrap items-center gap-2" role="group" [attr.aria-label]="t('categories.list.filter.label')">
+          @for (option of filters; track option) {
+            <button
+              [attr.data-testid]="'filter-' + option"
+              class="inline-flex min-h-11 items-center gap-2 rounded-lg border px-4 text-[13px] focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+              [class]="filter() === option ? 'border-ig-border bg-ig-surface font-bold text-ig-text' : 'border-transparent bg-transparent text-ig-muted hover:text-ig-text'"
+              [attr.aria-pressed]="filter() === option"
+              type="button"
+              (click)="setFilter(option)"
+            >
+              {{ t('categories.list.filter.' + option) }}
+              <span class="rounded-full border border-ig-border px-2 py-0.5 text-[11px] text-ig-muted">{{ countFor(option) }}</span>
+            </button>
+          }
+        </div>
+
+        @if (deleteError()) {
+          <p data-testid="delete-error" class="m-0 rounded-lg border border-ig-border bg-ig-surface px-4 py-3 text-[13px]" role="alert">{{ deleteError() }}</p>
+        }
+
+        @if (visible().length) {
+          <ul class="m-0 list-none rounded-2xl border border-ig-border bg-ig-surface p-0" data-testid="category-rows">
+            @for (category of pageItems(); track category.id) {
+              <li
+                class="grid gap-4 border-b border-ig-border px-5 py-5 last:border-b-0 sm:px-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
+                [attr.data-testid]="'category-' + category.id"
+              >
+                <div class="min-w-0">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <h2 class="m-0 break-words text-[15px] font-bold tracking-[-0.01em]">{{ category.name }}</h2>
+                    @if (category.isGlobal) {
+                      <span class="inline-flex items-center gap-1 rounded-full border border-ig-border px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.06em] text-ig-muted">
+                        <svg lucideLock [size]="11" aria-hidden="true"></svg>
+                        {{ t('categories.list.badge.global') }}
+                      </span>
+                    } @else {
+                      <span class="rounded-full border border-ig-accent/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.06em] text-ig-accent-text">
+                        {{ t('categories.list.badge.personal') }}
+                      </span>
+                    }
+                  </div>
+                  <p class="m-0 mt-2 max-w-[640px] break-words text-[13px] leading-relaxed text-ig-muted">{{ category.description }}</p>
+                  @if (!category.isGlobal) {
+                    <p class="m-0 mt-2 text-[11px] text-ig-muted">
+                      @if (category.updatedAt) {
+                        {{ t('categories.list.updatedAt', { date: (category.updatedAt | date: 'mediumDate' : undefined : locale()) }) }}
+                      } @else {
+                        {{ t('categories.list.createdAt', { date: (category.createdAt | date: 'mediumDate' : undefined : locale()) }) }}
+                      }
+                    </p>
+                  }
+                </div>
+
+                @if (!category.isGlobal) {
+                  @if (pendingDeleteId() === category.id) {
+                    <div class="flex flex-col gap-3 md:max-w-[340px] md:items-end" data-testid="delete-confirmation">
+                      <p class="m-0 text-[13px] md:text-right">{{ t('categories.list.delete.question', { name: category.name }) }}</p>
+                      <div class="flex flex-wrap gap-2">
+                        <button
+                          class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-border bg-transparent px-4 text-[13px] text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                          type="button"
+                          [disabled]="isDeleting()"
+                          (click)="cancelDelete()"
+                        >
+                          {{ t('categories.list.delete.cancel') }}
+                        </button>
+                        <button
+                          data-testid="confirm-delete"
+                          class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-ig-text bg-ig-text px-4 text-[13px] font-bold text-ig-canvas focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                          type="button"
+                          [disabled]="isDeleting()"
+                          (click)="confirmDelete(category)"
+                        >
+                          {{ isDeleting() ? t('categories.list.delete.deleting') : t('categories.list.delete.confirm') }}
+                        </button>
+                      </div>
+                    </div>
+                  } @else {
+                    <div class="flex flex-wrap gap-2">
+                      <a
+                        class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-ig-border px-4 text-[13px] text-ig-text no-underline hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                        [routerLink]="[category.id, 'edit']"
+                        [attr.aria-label]="t('categories.list.editNamed', { name: category.name })"
+                      >
+                        <svg lucidePencil [size]="15" aria-hidden="true"></svg>
+                        {{ t('categories.list.edit') }}
+                      </a>
+                      <button
+                        [attr.data-testid]="'delete-' + category.id"
+                        class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-ig-border bg-transparent px-4 text-[13px] text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                        type="button"
+                        [attr.aria-label]="t('categories.list.deleteNamed', { name: category.name })"
+                        (click)="askDelete(category)"
+                      >
+                        <svg lucideTrash2 [size]="15" aria-hidden="true"></svg>
+                        {{ t('categories.list.delete.action') }}
+                      </button>
+                    </div>
+                  }
+                }
+              </li>
+            }
+          </ul>
+
+          <app-pagination [page]="page()" [totalItems]="visible().length" [pageSize]="pageSize" (pageChange)="goToPage($event)" />
+        } @else {
+          <div data-testid="category-empty" class="flex flex-col items-start gap-4 rounded-2xl border border-dashed border-ig-border px-6 py-10">
+            <h2 class="m-0 text-[15px] font-bold">{{ t('categories.list.empty.' + filter() + 'Title') }}</h2>
+            <p class="m-0 max-w-[520px] text-[13px] text-ig-muted">{{ t('categories.list.empty.' + filter() + 'Body') }}</p>
+            @if (filter() !== 'global') {
+              <a
+                class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-ig-accent bg-ig-accent px-5 text-[13px] font-bold text-ig-on-accent no-underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                routerLink="new"
+              >
+                {{ t('categories.list.create') }}
+              </a>
+            }
+          </div>
+        }
+      </section>
+    } @else if (loadError()) {
+      <div class="flex flex-col items-start gap-4 rounded-2xl border border-ig-border bg-ig-surface px-6 py-8">
+        <p data-testid="load-error" class="m-0 text-[13px]" role="alert">{{ loadError() }}</p>
+        <button
+          class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-border bg-transparent px-5 text-[13px] font-bold text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+          type="button"
+          (click)="load()"
+        >
+          {{ t('categories.list.retry') }}
+        </button>
+      </div>
+    } @else {
+      <p class="m-0 text-[13px] text-ig-muted" role="status">{{ t('categories.list.loading') }}</p>
+    }
+  </div>
+</main>
