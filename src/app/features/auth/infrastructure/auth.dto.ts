@@ -7,6 +7,8 @@ export interface LoginResponseDto {
   accessToken: string;
   refreshToken: string;
   expiresAt: string;
+  theme?: string;
+  language?: string;
 }
 
 export interface ConfirmedUserDto {

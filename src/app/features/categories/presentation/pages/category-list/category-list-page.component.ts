@@ -7,11 +7,11 @@ import { finalize } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { LanguageService } from '@core/i18n/language.service';
 import { ThemeService } from '@core/theme/theme.service';
+import { AppTopBarComponent } from '@shared/ui/app-top-bar.component';
 import { PaginationComponent } from '@shared/ui/pagination.component';
 import { DeleteCategoryUseCase, ListCategoriesUseCase } from '../../../application/category-use-cases';
 import { Category } from '../../../domain/category';
 import { CategoryError, CategoryErrorCode } from '../../../domain/category-error';
-import { CategoriesHeaderComponent } from '../../components/categories-header.component';
 import { CategoryNotice, CategoryNoticeState } from '../../category-notice';
 
 /** Filtros del listado: todas, solo las propias o solo las predefinidas. */
@@ -28,7 +28,7 @@ export const CATEGORY_PAGE_SIZE = 8;
     DatePipe,
     RouterLink,
     TranslocoDirective,
-    CategoriesHeaderComponent,
+    AppTopBarComponent,
     PaginationComponent,
     LucideLock,
     LucidePencil,

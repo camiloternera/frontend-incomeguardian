@@ -14,8 +14,6 @@ import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { finalize } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { ThemeService } from '@core/theme/theme.service';
-import { LanguageSwitcherComponent } from '@shared/ui/language-switcher.component';
-import { ThemeSwitcherComponent } from '@shared/ui/theme-switcher.component';
 import {
   CONFIRMATION_CODE_LENGTH,
   isConfirmationCodeComplete,
@@ -33,7 +31,7 @@ function countdown(seconds: number): string {
 
 @Component({
   selector: 'app-confirm-email-page',
-  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective, LanguageSwitcherComponent, ThemeSwitcherComponent],
+  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective],
   templateUrl: './confirm-email-page.component.html',
   styleUrls: ['./confirm-email-page.component.css'],
 })

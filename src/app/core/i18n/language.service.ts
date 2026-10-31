@@ -1,8 +1,10 @@
 import { Injectable, effect, inject, signal } from '@angular/core';
 import { TranslocoService } from '@jsverse/transloco';
 
-/** The cultures the API declares; anything else falls back to its default. */
-export type Language = 'es-CO' | 'en-US';
+import { LANGUAGES, Language, isLanguage } from './language';
+
+export { LANGUAGES, isLanguage };
+export type { Language };
 
 export interface LanguageOption {
   id: Language;
@@ -11,13 +13,7 @@ export interface LanguageOption {
   name: string;
 }
 
-export const LANGUAGES: readonly Language[] = ['es-CO', 'en-US'];
-
 const STORAGE_KEY = 'income-guardian.language';
-
-function isLanguage(value: unknown): value is Language {
-  return LANGUAGES.includes(value as Language);
-}
 
 /** Spanish browsers get Spanish; everyone else gets English. */
 export function languageFromBrowser(browserLanguage: string | undefined): Language {

@@ -5,6 +5,8 @@ import { Observable, catchError, map, throwError } from 'rxjs';
 import { environment } from '@env/environment';
 import { ApiResponse } from '@core/http/api-response';
 import { resolveApiError } from '@core/http/api-error';
+import { isLanguage } from '@core/i18n/language';
+import { isThemeName } from '@core/theme/theme-name';
 import { AuthError } from '../domain/auth-error';
 import { AuthRepository } from '../domain/auth.repository';
 import { AuthSession } from '../domain/auth-session';
@@ -22,6 +24,9 @@ function toSession(dto: LoginResponseDto): AuthSession {
     accessToken: dto.accessToken,
     refreshToken: dto.refreshToken,
     expiresAt: dto.expiresAt,
+    // Un valor desconocido se descarta para no romper el tema ni el idioma de la app.
+    theme: isThemeName(dto.theme) ? dto.theme : undefined,
+    language: isLanguage(dto.language) ? dto.language : undefined,
   };
 }
 

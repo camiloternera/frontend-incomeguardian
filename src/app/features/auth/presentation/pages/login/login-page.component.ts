@@ -5,13 +5,11 @@ import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { LucideEye, LucideEyeOff } from '@lucide/angular';
 import { finalize } from 'rxjs';
 import { ThemeService } from '@core/theme/theme.service';
-import { LanguageSwitcherComponent } from '@shared/ui/language-switcher.component';
-import { ThemeSwitcherComponent } from '@shared/ui/theme-switcher.component';
 import { LoginUseCase } from '../../../application/login.use-case';
 
 @Component({
   selector: 'app-login-page',
-  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective, LanguageSwitcherComponent, ThemeSwitcherComponent, LucideEye, LucideEyeOff],
+  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective, LucideEye, LucideEyeOff],
   templateUrl: './login-page.component.html',
   styleUrls: ['./login-page.component.css'],
 })

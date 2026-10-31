@@ -15,5 +15,10 @@ export const routes: Routes = [
     canActivate: [sessionGuard],
     loadChildren: () => import('@features/categories/categories.routes').then((m) => m.categoriesRoutes),
   },
+  {
+    path: 'settings',
+    canActivate: [sessionGuard],
+    loadChildren: () => import('@features/settings/settings.routes').then((m) => m.settingsRoutes),
+  },
   { path: '**', redirectTo: 'login' },
 ];

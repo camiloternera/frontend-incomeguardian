@@ -7,6 +7,7 @@ import { LucideLock } from '@lucide/angular';
 import { Observable, finalize } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { ThemeService } from '@core/theme/theme.service';
+import { AppTopBarComponent } from '@shared/ui/app-top-bar.component';
 import {
   CreateCategoryUseCase,
   GetCategoryUseCase,
@@ -19,7 +20,6 @@ import {
   DESCRIPTION_ERROR_CODES,
   NAME_ERROR_CODES,
 } from '../../../domain/category-error';
-import { CategoriesHeaderComponent } from '../../components/categories-header.component';
 import { CategoryNoticeState } from '../../category-notice';
 import { notBlank } from '../../validators/not-blank.validator';
 
@@ -44,7 +44,7 @@ const DESCRIPTION_CODES: FieldErrorCodes = {
 
 @Component({
   selector: 'app-category-form-page',
-  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective, CategoriesHeaderComponent, LucideLock],
+  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective, AppTopBarComponent, LucideLock],
   templateUrl: './category-form-page.component.html',
   styleUrls: ['./category-form-page.component.css'],
 })

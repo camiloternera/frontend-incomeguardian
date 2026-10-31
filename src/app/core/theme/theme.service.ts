@@ -1,6 +1,7 @@
 import { Injectable, effect, signal } from '@angular/core';
+import { ThemeName, isThemeName } from './theme-name';
 
-export type ThemeName = 'forest' | 'paper' | 'noir';
+export type { ThemeName };
 
 export interface ThemeOption {
   id: ThemeName;
@@ -41,7 +42,7 @@ export class ThemeService {
   private readStoredTheme(): ThemeName {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      return this.themes.some((option) => option.id === stored) ? (stored as ThemeName) : DEFAULT_THEME;
+      return isThemeName(stored) ? stored : DEFAULT_THEME;
     } catch {
       return DEFAULT_THEME;
     }

@@ -7,8 +7,6 @@ import { LucideEye, LucideEyeOff } from '@lucide/angular';
 import { finalize } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { ThemeService } from '@core/theme/theme.service';
-import { LanguageSwitcherComponent } from '@shared/ui/language-switcher.component';
-import { ThemeSwitcherComponent } from '@shared/ui/theme-switcher.component';
 import { RegisterUserUseCase } from '../../../application/register-user.use-case';
 import { AuthError } from '../../../domain/auth-error';
 import { passwordStrength } from '../../../domain/password-strength';
@@ -20,7 +18,7 @@ interface StrengthSegment {
 
 @Component({
   selector: 'app-register-page',
-  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective, LanguageSwitcherComponent, ThemeSwitcherComponent, LucideEye, LucideEyeOff],
+  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective, LucideEye, LucideEyeOff],
   templateUrl: './register-page.component.html',
   styleUrls: ['./register-page.component.css'],
 })
