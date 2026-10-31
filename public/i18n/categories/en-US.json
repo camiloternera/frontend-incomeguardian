@@ -1,0 +1,83 @@
+{
+  "header": {
+    "backToOverview": "Back to overview"
+  },
+  "list": {
+    "eyebrow": "Organization",
+    "title": "Categories",
+    "subtitle": "Group your income and expenses under names that make sense to you. Predefined categories are shared by everyone and cannot be changed.",
+    "create": "New category",
+    "loading": "Loading your categories…",
+    "retry": "Try again",
+    "edit": "Edit",
+    "editNamed": "Edit the {{name}} category",
+    "deleteNamed": "Delete the {{name}} category",
+    "createdAt": "Created {{date}}",
+    "updatedAt": "Updated {{date}}",
+    "badge": {
+      "global": "Predefined",
+      "personal": "Personal"
+    },
+    "filter": {
+      "label": "Filter categories",
+      "all": "All",
+      "personal": "Personal",
+      "global": "Predefined"
+    },
+    "empty": {
+      "allTitle": "No categories yet",
+      "allBody": "Create the first one to start sorting your transactions.",
+      "personalTitle": "You have no categories of your own yet",
+      "personalBody": "The predefined ones cover the basics. Create your own when you need something more specific.",
+      "globalTitle": "No predefined categories",
+      "globalBody": "Predefined categories will show up here once there are any."
+    },
+    "delete": {
+      "action": "Delete",
+      "question": "Delete “{{name}}”? It will no longer show up in your lists.",
+      "cancel": "Cancel",
+      "confirm": "Yes, delete",
+      "deleting": "Deleting…"
+    },
+    "notice": {
+      "created": "You created the “{{name}}” category.",
+      "updated": "You saved the changes to “{{name}}”.",
+      "deleted": "You deleted the “{{name}}” category.",
+      "dismiss": "Dismiss"
+    }
+  },
+  "form": {
+    "breadcrumb": "Breadcrumb",
+    "createTitle": "New category",
+    "createSubtitle": "Give it a short name and a description that reminds you which transactions belong here.",
+    "editTitle": "Edit category",
+    "editSubtitle": "Changes apply to every transaction that uses this category.",
+    "loading": "Loading the category…",
+    "nameLabel": "Name",
+    "namePlaceholder": "For example, Pets",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "Food, vet visits and supplies for the house",
+    "cancel": "Cancel",
+    "create": "Create category",
+    "saveChanges": "Save changes",
+    "saving": "Saving…",
+    "backToList": "Back to categories",
+    "notFoundTitle": "Category unavailable",
+    "readOnly": "This is a predefined category: you can use it, but you cannot edit or delete it.",
+    "tips": {
+      "label": "Tips",
+      "title": "Before you save",
+      "short": "A short name reads better in reports and lists.",
+      "unique": "The name cannot repeat another category, including a predefined one.",
+      "private": "Only you can see your personal categories."
+    }
+  },
+  "errors": {
+    "CATEGORY_NAME_REQUIRED": "Enter a name for the category.",
+    "CATEGORY_NAME_MAX_LENGTH": "The name can be up to {{nameMax}} characters.",
+    "CATEGORY_NAME_ALREADY_EXISTS": "A category with that name already exists.",
+    "CATEGORY_DESCRIPTION_REQUIRED": "Enter a description for the category.",
+    "CATEGORY_DESCRIPTION_MAX_LENGTH": "The description can be up to {{descriptionMax}} characters.",
+    "CATEGORY_NOT_FOUND": "We could not find this category. It may have been deleted already."
+  }
+}

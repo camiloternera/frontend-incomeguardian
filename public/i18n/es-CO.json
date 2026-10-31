@@ -17,5 +17,12 @@
   },
   "errors": {
     "generic": "Algo salió mal. Inténtalo de nuevo."
+  },
+  "pagination": {
+    "label": "Paginación",
+    "range": "Mostrando {{from}}–{{to}} de {{total}}",
+    "previous": "Página anterior",
+    "next": "Página siguiente",
+    "page": "Ir a la página {{page}}"
   }
 }
