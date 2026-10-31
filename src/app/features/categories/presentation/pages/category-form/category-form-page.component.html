@@ -1,0 +1,161 @@
+<main
+  *transloco="let t"
+  data-testid="category-form-page"
+  class="min-h-screen bg-ig-canvas text-ig-text transition-colors duration-200"
+  [attr.data-theme]="theme()"
+>
+  <div class="mx-auto flex w-full max-w-[1120px] flex-col gap-8 p-4 sm:p-8">
+    <app-categories-header />
+
+    <nav [attr.aria-label]="t('categories.form.breadcrumb')">
+      <ol class="m-0 flex list-none flex-wrap items-center gap-2 p-0 text-[12px] text-ig-muted">
+        <li>
+          <a class="rounded text-ig-accent-text no-underline hover:underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" routerLink="/categories">{{ t('categories.list.title') }}</a>
+        </li>
+        <li aria-hidden="true">/</li>
+        <li aria-current="page">{{ isEdit ? t('categories.form.editTitle') : t('categories.form.createTitle') }}</li>
+      </ol>
+    </nav>
+
+    @switch (status()) {
+      @case ('loading') {
+        @if (loadError()) {
+          <div class="flex flex-col items-start gap-4 rounded-2xl border border-ig-border bg-ig-surface px-6 py-8">
+            <p data-testid="load-error" class="m-0 text-[13px]" role="alert">{{ loadError() }}</p>
+            <button
+              class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-border bg-transparent px-5 text-[13px] font-bold text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+              type="button"
+              (click)="retry()"
+            >
+              {{ t('categories.list.retry') }}
+            </button>
+          </div>
+        } @else {
+          <p class="m-0 text-[13px] text-ig-muted" role="status">{{ t('categories.form.loading') }}</p>
+        }
+      }
+
+      @case ('notFound') {
+        <div data-testid="category-not-found" class="flex flex-col items-start gap-4 rounded-2xl border border-ig-border bg-ig-surface px-6 py-10">
+          <h1 class="m-0 text-[20px] font-bold tracking-[-0.02em]">{{ t('categories.form.notFoundTitle') }}</h1>
+          <p class="m-0 max-w-[520px] text-[13px] text-ig-muted">{{ t('categories.errors.' + notFoundCode) }}</p>
+          <a
+            class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-accent bg-ig-accent px-5 text-[13px] font-bold text-ig-on-accent no-underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+            routerLink="/categories"
+          >
+            {{ t('categories.form.backToList') }}
+          </a>
+        </div>
+      }
+
+      @case ('readOnly') {
+        <div data-testid="category-read-only" class="flex flex-col items-start gap-4 rounded-2xl border border-ig-border bg-ig-surface px-6 py-10">
+          <span class="inline-flex items-center gap-1 rounded-full border border-ig-border px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.06em] text-ig-muted">
+            <svg lucideLock [size]="11" aria-hidden="true"></svg>
+            {{ t('categories.list.badge.global') }}
+          </span>
+          <h1 class="m-0 break-words text-[20px] font-bold tracking-[-0.02em]">{{ categoryForm.controls.name.value }}</h1>
+          <p class="m-0 max-w-[620px] break-words text-[13px] leading-relaxed text-ig-muted">{{ categoryForm.controls.description.value }}</p>
+          <p class="m-0 text-[13px]">{{ t('categories.form.readOnly') }}</p>
+          <a
+            class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-border px-5 text-[13px] font-bold text-ig-text no-underline hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+            routerLink="/categories"
+          >
+            {{ t('categories.form.backToList') }}
+          </a>
+        </div>
+      }
+
+      @default {
+        <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <section class="rounded-2xl border border-ig-border bg-ig-surface p-6 sm:p-10" aria-labelledby="category-form-title">
+            <p class="mb-2 text-[11px] font-extrabold uppercase tracking-[0.02em] text-ig-accent-text">{{ t('categories.list.eyebrow') }}</p>
+            <h1 id="category-form-title" class="m-0 font-roboto text-[clamp(26px,3vw,36px)] font-bold leading-[1.05] tracking-[-0.04em]">
+              {{ isEdit ? t('categories.form.editTitle') : t('categories.form.createTitle') }}
+            </h1>
+            <p class="m-0 mt-4 max-w-[520px] text-[13px] leading-relaxed text-ig-muted">
+              {{ isEdit ? t('categories.form.editSubtitle') : t('categories.form.createSubtitle') }}
+            </p>
+
+            <form class="mt-8 flex flex-col gap-6" [formGroup]="categoryForm" (ngSubmit)="submit()" novalidate>
+              <div>
+                <div class="mb-1.5 flex items-baseline justify-between gap-3">
+                  <label class="block text-[11px] font-bold tracking-[0.02em]" for="category-name">{{ t('categories.form.nameLabel') }}</label>
+                  <span id="category-name-count" class="text-[11px] text-ig-muted" [class.text-ig-text]="nameLength() > nameMax">{{ nameLength() }}/{{ nameMax }}</span>
+                </div>
+                <input
+                  class="min-h-11 w-full rounded-lg border border-ig-border bg-ig-surface-raised px-3 text-[13px] text-ig-text outline-none placeholder:text-ig-muted focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                  id="category-name"
+                  data-testid="category-name"
+                  formControlName="name"
+                  type="text"
+                  autocomplete="off"
+                  [placeholder]="t('categories.form.namePlaceholder')"
+                  [attr.aria-invalid]="nameError() !== null"
+                  [attr.aria-describedby]="nameError() ? 'category-name-count category-name-error' : 'category-name-count'"
+                />
+                @if (nameError(); as code) {
+                  <p id="category-name-error" data-testid="name-error" class="m-0 mt-1.5 text-[11px] text-ig-accent-text" role="alert">{{ t('categories.errors.' + code, limits) }}</p>
+                }
+              </div>
+
+              <div>
+                <div class="mb-1.5 flex items-baseline justify-between gap-3">
+                  <label class="block text-[11px] font-bold tracking-[0.02em]" for="category-description">{{ t('categories.form.descriptionLabel') }}</label>
+                  <span id="category-description-count" class="text-[11px] text-ig-muted" [class.text-ig-text]="descriptionLength() > descriptionMax">{{ descriptionLength() }}/{{ descriptionMax }}</span>
+                </div>
+                <textarea
+                  class="min-h-32 w-full resize-y rounded-lg border border-ig-border bg-ig-surface-raised px-3 py-2.5 text-[13px] leading-relaxed text-ig-text outline-none placeholder:text-ig-muted focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                  id="category-description"
+                  data-testid="category-description"
+                  formControlName="description"
+                  rows="5"
+                  [placeholder]="t('categories.form.descriptionPlaceholder')"
+                  [attr.aria-invalid]="descriptionError() !== null"
+                  [attr.aria-describedby]="descriptionError() ? 'category-description-count category-description-error' : 'category-description-count'"
+                ></textarea>
+                @if (descriptionError(); as code) {
+                  <p id="category-description-error" data-testid="description-error" class="m-0 mt-1.5 text-[11px] text-ig-accent-text" role="alert">{{ t('categories.errors.' + code, limits) }}</p>
+                }
+              </div>
+
+              @if (formError()) {
+                <p data-testid="form-error" class="m-0 rounded-lg border border-ig-border bg-ig-surface-raised px-4 py-3 text-[13px]" role="alert">{{ formError() }}</p>
+              }
+
+              <div class="flex flex-col-reverse gap-2 border-t border-ig-border pt-6 sm:flex-row sm:justify-end">
+                <a
+                  class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-border px-5 text-[13px] text-ig-text no-underline hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                  routerLink="/categories"
+                >
+                  {{ t('categories.form.cancel') }}
+                </a>
+                <button
+                  data-testid="category-submit"
+                  class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-accent bg-ig-accent px-6 text-[13px] font-bold text-ig-on-accent transition-transform duration-150 hover:-translate-y-px focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                  type="submit"
+                  [disabled]="isSubmitting()"
+                >
+                  @if (isSubmitting()) {
+                    {{ t('categories.form.saving') }}
+                  } @else {
+                    {{ isEdit ? t('categories.form.saveChanges') : t('categories.form.create') }}
+                  }
+                </button>
+              </div>
+            </form>
+          </section>
+
+          <aside class="flex flex-col gap-4 lg:pt-10" [attr.aria-label]="t('categories.form.tips.label')">
+            <h2 class="m-0 text-[13px] font-bold">{{ t('categories.form.tips.title') }}</h2>
+            <ul class="m-0 flex list-none flex-col gap-3 p-0 text-[13px] leading-relaxed text-ig-muted">
+              <li class="flex items-start gap-2.5"><span class="mt-2 size-1.5 shrink-0 rounded-full bg-ig-accent" aria-hidden="true"></span>{{ t('categories.form.tips.short') }}</li>
+              <li class="flex items-start gap-2.5"><span class="mt-2 size-1.5 shrink-0 rounded-full bg-ig-accent" aria-hidden="true"></span>{{ t('categories.form.tips.unique') }}</li>
+              <li class="flex items-start gap-2.5"><span class="mt-2 size-1.5 shrink-0 rounded-full bg-ig-accent" aria-hidden="true"></span>{{ t('categories.form.tips.private') }}</li>
+            </ul>
+          </aside>
+        </div>
+      }
+    }
+  </div>
+</main>
