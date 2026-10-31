@@ -69,14 +69,14 @@ describe('HomePageComponent', () => {
 
     expect(element.querySelectorAll('nav li').length).toBe(7);
     expect(element.querySelector('[aria-current="page"]')?.textContent).toContain('Overview');
-    expect(element.querySelectorAll('nav li small').length).toBe(5);
+    expect(element.querySelectorAll('nav li small').length).toBe(4);
   });
 
-  it('links to the categories section', () => {
+  it('links to the categories and settings sections', () => {
     const element = render().nativeElement as HTMLElement;
-    const link = element.querySelector<HTMLAnchorElement>('nav a[href="/categories"]');
 
-    expect(link?.textContent).toContain('Categories');
+    expect(element.querySelector('nav a[href="/categories"]')?.textContent).toContain('Categories');
+    expect(element.querySelector('nav a[href="/settings"]')?.textContent).toContain('Settings');
   });
 
   it('translates the view into Spanish', () => {
