@@ -1,6 +1,7 @@
 import { CurrencyPipe, DatePipe, PercentPipe, formatDate } from '@angular/common';
 import { Component, computed, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { LanguageService } from '@core/i18n/language.service';
 import { ThemeService } from '@core/theme/theme.service';
@@ -13,6 +14,8 @@ import { CashFlowBar, CashFlowChartComponent } from '../../components/cash-flow-
 interface NavItem {
   key: string;
   active: boolean;
+  /** Ruta de una sección ya construida; sin ella la sección se marca como próxima. */
+  route?: string;
 }
 
 interface Kpi {
@@ -30,6 +33,7 @@ const NAV: NavItem[] = [
   { key: 'transactions', active: false },
   { key: 'income', active: false },
   { key: 'expenses', active: false },
+  { key: 'categories', active: false, route: '/categories' },
   { key: 'reports', active: false },
   { key: 'settings', active: false },
 ];
@@ -40,6 +44,7 @@ const NAV: NavItem[] = [
     CurrencyPipe,
     DatePipe,
     PercentPipe,
+    RouterLink,
     TranslocoDirective,
     CashFlowChartComponent,
     LanguageSwitcherComponent,

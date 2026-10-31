@@ -23,6 +23,13 @@
                 >
                   {{ t('dashboard.home.nav.' + item.key) }}
                 </span>
+              } @else if (item.route) {
+                <a
+                  class="flex min-h-11 items-center gap-2 rounded-lg border border-transparent px-3.5 text-[13px] text-ig-text no-underline hover:border-ig-border hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                  [routerLink]="item.route"
+                >
+                  {{ t('dashboard.home.nav.' + item.key) }}
+                </a>
               } @else {
                 <span class="flex min-h-11 items-center gap-2 rounded-lg border border-transparent px-3.5 text-[13px] text-ig-muted">
                   {{ t('dashboard.home.nav.' + item.key) }}
