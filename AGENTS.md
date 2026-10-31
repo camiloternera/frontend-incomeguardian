@@ -88,7 +88,7 @@ features/<dominio>/
 - Los DTOs del backend (PascalCase) se mapean a modelos de dominio (camelCase) en infrastructure y no salen de esa capa.
 - Los errores de negocio se traducen a copy de UI en infrastructure (`resolveApiError(error, MAPA_DEL_DOMINIO)`) y llegan a presentation como error de dominio.
 - Usar los alias `@core/*`, `@shared/*`, `@features/*` y `@env/*` para imports fuera del propio dominio; imports relativos dentro del dominio.
-- Dominios actuales: `auth`, `dashboard`. Previstos: `incomes`, `expenses`, `budgets` (crear la carpeta solo al implementarlos).
+- Dominios actuales: `auth`, `dashboard`, `categories`. Previstos: `incomes`, `expenses`, `budgets` (crear la carpeta solo al implementarlos).
 
 ## Internacionalizacion
 

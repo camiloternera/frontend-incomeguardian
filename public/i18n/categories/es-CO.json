@@ -1,0 +1,80 @@
+{
+  "list": {
+    "eyebrow": "Organización",
+    "title": "Categorías",
+    "subtitle": "Agrupa tus ingresos y gastos con nombres que tengan sentido para ti. Las categorías predefinidas están disponibles para todos y no se pueden cambiar.",
+    "create": "Nueva categoría",
+    "loading": "Cargando tus categorías…",
+    "retry": "Intentar de nuevo",
+    "edit": "Editar",
+    "editNamed": "Editar la categoría {{name}}",
+    "deleteNamed": "Eliminar la categoría {{name}}",
+    "createdAt": "Creada el {{date}}",
+    "updatedAt": "Actualizada el {{date}}",
+    "badge": {
+      "global": "Predefinida",
+      "personal": "Personal"
+    },
+    "filter": {
+      "label": "Filtrar categorías",
+      "all": "Todas",
+      "personal": "Personales",
+      "global": "Predefinidas"
+    },
+    "empty": {
+      "allTitle": "Todavía no hay categorías",
+      "allBody": "Crea la primera para empezar a ordenar tus movimientos.",
+      "personalTitle": "Aún no tienes categorías propias",
+      "personalBody": "Las predefinidas cubren lo básico. Crea una propia cuando necesites algo más específico.",
+      "globalTitle": "No hay categorías predefinidas",
+      "globalBody": "Cuando haya categorías predefinidas aparecerán aquí."
+    },
+    "delete": {
+      "action": "Eliminar",
+      "question": "¿Eliminar «{{name}}»? Dejará de aparecer en tus listas.",
+      "cancel": "Cancelar",
+      "confirm": "Sí, eliminar",
+      "deleting": "Eliminando…"
+    },
+    "notice": {
+      "created": "Creaste la categoría «{{name}}».",
+      "updated": "Guardaste los cambios de «{{name}}».",
+      "deleted": "Eliminaste la categoría «{{name}}».",
+      "dismiss": "Cerrar"
+    }
+  },
+  "form": {
+    "breadcrumb": "Ruta de navegación",
+    "createTitle": "Nueva categoría",
+    "createSubtitle": "Dale un nombre corto y una descripción que te ayude a recordar qué movimientos van aquí.",
+    "editTitle": "Editar categoría",
+    "editSubtitle": "Los cambios se reflejan en todos los movimientos que usan esta categoría.",
+    "loading": "Cargando la categoría…",
+    "nameLabel": "Nombre",
+    "namePlaceholder": "Por ejemplo, Mascotas",
+    "descriptionLabel": "Descripción",
+    "descriptionPlaceholder": "Comida, veterinario y accesorios de la casa",
+    "cancel": "Cancelar",
+    "create": "Crear categoría",
+    "saveChanges": "Guardar cambios",
+    "saving": "Guardando…",
+    "backToList": "Volver a categorías",
+    "notFoundTitle": "Categoría no disponible",
+    "readOnly": "Esta categoría es predefinida: puedes usarla, pero no editarla ni eliminarla.",
+    "tips": {
+      "label": "Consejos",
+      "title": "Antes de guardar",
+      "short": "Un nombre corto se lee mejor en reportes y listas.",
+      "unique": "El nombre no puede repetir el de otra categoría, tampoco el de una predefinida.",
+      "private": "Tus categorías personales solo las ves tú."
+    }
+  },
+  "errors": {
+    "CATEGORY_NAME_REQUIRED": "Escribe un nombre para la categoría.",
+    "CATEGORY_NAME_MAX_LENGTH": "El nombre puede tener hasta {{nameMax}} caracteres.",
+    "CATEGORY_NAME_ALREADY_EXISTS": "Ya existe una categoría con ese nombre.",
+    "CATEGORY_DESCRIPTION_REQUIRED": "Escribe una descripción para la categoría.",
+    "CATEGORY_DESCRIPTION_MAX_LENGTH": "La descripción puede tener hasta {{descriptionMax}} caracteres.",
+    "CATEGORY_NOT_FOUND": "No encontramos esta categoría. Puede que ya se haya eliminado."
+  }
+}

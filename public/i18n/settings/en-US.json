@@ -1,0 +1,25 @@
+{
+  "page": {
+    "eyebrow": "Preferences",
+    "title": "Settings",
+    "subtitle": "Choose how Income Guardian looks and which language it speaks. Changes are saved to your account and follow you to any device.",
+    "saving": "Saving…",
+    "saved": "Saved to your account",
+    "retry": "Try again"
+  },
+  "theme": {
+    "title": "Theme",
+    "description": "All three themes keep green for what matters; they change the background and contrast.",
+    "forest": "Deep, calm green. Made for everyday use.",
+    "paper": "Light and warm. Comfortable for reading long reports.",
+    "noir": "High-contrast black. Ideal for focusing on the numbers."
+  },
+  "language": {
+    "title": "Language",
+    "description": "Applies to the whole app and to the messages the server sends you."
+  },
+  "errors": {
+    "USER_THEME_INVALID": "That theme is not available. Pick one from the list.",
+    "USER_LANGUAGE_INVALID": "That language is not available. Pick one from the list."
+  }
+}

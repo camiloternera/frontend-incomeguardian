@@ -1,0 +1,136 @@
+<main
+  *transloco="let t"
+  data-testid="settings-page"
+  class="min-h-screen bg-ig-canvas text-ig-text transition-colors duration-200"
+  [attr.data-theme]="theme()"
+>
+  <div class="mx-auto flex w-full max-w-[1120px] flex-col gap-8 p-4 sm:p-8">
+    <app-top-bar />
+
+    <div class="flex flex-col items-start justify-between gap-4 border-b border-ig-border pb-8 sm:flex-row sm:items-end">
+      <div class="max-w-[620px]">
+        <p class="mb-2 text-[11px] font-extrabold uppercase tracking-[0.02em] text-ig-accent-text">{{ t('settings.page.eyebrow') }}</p>
+        <h1 class="m-0 font-roboto text-[clamp(28px,3vw,40px)] font-bold leading-[1.05] tracking-[-0.04em]">{{ t('settings.page.title') }}</h1>
+        <p class="m-0 mt-4 text-[13px] leading-relaxed text-ig-muted">{{ t('settings.page.subtitle') }}</p>
+      </div>
+
+      <p data-testid="save-status" class="m-0 min-h-5 shrink-0 text-[12px]" role="status">
+        @switch (status()) {
+          @case ('saving') {
+            <span class="text-ig-muted">{{ t('settings.page.saving') }}</span>
+          }
+          @case ('saved') {
+            <span class="inline-flex items-center gap-1.5 text-ig-accent-text">
+              <svg lucideCheck [size]="14" aria-hidden="true"></svg>
+              {{ t('settings.page.saved') }}
+            </span>
+          }
+        }
+      </p>
+    </div>
+
+    @if (loadError()) {
+      <div class="flex flex-col items-start gap-3 rounded-lg border border-ig-border bg-ig-surface px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <p data-testid="load-error" class="m-0 text-[13px]" role="alert">{{ loadError() }}</p>
+        <button
+          class="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg border border-ig-border bg-transparent px-4 text-[13px] font-bold text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+          type="button"
+          (click)="load()"
+        >
+          {{ t('settings.page.retry') }}
+        </button>
+      </div>
+    }
+
+    @if (saveError()) {
+      <p data-testid="save-error" class="m-0 rounded-lg border border-ig-border bg-ig-surface px-4 py-3 text-[13px]" role="alert">{{ saveError() }}</p>
+    }
+
+    <section class="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]" aria-labelledby="theme-title">
+      <div>
+        <h2 id="theme-title" class="m-0 text-[15px] font-bold tracking-[-0.01em]">{{ t('settings.theme.title') }}</h2>
+        <p class="m-0 mt-2 text-[13px] leading-relaxed text-ig-muted">{{ t('settings.theme.description') }}</p>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-3" role="radiogroup" aria-labelledby="theme-title">
+        @for (option of themes; track option.id) {
+          <label
+            [attr.data-testid]="'theme-' + option.id"
+            class="group flex cursor-pointer flex-col overflow-hidden rounded-2xl border bg-ig-surface has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ig-accent"
+            [class]="theme() === option.id ? 'border-ig-accent' : 'border-ig-border hover:border-ig-muted'"
+          >
+            <input
+              class="sr-only"
+              type="radio"
+              name="theme"
+              [value]="option.id"
+              [checked]="theme() === option.id"
+              [disabled]="isLoading() || status() === 'saving'"
+              (change)="chooseTheme(option.id)"
+            />
+
+            <!-- Miniatura pintada con los tokens del propio tema. -->
+            <span class="block border-b border-ig-border bg-ig-canvas p-4" [attr.data-theme]="option.id" aria-hidden="true">
+              <span class="flex flex-col gap-2 rounded-lg border border-ig-border bg-ig-surface p-3">
+                <span class="h-1.5 w-1/2 rounded-full bg-ig-text"></span>
+                <span class="h-1.5 w-3/4 rounded-full bg-ig-muted"></span>
+                <span class="mt-1 h-4 w-14 rounded bg-ig-accent"></span>
+              </span>
+            </span>
+
+            <span class="flex flex-1 flex-col gap-1.5 p-4">
+              <span class="flex items-center justify-between gap-2">
+                <span class="text-[13px] font-bold">{{ option.label }}</span>
+                @if (theme() === option.id) {
+                  <span class="inline-flex size-5 items-center justify-center rounded-full bg-ig-accent text-ig-on-accent" aria-hidden="true">
+                    <svg lucideCheck [size]="12"></svg>
+                  </span>
+                } @else {
+                  <span class="text-[11px] text-ig-muted" aria-hidden="true">{{ option.number }}</span>
+                }
+              </span>
+              <span class="text-[12px] leading-relaxed text-ig-muted">{{ t('settings.theme.' + option.id) }}</span>
+            </span>
+          </label>
+        }
+      </div>
+    </section>
+
+    <section class="grid gap-6 border-t border-ig-border pt-8 lg:grid-cols-[280px_minmax(0,1fr)]" aria-labelledby="language-title">
+      <div>
+        <h2 id="language-title" class="m-0 text-[15px] font-bold tracking-[-0.01em]">{{ t('settings.language.title') }}</h2>
+        <p class="m-0 mt-2 text-[13px] leading-relaxed text-ig-muted">{{ t('settings.language.description') }}</p>
+      </div>
+
+      <div class="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-labelledby="language-title">
+        @for (option of languages; track option.id) {
+          <label
+            [attr.data-testid]="'language-' + option.id"
+            class="flex min-h-14 cursor-pointer items-center justify-between gap-3 rounded-lg border bg-ig-surface px-4 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ig-accent"
+            [class]="language() === option.id ? 'border-ig-accent' : 'border-ig-border hover:border-ig-muted'"
+          >
+            <input
+              class="sr-only"
+              type="radio"
+              name="language"
+              [value]="option.id"
+              [checked]="language() === option.id"
+              [disabled]="isLoading() || status() === 'saving'"
+              (change)="chooseLanguage(option.id)"
+            />
+            <!-- Cada idioma se nombra a sí mismo para que se lea sea cual sea el activo. -->
+            <span class="flex flex-col" [attr.lang]="option.id">
+              <span class="text-[13px] font-bold">{{ option.name }}</span>
+              <span class="text-[11px] text-ig-muted">{{ option.id }}</span>
+            </span>
+            @if (language() === option.id) {
+              <span class="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-ig-accent text-ig-on-accent" aria-hidden="true">
+                <svg lucideCheck [size]="12"></svg>
+              </span>
+            }
+          </label>
+        }
+      </div>
+    </section>
+  </div>
+</main>

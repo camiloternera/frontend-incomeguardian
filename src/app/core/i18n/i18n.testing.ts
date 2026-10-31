@@ -5,6 +5,10 @@ import authEnUS from '../../../../public/i18n/auth/en-US.json';
 import authEsCO from '../../../../public/i18n/auth/es-CO.json';
 import dashboardEnUS from '../../../../public/i18n/dashboard/en-US.json';
 import dashboardEsCO from '../../../../public/i18n/dashboard/es-CO.json';
+import categoriesEnUS from '../../../../public/i18n/categories/en-US.json';
+import categoriesEsCO from '../../../../public/i18n/categories/es-CO.json';
+import settingsEnUS from '../../../../public/i18n/settings/en-US.json';
+import settingsEsCO from '../../../../public/i18n/settings/es-CO.json';
 import { LANGUAGES } from './language.service';
 import './locale-data';
 
@@ -12,8 +16,8 @@ import './locale-data';
 export function translocoTesting(options: TranslocoTestingOptions = {}) {
   return TranslocoTestingModule.forRoot({
     langs: {
-      'en-US': { ...enUS, auth: authEnUS, dashboard: dashboardEnUS },
-      'es-CO': { ...esCO, auth: authEsCO, dashboard: dashboardEsCO },
+      'en-US': { ...enUS, auth: authEnUS, dashboard: dashboardEnUS, categories: categoriesEnUS, settings: settingsEnUS },
+      'es-CO': { ...esCO, auth: authEsCO, dashboard: dashboardEsCO, categories: categoriesEsCO, settings: settingsEsCO },
     },
     translocoConfig: { availableLangs: [...LANGUAGES], defaultLang: 'en-US', reRenderOnLangChange: true },
     preloadLangs: true,

@@ -53,7 +53,9 @@
   --color-ig-on-accent: var(--ig-on-accent);
 }
 
-:root {
+/* Forest también como selector explícito, para que una miniatura Forest se vea bien dentro de otro tema. */
+:root,
+[data-theme='forest'] {
   --ig-canvas: #0b1d14;
   --ig-surface: #122b1e;
   --ig-surface-raised: #0d2519;
@@ -63,6 +65,9 @@
   --ig-accent: #25e27b;
   --ig-accent-text: #25e27b;
   --ig-on-accent: #07160d;
+}
+
+:root {
   font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color-scheme: dark;
   background: var(--ig-canvas, #0b1d14);
@@ -105,9 +110,13 @@ body {
   min-height: 100vh;
 }
 
-button,
-input {
-  font: inherit;
+/* En la capa base para que las utilidades de Tailwind (text-*, font-*) puedan sobrescribirla. */
+@layer base {
+  button,
+  input,
+  textarea {
+    font: inherit;
+  }
 }
 
 input::-ms-reveal,

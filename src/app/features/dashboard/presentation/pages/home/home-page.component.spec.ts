@@ -67,9 +67,16 @@ describe('HomePageComponent', () => {
   it('marks every section that is not built yet', () => {
     const element = render().nativeElement as HTMLElement;
 
-    expect(element.querySelectorAll('nav li').length).toBe(6);
+    expect(element.querySelectorAll('nav li').length).toBe(7);
     expect(element.querySelector('[aria-current="page"]')?.textContent).toContain('Overview');
-    expect(element.querySelectorAll('nav li small').length).toBe(5);
+    expect(element.querySelectorAll('nav li small').length).toBe(4);
+  });
+
+  it('links to the categories and settings sections', () => {
+    const element = render().nativeElement as HTMLElement;
+
+    expect(element.querySelector('nav a[href="/categories"]')?.textContent).toContain('Categories');
+    expect(element.querySelector('nav a[href="/settings"]')?.textContent).toContain('Settings');
   });
 
   it('translates the view into Spanish', () => {

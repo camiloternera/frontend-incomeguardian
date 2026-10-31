@@ -5,6 +5,8 @@ import { provideRouter, Router } from '@angular/router';
 import { LoginPageComponent } from './login-page.component';
 import { routes } from '../../../../../app.routes';
 import { translocoTesting } from '@core/i18n/i18n.testing';
+import { LanguageService } from '@core/i18n/language.service';
+import { ThemeService } from '@core/theme/theme.service';
 import { provideAuth } from '../../../auth.providers';
 
 describe('LoginPageComponent', () => {
@@ -22,39 +24,24 @@ describe('LoginPageComponent', () => {
     }).compileComponents();
   });
 
-  it('changes the active visual theme', () => {
+  it('follows the active theme without offering a switcher', () => {
+    TestBed.inject(ThemeService).setTheme('paper');
     const fixture = TestBed.createComponent(LoginPageComponent);
-    fixture.detectChanges();
-
-    const paperButton = fixture.nativeElement.querySelector('[aria-label="Use Paper theme"]') as HTMLButtonElement;
-    paperButton.click();
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('[data-testid="login-shell"]').dataset.theme).toBe('paper');
-
-    const noirButton = fixture.nativeElement.querySelector('[aria-label="Use Noir theme"]') as HTMLButtonElement;
-    noirButton.click();
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.querySelector('[data-testid="login-shell"]').dataset.theme).toBe('noir');
+    // El tema y el idioma se cambian solo desde Ajustes.
+    expect(fixture.nativeElement.querySelector('[aria-pressed]')).toBeNull();
   });
 
-  it('switches the copy to Spanish without reloading', () => {
-    const fixture = TestBed.createComponent(LoginPageComponent);
-    fixture.detectChanges();
-
-    (fixture.nativeElement.querySelector('[aria-label="Español"]') as HTMLButtonElement).click();
+  it('renders in the active language', () => {
+    TestBed.inject(LanguageService).setLanguage('es-CO');
     TestBed.tick();
+    const fixture = TestBed.createComponent(LoginPageComponent);
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('#login-title').textContent).toContain('Retoma donde lo dejaste.');
     expect(document.documentElement.lang).toBe('es-CO');
-
-    (fixture.nativeElement.querySelector('[aria-label="English"]') as HTMLButtonElement).click();
-    TestBed.tick();
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.querySelector('#login-title').textContent).toContain('Pick up where you left off.');
   });
 
   it('toggles password visibility', () => {
@@ -93,16 +80,26 @@ describe('LoginPageComponent', () => {
     expect(request.request.body).toEqual({ email: 'user@example.com', password: 'secret' });
 
     request.flush({
-      UserId: 'user-1',
-      Email: 'user@example.com',
-      Name: 'Test User',
-      AccessToken: 'access-token',
-      RefreshToken: 'refresh-token',
-      ExpiresAt: '2026-08-09T12:00:00Z',
+      data: {
+        userId: 'user-1',
+        email: 'user@example.com',
+        name: 'Test User',
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+        expiresAt: '2026-08-09T12:00:00Z',
+        theme: 'paper',
+        language: 'es-CO',
+      },
+      isSuccess: true,
+      message: 'ok',
+      errors: [],
     });
 
     expect(navigateSpy).toHaveBeenCalledWith('/home');
     expect(JSON.parse(sessionStorage.getItem('income-guardian.session') ?? '{}').accessToken).toBe('access-token');
+    // Las preferencias guardadas en la cuenta se aplican al entrar.
+    expect(TestBed.inject(ThemeService).theme()).toBe('paper');
+    expect(TestBed.inject(LanguageService).language()).toBe('es-CO');
   });
 
   it('shows an error when the login request fails', () => {
