@@ -5,15 +5,8 @@
     "copyright": "© 2026 Income Guardian"
   },
   "common": {
-    "or": "O"
-  },
-  "theme": {
-    "group": "Elige el tema visual",
-    "count": "3 modos visuales",
-    "use": "Usar el tema {{name}}"
-  },
-  "language": {
-    "group": "Elige el idioma"
+    "or": "O",
+    "backToOverview": "Volver al resumen"
   },
   "errors": {
     "generic": "Algo salió mal. Inténtalo de nuevo."

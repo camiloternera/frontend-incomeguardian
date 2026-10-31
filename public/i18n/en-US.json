@@ -5,15 +5,8 @@
     "copyright": "© 2026 Income Guardian"
   },
   "common": {
-    "or": "OR"
-  },
-  "theme": {
-    "group": "Choose visual theme",
-    "count": "3 visual modes",
-    "use": "Use {{name}} theme"
-  },
-  "language": {
-    "group": "Choose language"
+    "or": "OR",
+    "backToOverview": "Back to overview"
   },
   "errors": {
     "generic": "Something went wrong. Please try again."
