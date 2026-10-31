@@ -1,0 +1,73 @@
+{
+  "list": {
+    "eyebrow": "Organización",
+    "title": "Tipos de cuenta",
+    "subtitle": "Define cómo clasificas tus cuentas: ahorros, tarjeta de crédito, billetera digital o lo que uses. Solo tú ves tus tipos de cuenta.",
+    "create": "Nuevo tipo",
+    "loading": "Cargando tus tipos de cuenta…",
+    "retry": "Intentar de nuevo",
+    "edit": "Editar",
+    "editNamed": "Editar el tipo de cuenta {{name}}",
+    "deactivateNamed": "Desactivar el tipo de cuenta {{name}}",
+    "createdAt": "Creado el {{date}}",
+    "updatedAt": "Actualizado el {{date}}",
+    "search": {
+      "label": "Buscar tipos de cuenta",
+      "placeholder": "Buscar por nombre o descripción",
+      "results": "{{count}} de {{total}}"
+    },
+    "empty": {
+      "allTitle": "Todavía no tienes tipos de cuenta",
+      "allBody": "Crea el primero para poder clasificar tus cuentas.",
+      "searchTitle": "Ningún tipo coincide con «{{query}}»",
+      "searchBody": "Prueba con otra palabra o borra la búsqueda.",
+      "clearSearch": "Borrar búsqueda"
+    },
+    "deactivate": {
+      "action": "Desactivar",
+      "question": "¿Desactivar «{{name}}»? No podrás usarlo en cuentas nuevas; las cuentas que ya lo tienen lo conservan.",
+      "cancel": "Cancelar",
+      "confirm": "Sí, desactivar",
+      "deactivating": "Desactivando…"
+    },
+    "notice": {
+      "created": "Creaste el tipo de cuenta «{{name}}».",
+      "updated": "Guardaste los cambios de «{{name}}».",
+      "deactivated": "Desactivaste el tipo de cuenta «{{name}}».",
+      "dismiss": "Cerrar"
+    }
+  },
+  "form": {
+    "breadcrumb": "Ruta de navegación",
+    "createTitle": "Nuevo tipo de cuenta",
+    "createSubtitle": "Dale un nombre claro y una descripción que te ayude a recordar qué cuentas van aquí.",
+    "editTitle": "Editar tipo de cuenta",
+    "editSubtitle": "Los cambios se reflejan en todas las cuentas que usan este tipo.",
+    "loading": "Cargando el tipo de cuenta…",
+    "nameLabel": "Nombre",
+    "namePlaceholder": "Por ejemplo, Tarjeta de crédito",
+    "descriptionLabel": "Descripción",
+    "descriptionPlaceholder": "Tarjetas con cupo que se pagan cada mes",
+    "cancel": "Cancelar",
+    "create": "Crear tipo",
+    "saveChanges": "Guardar cambios",
+    "saving": "Guardando…",
+    "backToList": "Volver a tipos de cuenta",
+    "notFoundTitle": "Tipo de cuenta no disponible",
+    "tips": {
+      "label": "Consejos",
+      "title": "Antes de guardar",
+      "short": "Un nombre corto se lee mejor en listas y reportes.",
+      "unique": "El nombre no puede repetir el de otro de tus tipos de cuenta.",
+      "private": "Tus tipos de cuenta solo los ves tú."
+    }
+  },
+  "errors": {
+    "ACCOUNT_TYPE_NAME_REQUIRED": "Escribe un nombre para el tipo de cuenta.",
+    "ACCOUNT_TYPE_NAME_MAX_LENGTH": "El nombre puede tener hasta {{nameMax}} caracteres.",
+    "ACCOUNT_TYPE_NAME_ALREADY_EXISTS": "Ya tienes un tipo de cuenta con ese nombre.",
+    "ACCOUNT_TYPE_DESCRIPTION_REQUIRED": "Escribe una descripción para el tipo de cuenta.",
+    "ACCOUNT_TYPE_DESCRIPTION_MAX_LENGTH": "La descripción puede tener hasta {{descriptionMax}} caracteres.",
+    "ACCOUNT_TYPE_NOT_FOUND": "No encontramos este tipo de cuenta. Puede que ya se haya desactivado."
+  }
+}

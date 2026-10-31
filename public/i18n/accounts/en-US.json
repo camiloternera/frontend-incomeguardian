@@ -1,0 +1,98 @@
+{
+  "list": {
+    "eyebrow": "Your money",
+    "title": "Accounts",
+    "subtitle": "Keep track of where your money is: bank accounts, cards, wallets or cash. Each account has a type, a currency and an opening balance.",
+    "create": "New account",
+    "loading": "Loading your accounts…",
+    "retry": "Try again",
+    "edit": "Edit",
+    "view": "View",
+    "editNamed": "Edit the {{name}} account",
+    "viewNamed": "View the {{name}} account",
+    "deactivateNamed": "Deactivate the {{name}} account",
+    "initialBalance": "Opening balance",
+    "createdAt": "Created {{date}}",
+    "updatedAt": "Updated {{date}}",
+    "badge": {
+      "inactive": "Deactivated"
+    },
+    "filter": {
+      "label": "Filter accounts",
+      "active": "Active",
+      "inactive": "Deactivated"
+    },
+    "search": {
+      "label": "Search accounts",
+      "placeholder": "Search by name or type",
+      "results": "{{count}} of {{total}}"
+    },
+    "empty": {
+      "activeTitle": "No active accounts yet",
+      "activeBody": "Create your first account to start recording transactions.",
+      "inactiveTitle": "No deactivated accounts",
+      "inactiveBody": "When you deactivate an account it will show up here so you can still look it up.",
+      "searchTitle": "No account matches “{{query}}”",
+      "searchBody": "Try another word or clear the search.",
+      "clearSearch": "Clear search"
+    },
+    "deactivate": {
+      "action": "Deactivate",
+      "question": "Deactivate “{{name}}”? You will not be able to record new transactions in it; you can still look it up.",
+      "cancel": "Cancel",
+      "confirm": "Yes, deactivate",
+      "deactivating": "Deactivating…"
+    },
+    "notice": {
+      "created": "You created the “{{name}}” account.",
+      "updated": "You saved the changes to “{{name}}”.",
+      "deactivated": "You deactivated the “{{name}}” account.",
+      "dismiss": "Dismiss"
+    }
+  },
+  "form": {
+    "breadcrumb": "Breadcrumb",
+    "createTitle": "New account",
+    "createSubtitle": "Give it a name you recognize, pick its type and currency, and say how much money it starts with.",
+    "editTitle": "Edit account",
+    "editSubtitle": "The currency can only change while the account has no transactions.",
+    "readOnlyTitle": "Deactivated account",
+    "readOnly": "This account is deactivated: you can look it up, but you cannot edit it or record new transactions in it.",
+    "loading": "Loading the account…",
+    "nameLabel": "Name",
+    "namePlaceholder": "For example, Chase savings",
+    "typeLabel": "Account type",
+    "typePlaceholder": "Pick a type",
+    "typeRequired": "Pick the account type.",
+    "typesLoading": "Loading types…",
+    "typesError": "We could not load your account types.",
+    "noTypes": "You have no active account types yet.",
+    "createType": "Create an account type",
+    "currencyLabel": "Currency",
+    "currency": {
+      "COP": "Colombian peso (COP)",
+      "USD": "US dollar (USD)",
+      "EUR": "Euro (EUR)"
+    },
+    "balanceLabel": "Opening balance",
+    "balanceHint": "It can be negative, such as a card's debt. Up to {{decimals}} decimals.",
+    "balanceRequired": "Enter the opening balance; use 0 if the account starts empty.",
+    "balanceInvalid": "Enter a number with up to {{decimals}} decimals.",
+    "balanceTooLarge": "The balance cannot have more than {{digits}} whole digits.",
+    "cancel": "Cancel",
+    "create": "Create account",
+    "saveChanges": "Save changes",
+    "saving": "Saving…",
+    "backToList": "Back to accounts",
+    "notFoundTitle": "Account unavailable"
+  },
+  "errors": {
+    "ACCOUNT_NAME_REQUIRED": "Enter a name for the account.",
+    "ACCOUNT_NAME_MAX_LENGTH": "The name can be up to {{nameMax}} characters.",
+    "ACCOUNT_NOT_FOUND": "We could not find this account.",
+    "ACCOUNT_TYPE_INVALID": "That account type is no longer available. Pick another one from the list.",
+    "ACCOUNT_CURRENCY_REQUIRED": "Pick the account's currency.",
+    "ACCOUNT_CURRENCY_INVALID": "That currency is not available. Pick one from the list.",
+    "ACCOUNT_CURRENCY_LOCKED": "The account already has transactions, so its currency cannot change."
+  }
+}

@@ -5,8 +5,7 @@
     "copyright": "© 2026 Income Guardian"
   },
   "common": {
-    "or": "O",
-    "backToOverview": "Volver al resumen"
+    "or": "O"
   },
   "errors": {
     "generic": "Algo salió mal. Inténtalo de nuevo."
@@ -17,5 +16,29 @@
     "previous": "Página anterior",
     "next": "Página siguiente",
     "page": "Ir a la página {{page}}"
+  },
+  "shell": {
+    "skipToContent": "Saltar al contenido",
+    "menu": "Menú principal",
+    "openMenu": "Abrir menú",
+    "closeMenu": "Cerrar menú",
+    "navLabel": "Secciones",
+    "soon": "Pronto",
+    "signOut": "Cerrar sesión",
+    "groups": {
+      "money": "Dinero",
+      "setup": "Configuración"
+    },
+    "nav": {
+      "overview": "Resumen",
+      "transactions": "Movimientos",
+      "income": "Ingresos",
+      "expenses": "Gastos",
+      "budgets": "Presupuestos",
+      "accounts": "Cuentas",
+      "categories": "Categorías",
+      "accountTypes": "Tipos de cuenta",
+      "settings": "Ajustes"
+    }
   }
 }
