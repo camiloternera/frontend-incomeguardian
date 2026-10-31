@@ -6,19 +6,33 @@ export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'login' },
   ...authRoutes,
   {
-    path: 'home',
+    // Las vistas privadas comparten el shell: barra lateral en desktop y menú en mobile.
+    path: '',
+    // Carga diferida: el login no paga el peso del shell ni de sus íconos.
+    loadComponent: () => import('@shared/ui/app-shell/app-shell.component').then((m) => m.AppShellComponent),
     canActivate: [sessionGuard],
-    loadChildren: () => import('@features/dashboard/dashboard.routes').then((m) => m.dashboardRoutes),
-  },
-  {
-    path: 'categories',
-    canActivate: [sessionGuard],
-    loadChildren: () => import('@features/categories/categories.routes').then((m) => m.categoriesRoutes),
-  },
-  {
-    path: 'settings',
-    canActivate: [sessionGuard],
-    loadChildren: () => import('@features/settings/settings.routes').then((m) => m.settingsRoutes),
+    children: [
+      {
+        path: 'home',
+        loadChildren: () => import('@features/dashboard/dashboard.routes').then((m) => m.dashboardRoutes),
+      },
+      {
+        path: 'categories',
+        loadChildren: () => import('@features/categories/categories.routes').then((m) => m.categoriesRoutes),
+      },
+      {
+        path: 'accounts',
+        loadChildren: () => import('@features/accounts/accounts.routes').then((m) => m.accountsRoutes),
+      },
+      {
+        path: 'account-types',
+        loadChildren: () => import('@features/account-types/account-types.routes').then((m) => m.accountTypesRoutes),
+      },
+      {
+        path: 'settings',
+        loadChildren: () => import('@features/settings/settings.routes').then((m) => m.settingsRoutes),
+      },
+    ],
   },
   { path: '**', redirectTo: 'login' },
 ];

@@ -7,7 +7,6 @@ import { Language } from '@core/i18n/language';
 import { LanguageService } from '@core/i18n/language.service';
 import { ThemeName } from '@core/theme/theme-name';
 import { ThemeService } from '@core/theme/theme.service';
-import { AppTopBarComponent } from '@shared/ui/app-top-bar.component';
 import { LoadPreferencesUseCase, SavePreferencesUseCase } from '../../../application/preferences-use-cases';
 import { PreferencesError } from '../../../domain/preferences-error';
 import { UserPreferences } from '../../../domain/user-preferences';
@@ -17,7 +16,7 @@ type SaveStatus = 'idle' | 'saving' | 'saved';
 
 @Component({
   selector: 'app-settings-page',
-  imports: [TranslocoDirective, AppTopBarComponent, LucideCheck],
+  imports: [TranslocoDirective, LucideCheck],
   templateUrl: './settings-page.component.html',
   styleUrls: ['./settings-page.component.css'],
 })
