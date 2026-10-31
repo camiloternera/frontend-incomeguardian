@@ -93,12 +93,17 @@ describe('LoginPageComponent', () => {
     expect(request.request.body).toEqual({ email: 'user@example.com', password: 'secret' });
 
     request.flush({
-      UserId: 'user-1',
-      Email: 'user@example.com',
-      Name: 'Test User',
-      AccessToken: 'access-token',
-      RefreshToken: 'refresh-token',
-      ExpiresAt: '2026-08-09T12:00:00Z',
+      data: {
+        userId: 'user-1',
+        email: 'user@example.com',
+        name: 'Test User',
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+        expiresAt: '2026-08-09T12:00:00Z',
+      },
+      isSuccess: true,
+      message: 'ok',
+      errors: [],
     });
 
     expect(navigateSpy).toHaveBeenCalledWith('/home');

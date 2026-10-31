@@ -105,9 +105,13 @@ body {
   min-height: 100vh;
 }
 
-button,
-input {
-  font: inherit;
+/* En la capa base para que las utilidades de Tailwind (text-*, font-*) puedan sobrescribirla. */
+@layer base {
+  button,
+  input,
+  textarea {
+    font: inherit;
+  }
 }
 
 input::-ms-reveal,

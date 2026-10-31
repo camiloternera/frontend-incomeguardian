@@ -1,11 +1,12 @@
 /** Shapes exactly as the backend sends them. Never leave this layer. */
+/** Llega dentro del sobre `ApiResponse`, en camelCase como el resto de la API. */
 export interface LoginResponseDto {
-  UserId: string;
-  Email: string;
-  Name: string;
-  AccessToken: string;
-  RefreshToken: string;
-  ExpiresAt: string;
+  userId: string;
+  email: string;
+  name: string;
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: string;
 }
 
 export interface ConfirmedUserDto {

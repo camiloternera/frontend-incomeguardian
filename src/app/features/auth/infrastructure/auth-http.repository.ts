@@ -16,12 +16,12 @@ import { ConfirmedUserDto, LoginResponseDto } from './auth.dto';
 
 function toSession(dto: LoginResponseDto): AuthSession {
   return {
-    userId: dto.UserId,
-    email: dto.Email,
-    name: dto.Name,
-    accessToken: dto.AccessToken,
-    refreshToken: dto.RefreshToken,
-    expiresAt: dto.ExpiresAt,
+    userId: dto.userId,
+    email: dto.email,
+    name: dto.name,
+    accessToken: dto.accessToken,
+    refreshToken: dto.refreshToken,
+    expiresAt: dto.expiresAt,
   };
 }
 
@@ -34,7 +34,16 @@ export class AuthHttpRepository extends AuthRepository {
   private readonly confirmUrl = `${environment.apiUrl}/api/v1/User/confirm`;
 
   login(credentials: Credentials): Observable<AuthSession> {
-    return this.http.post<LoginResponseDto>(this.loginUrl, credentials).pipe(map(toSession));
+    return this.http.post<ApiResponse<LoginResponseDto>>(this.loginUrl, credentials).pipe(
+      map((response) => {
+        // Sin token no hay sesión: un sobre fallido o vacío se trata como error de login.
+        if (!response?.isSuccess || !response.data?.accessToken) {
+          throw response;
+        }
+
+        return toSession(response.data);
+      }),
+    );
   }
 
   register(user: NewUser): Observable<void> {

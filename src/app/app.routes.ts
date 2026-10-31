@@ -10,5 +10,10 @@ export const routes: Routes = [
     canActivate: [sessionGuard],
     loadChildren: () => import('@features/dashboard/dashboard.routes').then((m) => m.dashboardRoutes),
   },
+  {
+    path: 'categories',
+    canActivate: [sessionGuard],
+    loadChildren: () => import('@features/categories/categories.routes').then((m) => m.categoriesRoutes),
+  },
   { path: '**', redirectTo: 'login' },
 ];

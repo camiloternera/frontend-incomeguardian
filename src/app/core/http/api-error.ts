@@ -8,6 +8,17 @@ function isApiResponse(value: unknown): value is ApiResponse<unknown> {
   return typeof value === 'object' && value !== null && 'isSuccess' in value;
 }
 
+function readEnvelope(error: unknown): ApiResponse<unknown> | null {
+  const envelope = error instanceof HttpErrorResponse ? error.error : error;
+
+  return isApiResponse(envelope) ? envelope : null;
+}
+
+/** El código del primer error que reportó el backend, si existe. */
+export function apiErrorCode(error: unknown): string | undefined {
+  return readEnvelope(error)?.errors?.[0]?.code;
+}
+
 /**
  * Reads the error out of the API envelope, which reaches us either inside an
  * HttpErrorResponse or as a 200 body carrying `isSuccess: false`.
@@ -21,9 +32,9 @@ export function resolveApiError(
   keyByCode: Record<string, string>,
   translate: (key: string) => string,
 ): string {
-  const envelope = error instanceof HttpErrorResponse ? error.error : error;
+  const envelope = readEnvelope(error);
 
-  if (!isApiResponse(envelope)) {
+  if (!envelope) {
     return translate(GENERIC_ERROR_KEY);
   }
 

@@ -19,17 +19,22 @@ describe('AuthHttpRepository', () => {
     http = TestBed.inject(HttpTestingController);
   });
 
-  it('maps the login DTO to a camelCase session', () => {
+  it('unwraps the login envelope into a session', () => {
     let session: unknown;
     repository.login({ email: 'user@example.com', password: 'secret' }).subscribe((value) => (session = value));
 
     http.expectOne('https://localhost:7151/api/v1/User/login').flush({
-      UserId: 'user-1',
-      Email: 'user@example.com',
-      Name: 'Test User',
-      AccessToken: 'access-token',
-      RefreshToken: 'refresh-token',
-      ExpiresAt: '2026-08-09T12:00:00Z',
+      data: {
+        userId: 'user-1',
+        email: 'user@example.com',
+        name: 'Test User',
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+        expiresAt: '2026-08-09T12:00:00Z',
+      },
+      isSuccess: true,
+      message: 'ok',
+      errors: [],
     });
 
     expect(session).toEqual({

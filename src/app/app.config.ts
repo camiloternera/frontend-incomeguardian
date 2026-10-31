@@ -6,12 +6,13 @@ import { routes } from './app.routes';
 import { acceptLanguageInterceptor } from '@core/i18n/accept-language.interceptor';
 import { provideI18n } from '@core/i18n/i18n.providers';
 import { provideAuth } from '@features/auth/auth.providers';
+import { authTokenInterceptor } from '@features/auth/infrastructure/auth-token.interceptor';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
-    provideHttpClient(withInterceptors([acceptLanguageInterceptor])),
+    provideHttpClient(withInterceptors([acceptLanguageInterceptor, authTokenInterceptor])),
     provideI18n(),
     provideAuth(),
   ]
