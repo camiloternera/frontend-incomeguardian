@@ -1,27 +1,22 @@
 {
   "list": {
-    "eyebrow": "Organization",
     "title": "Account types",
-    "subtitle": "Decide how you group your accounts: savings, credit card, digital wallet or whatever you use. Only you can see your account types.",
+    "subtitle": "How you classify your accounts: savings, credit card, digital wallet or whatever you use.",
     "create": "New type",
     "loading": "Loading your account types…",
     "retry": "Try again",
     "edit": "Edit",
     "editNamed": "Edit the {{name}} account type",
-    "deactivateNamed": "Deactivate the {{name}} account type",
     "createdAt": "Created {{date}}",
     "updatedAt": "Updated {{date}}",
     "search": {
       "label": "Search account types",
-      "placeholder": "Search by name or description",
-      "results": "{{count}} of {{total}}"
+      "placeholder": "Search by name or description"
     },
     "empty": {
       "allTitle": "No account types yet",
       "allBody": "Create the first one so you can group your accounts.",
-      "searchTitle": "No type matches “{{query}}”",
-      "searchBody": "Try another word or clear the search.",
-      "clearSearch": "Clear search"
+      "searchTitle": "No type matches “{{query}}”"
     },
     "deactivate": {
       "action": "Deactivate",
@@ -35,10 +30,11 @@
       "updated": "You saved the changes to “{{name}}”.",
       "deactivated": "You deactivated the “{{name}}” account type.",
       "dismiss": "Dismiss"
-    }
+    },
+    "editing": "Editing",
+    "moreActions": "More actions for {{name}}"
   },
   "form": {
-    "breadcrumb": "Breadcrumb",
     "createTitle": "New account type",
     "createSubtitle": "Give it a clear name and a description that reminds you which accounts belong here.",
     "editTitle": "Edit account type",
@@ -54,13 +50,9 @@
     "saving": "Saving…",
     "backToList": "Back to account types",
     "notFoundTitle": "Account type unavailable",
-    "tips": {
-      "label": "Tips",
-      "title": "Before you save",
-      "short": "A short name reads better in lists and reports.",
-      "unique": "The name cannot repeat one of your other account types.",
-      "private": "Only you can see your account types."
-    }
+    "close": "Close panel",
+    "nameHint": "Short and unique: it shows up in lists and reports.",
+    "descriptionHint": "To remember which accounts belong here."
   },
   "errors": {
     "ACCOUNT_TYPE_NAME_REQUIRED": "Enter a name for the account type.",
