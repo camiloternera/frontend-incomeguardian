@@ -2,32 +2,64 @@
   "home": {
     "title": "Resumen",
     "loading": "Cargando tu mes…",
-    "addIncome": "Registrar ingreso",
-    "addExpense": "Registrar gasto",
-    "kpi": {
+    "hideAmounts": "Ocultar montos",
+    "showAmounts": "Mostrar montos",
+    "addMovement": "Registrar movimiento",
+    "soon": "Pronto",
+    "hero": {
       "label": "Tu mes de un vistazo",
-      "balance": "Saldo neto",
+      "availableUntil": "Disponible para gastar hasta el {{date}}",
+      "overspentTitle": "Este mes ya usaste más de lo que recibiste",
+      "summary": "Recibiste {{income}} en {{payments}} pagos este mes. Ya gastaste {{expenses}} y tienes {{committed}} comprometido en gastos fijos.",
+      "summaryOnePayment": "Recibiste {{income}} en un pago este mes. Ya gastaste {{expenses}} y tienes {{committed}} comprometido en gastos fijos.",
+      "overspentBody": "Entre lo gastado y lo comprometido van {{amount}} más de lo que entró. Revisa qué gastos fijos puedes mover al próximo mes.",
+      "split": "Reparto del ingreso del mes: {{spent}} gastado, {{committed}} comprometido y {{available}} disponible",
+      "spent": "Gastado",
+      "committed": "Comprometido",
+      "available": "Disponible",
+      "perDay": "≈ {{amount}} por día durante los próximos {{days}} días",
+      "perDayLast": "≈ {{amount}} para el último día del mes"
+    },
+    "cushion": {
+      "title": "Tu colchón",
+      "months": "{{months}} meses",
+      "body": "Tus ahorros cubren {{months}} meses de gastos al ritmo de tu promedio ({{average}} al mes).",
+      "goal": "Meta: {{months}} meses",
+      "meter": "{{months}} de {{goal}} meses de la meta",
+      "empty": "Cuando tengas meses anteriores registrados calcularemos cuánto te dura lo ahorrado."
+    },
+    "stats": {
+      "label": "Indicadores del mes",
       "income": "Ingresos del mes",
       "expenses": "Gastos del mes",
-      "savingsRate": "Tasa de ahorro",
-      "vsLastMonth": "frente al mes pasado"
+      "savings": "Ahorro proyectado",
+      "aboveAverage": "{{pct}} sobre tu promedio de {{count}} meses",
+      "belowAverage": "{{pct}} bajo tu promedio de {{count}} meses",
+      "ofAverage": "{{pct}} de tu promedio mensual",
+      "ofAverageDays": "{{pct}} de tu promedio, a {{days}} días del cierre",
+      "aboveGoal": "Por encima de tu meta del {{goal}}",
+      "belowGoal": "Por debajo de tu meta del {{goal}}",
+      "noAverage": "Sin meses anteriores para comparar"
     },
     "cashFlow": {
       "title": "Flujo de caja",
+      "period": "últimos {{count}} meses",
       "income": "Ingresos",
       "expenses": "Gastos",
-      "chartLabel": "Ingresos y gastos de los últimos seis meses"
+      "average": "Promedio {{amount}}",
+      "chartLabel": "Ingresos y gastos de los últimos meses"
     },
     "categories": {
-      "title": "En qué se fue"
+      "title": "En qué se fue",
+      "empty": "Aún no hay gastos este mes."
     },
     "recent": {
       "title": "Movimientos recientes",
-      "date": "Fecha",
-      "description": "Descripción",
-      "category": "Categoría",
-      "account": "Cuenta",
-      "amount": "Monto"
+      "today": "Hoy",
+      "yesterday": "Ayer",
+      "income": "Ingreso",
+      "expense": "Gasto",
+      "empty": "Aún no hay movimientos este mes."
     }
   },
   "categories": {
