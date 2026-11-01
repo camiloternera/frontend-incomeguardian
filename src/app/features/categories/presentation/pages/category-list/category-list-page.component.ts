@@ -1,84 +1,83 @@
 import { DatePipe } from '@angular/common';
-import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { Component, ElementRef, HostListener, computed, inject, signal } from '@angular/core';
+import { RouterLink, RouterOutlet } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
-import { LucideLock, LucidePencil, LucidePlus, LucideTrash2 } from '@lucide/angular';
+import { LucideEllipsis, LucidePencil, LucidePlus, LucideSearch, LucideTrash2 } from '@lucide/angular';
 import { finalize } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { LanguageService } from '@core/i18n/language.service';
 import { ThemeService } from '@core/theme/theme.service';
 import { PaginationComponent } from '@shared/ui/pagination.component';
-import { DeleteCategoryUseCase, ListCategoriesUseCase } from '../../../application/category-use-cases';
-import { Category } from '../../../domain/category';
-import { CategoryError, CategoryErrorCode } from '../../../domain/category-error';
-import { CategoryNotice, CategoryNoticeState } from '../../category-notice';
+import { ListCategoriesUseCase } from '../../../application/category-use-cases';
+import { Category, matchesCategory } from '../../../domain/category';
+import { CategoryError } from '../../../domain/category-error';
+import { CategoryWorkspace } from '../../category-workspace';
 
-/** Filtros del listado: todas, solo las propias o solo las predefinidas. */
-export type CategoryFilter = 'all' | 'personal' | 'global';
+/** Pestañas del listado: las categorías propias o las predefinidas. */
+export type CategoryTab = 'personal' | 'predefined';
 
-const FILTERS: readonly CategoryFilter[] = ['all', 'personal', 'global'];
+const TABS: readonly CategoryTab[] = ['personal', 'predefined'];
 
-/** Categorías por página: suficientes para ver un bloque sin tener que desplazarse. */
-export const CATEGORY_PAGE_SIZE = 8;
+/** Categorías por página: caben en pantalla sin tener que desplazarse. */
+export const CATEGORY_PAGE_SIZE = 5;
 
 @Component({
   selector: 'app-category-list-page',
   imports: [
     DatePipe,
     RouterLink,
+    RouterOutlet,
     TranslocoDirective,
     PaginationComponent,
-    LucideLock,
+    LucideEllipsis,
     LucidePencil,
     LucidePlus,
+    LucideSearch,
     LucideTrash2,
   ],
+  providers: [CategoryWorkspace],
   templateUrl: './category-list-page.component.html',
   styleUrls: ['./category-list-page.component.css'],
 })
 export class CategoryListPageComponent {
   private readonly listCategories = inject(ListCategoriesUseCase);
-  private readonly deleteCategory = inject(DeleteCategoryUseCase);
+  private readonly workspace = inject(CategoryWorkspace);
   private readonly transloco = inject(TranslocoService);
-  private readonly router = inject(Router);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
+  protected readonly tabs = TABS;
+  protected readonly pageSize = CATEGORY_PAGE_SIZE;
   protected readonly theme = inject(ThemeService).theme;
   protected readonly locale = inject(LanguageService).language;
-  protected readonly filters = FILTERS;
-  private readonly listTop = viewChild<ElementRef<HTMLElement>>('listTop');
 
-  /** `null` mientras se cargan las categorías por primera vez. */
-  protected readonly categories = signal<Category[] | null>(null);
+  protected readonly categories = this.workspace.categories;
+  protected readonly notice = this.workspace.notice;
+  protected readonly selectedId = this.workspace.selectedId;
   protected readonly loadError = signal('');
-  protected readonly filter = signal<CategoryFilter>('all');
+
+  /** Texto de búsqueda; filtra las dos secciones a la vez. */
+  protected readonly query = signal('');
+  /** Si el panel de crear o editar está abierto (hay una ruta hija activa). */
+  protected readonly panelOpen = signal(false);
+  /** Fila cuyo menú de acciones está desplegado. */
+  protected readonly openMenuId = signal<number | null>(null);
 
   /** Categoría cuya eliminación espera confirmación en su propia fila. */
   protected readonly pendingDeleteId = signal<number | null>(null);
   protected readonly isDeleting = signal(false);
   protected readonly deleteError = signal('');
 
-  /** Aviso de la última acción completada, llegue desde el formulario o desde esta vista. */
-  protected readonly notice = signal<CategoryNotice | null>(
-    (this.router.currentNavigation()?.extras.state as CategoryNoticeState | undefined)?.notice ?? null,
-  );
+  private readonly matching = computed(() => (this.categories() ?? []).filter((category) => matchesCategory(category, this.query())));
 
-  protected readonly personalCount = computed(() => this.categories()?.filter((category) => !category.isGlobal).length ?? 0);
-  protected readonly globalCount = computed(() => this.categories()?.filter((category) => category.isGlobal).length ?? 0);
+  protected readonly personal = computed(() => this.matching().filter((category) => !category.isGlobal));
+  protected readonly predefined = computed(() => this.matching().filter((category) => category.isGlobal));
+  protected readonly searching = computed(() => this.query().trim() !== '');
 
-  protected readonly visible = computed(() => {
-    const categories = this.categories() ?? [];
+  /** Pestaña visible; empieza en las propias, que son las que se pueden cambiar. */
+  protected readonly tab = signal<CategoryTab>('personal');
+  /** Categorías de la pestaña visible que coinciden con la búsqueda. */
+  protected readonly visible = computed(() => (this.tab() === 'personal' ? this.personal() : this.predefined()));
 
-    switch (this.filter()) {
-      case 'personal':
-        return categories.filter((category) => !category.isGlobal);
-      case 'global':
-        return categories.filter((category) => category.isGlobal);
-      default:
-        return categories;
-    }
-  });
-
-  protected readonly pageSize = CATEGORY_PAGE_SIZE;
   private readonly requestedPage = signal(1);
 
   /** Página mostrada; si una eliminación deja la página vacía, retrocede a la última que exista. */
@@ -93,7 +92,6 @@ export class CategoryListPageComponent {
 
     return this.visible().slice(start, start + CATEGORY_PAGE_SIZE);
   });
-
   constructor() {
     this.load();
   }
@@ -106,28 +104,43 @@ export class CategoryListPageComponent {
     });
   }
 
-  protected countFor(filter: CategoryFilter): number {
-    if (filter === 'personal') {
-      return this.personalCount();
-    }
-
-    return filter === 'global' ? this.globalCount() : (this.categories()?.length ?? 0);
-  }
-
-  protected setFilter(filter: CategoryFilter): void {
-    this.filter.set(filter);
+  protected search(value: string): void {
+    this.query.set(value);
     this.requestedPage.set(1);
   }
 
-  /** Cambia de página y lleva la vista al inicio de la lista para leer el nuevo bloque desde arriba. */
+  protected selectTab(tab: CategoryTab): void {
+    this.tab.set(tab);
+    this.requestedPage.set(1);
+    this.pendingDeleteId.set(null);
+  }
+
   protected goToPage(page: number): void {
     this.requestedPage.set(page);
     this.pendingDeleteId.set(null);
-    // `scrollIntoView` no existe en todos los entornos (jsdom en los tests), por eso la llamada opcional.
-    this.listTop()?.nativeElement.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
+    this.openMenuId.set(null);
+  }
+
+  protected toggleMenu(id: number, event: Event): void {
+    // Evita que el clic llegue al documento y cierre el menú en el mismo instante.
+    event.stopPropagation();
+    this.openMenuId.update((current) => (current === id ? null : id));
+  }
+
+  /** Cierra el menú con Escape y devuelve el foco al botón que lo abrió. */
+  protected closeMenu(id: number): void {
+    this.openMenuId.set(null);
+    this.host.nativeElement.querySelector<HTMLButtonElement>(`#category-menu-button-${id}`)?.focus();
+  }
+
+  /** Un clic fuera de un menú abierto lo cierra. */
+  @HostListener('document:click')
+  protected closeMenus(): void {
+    this.openMenuId.set(null);
   }
 
   protected askDelete(category: Category): void {
+    this.openMenuId.set(null);
     this.deleteError.set('');
     this.pendingDeleteId.set(category.id);
   }
@@ -140,32 +153,19 @@ export class CategoryListPageComponent {
     this.isDeleting.set(true);
     this.deleteError.set('');
 
-    this.deleteCategory
-      .execute(category.id)
-      .pipe(finalize(() => this.isDeleting.set(false)))
-      .subscribe({
-        next: () => {
-          this.removeFromList(category.id);
-          this.notice.set({ kind: 'deleted', name: category.name });
-        },
-        error: (error: unknown) => {
-          // Si ya no existe, otra pestaña la eliminó: se retira de la lista igualmente.
-          if (error instanceof CategoryError && error.code === CategoryErrorCode.NotFound) {
-            this.removeFromList(category.id);
-          }
-
-          this.deleteError.set(this.messageOf(error));
-        },
-      });
+    this.workspace
+      .remove(category)
+      .pipe(
+        finalize(() => {
+          this.isDeleting.set(false);
+          this.pendingDeleteId.set(null);
+        }),
+      )
+      .subscribe({ error: (error: unknown) => this.deleteError.set(this.messageOf(error)) });
   }
 
   protected dismissNotice(): void {
     this.notice.set(null);
-  }
-
-  private removeFromList(id: number): void {
-    this.categories.update((categories) => categories?.filter((category) => category.id !== id) ?? null);
-    this.pendingDeleteId.set(null);
   }
 
   private messageOf(error: unknown): string {
