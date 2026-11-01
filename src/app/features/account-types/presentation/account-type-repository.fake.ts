@@ -1,6 +1,6 @@
-import { Provider } from '@angular/core';
+import { Routes } from '@angular/router';
 import { Observable, of, throwError } from 'rxjs';
-import { provideAccountTypes } from '../account-types.providers';
+import { accountTypesRoutes } from '../account-types.routes';
 import { AccountType, AccountTypeDraft } from '../domain/account-type';
 import { AccountTypeError, AccountTypeErrorCode } from '../domain/account-type-error';
 import { AccountTypeRepository } from '../domain/account-type.repository';
@@ -64,7 +64,14 @@ export class FakeAccountTypeRepository extends AccountTypeRepository {
   }
 }
 
-/** Los proveedores reales del dominio, con el repositorio HTTP sustituido por el falso. */
-export function provideFakeAccountTypes(fake: FakeAccountTypeRepository): Provider[] {
-  return [...provideAccountTypes(), { provide: AccountTypeRepository, useValue: fake }];
+/** Las rutas reales del dominio montadas en `/account-types`, con el repositorio falso en lugar del HTTP. */
+export function fakeAccountTypesRoutes(fake: FakeAccountTypeRepository): Routes {
+  const [root] = accountTypesRoutes;
+
+  return [
+    {
+      path: 'account-types',
+      children: [{ ...root, providers: [...(root.providers ?? []), { provide: AccountTypeRepository, useValue: fake }] }],
+    },
+  ];
 }

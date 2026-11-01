@@ -1,0 +1,257 @@
+<section
+  *transloco="let t"
+  data-testid="account-type-panel"
+  class="flex flex-col gap-6 lg:rounded-lg lg:border lg:border-ig-border lg:bg-ig-surface lg:p-6"
+  aria-labelledby="account-type-panel-title"
+  (keydown.escape)="closeOnEscape()"
+>
+  <div class="flex items-start justify-between gap-4">
+    <div class="flex min-w-0 flex-col gap-2">
+      <h2
+        #heading
+        id="account-type-panel-title"
+        tabindex="-1"
+        class="m-0 text-[20px] font-bold tracking-[-0.02em] outline-none"
+      >
+        @switch (status()) {
+          @case ('notFound') {
+            {{ t('accountTypes.form.notFoundTitle') }}
+          }
+          @default {
+            {{ isEdit() ? t('accountTypes.form.editTitle') : t('accountTypes.form.createTitle') }}
+          }
+        }
+      </h2>
+      @if (status() === 'ready') {
+        <p class="m-0 text-[13px] leading-normal text-ig-muted">
+          {{
+            isEdit() ? t('accountTypes.form.editSubtitle') : t('accountTypes.form.createSubtitle')
+          }}
+        </p>
+      }
+    </div>
+    <a
+      data-testid="close-panel"
+      class="-mr-2 -mt-2 inline-grid size-11 shrink-0 place-items-center rounded-lg text-ig-muted hover:bg-ig-surface-raised hover:text-ig-text focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+      [routerLink]="listUrl"
+      [attr.aria-label]="t('accountTypes.form.close')"
+    >
+      <svg lucideX [size]="18" aria-hidden="true"></svg>
+    </a>
+  </div>
+
+  @switch (status()) {
+    @case ('loading') {
+      @if (loadError()) {
+        <div class="flex flex-col items-start gap-4">
+          <p data-testid="load-error" class="m-0 text-[14px]" role="alert">{{ loadError() }}</p>
+          <button
+            class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-border bg-transparent px-5 text-[14px] font-bold text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+            type="button"
+            (click)="retry()"
+          >
+            {{ t('accountTypes.list.retry') }}
+          </button>
+        </div>
+      } @else {
+        <p class="m-0 text-[14px] text-ig-muted" role="status">
+          {{ t('accountTypes.form.loading') }}
+        </p>
+      }
+    }
+
+    @case ('notFound') {
+      <div data-testid="account-type-not-found" class="flex flex-col items-start gap-4">
+        <p class="m-0 text-[14px] text-ig-muted">{{ t('accountTypes.errors.' + notFoundCode) }}</p>
+        <a
+          class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-border px-5 text-[14px] font-bold text-ig-text no-underline hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+          [routerLink]="listUrl"
+        >
+          {{ t('accountTypes.form.backToList') }}
+        </a>
+      </div>
+    }
+
+    @default {
+      <form
+        class="flex flex-col gap-6"
+        [formGroup]="accountTypeForm"
+        (ngSubmit)="submit()"
+        novalidate
+      >
+        <div class="flex flex-col gap-2">
+          <div class="flex items-baseline justify-between gap-3">
+            <label class="text-[13px] font-bold" for="account-type-name">{{
+              t('accountTypes.form.nameLabel')
+            }}</label>
+            <span
+              id="account-type-name-count"
+              class="text-[12px] tabular-nums text-ig-muted"
+              [class.text-ig-text]="nameLength() > nameMax"
+              >{{ nameLength() }} / {{ nameMax }}</span
+            >
+          </div>
+          <input
+            class="min-h-12 w-full rounded-lg border bg-ig-surface px-3 text-[16px] text-ig-text outline-none placeholder:text-ig-muted focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 lg:min-h-11 lg:text-[14px]"
+            [class]="nameError() ? 'border-ig-text' : 'border-ig-border'"
+            id="account-type-name"
+            data-testid="account-type-name"
+            formControlName="name"
+            type="text"
+            autocomplete="off"
+            [placeholder]="t('accountTypes.form.namePlaceholder')"
+            [attr.aria-invalid]="nameError() !== null"
+            [attr.aria-describedby]="
+              nameError()
+                ? 'account-type-name-error account-type-name-count'
+                : 'account-type-name-hint account-type-name-count'
+            "
+          />
+          @if (nameError(); as code) {
+            <p
+              id="account-type-name-error"
+              data-testid="name-error"
+              class="m-0 text-[13px] leading-snug text-ig-text"
+              role="alert"
+            >
+              {{ t('accountTypes.errors.' + code, limits) }}
+            </p>
+          } @else {
+            <p id="account-type-name-hint" class="m-0 text-[12px] text-ig-muted">
+              {{ t('accountTypes.form.nameHint') }}
+            </p>
+          }
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <div class="flex items-baseline justify-between gap-3">
+            <label class="text-[13px] font-bold" for="account-type-description">{{
+              t('accountTypes.form.descriptionLabel')
+            }}</label>
+            <span
+              id="account-type-description-count"
+              class="text-[12px] tabular-nums text-ig-muted"
+              [class.text-ig-text]="descriptionLength() > descriptionMax"
+              >{{ descriptionLength() }} / {{ descriptionMax }}</span
+            >
+          </div>
+          <textarea
+            class="min-h-28 w-full resize-y rounded-lg border bg-ig-surface px-3 py-3 text-[16px] leading-normal text-ig-text outline-none placeholder:text-ig-muted focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 lg:text-[14px]"
+            [class]="descriptionError() ? 'border-ig-text' : 'border-ig-border'"
+            id="account-type-description"
+            data-testid="account-type-description"
+            formControlName="description"
+            rows="4"
+            [placeholder]="t('accountTypes.form.descriptionPlaceholder')"
+            [attr.aria-invalid]="descriptionError() !== null"
+            [attr.aria-describedby]="
+              descriptionError()
+                ? 'account-type-description-error account-type-description-count'
+                : 'account-type-description-hint account-type-description-count'
+            "
+          ></textarea>
+          @if (descriptionError(); as code) {
+            <p
+              id="account-type-description-error"
+              data-testid="description-error"
+              class="m-0 text-[13px] leading-snug text-ig-text"
+              role="alert"
+            >
+              {{ t('accountTypes.errors.' + code, limits) }}
+            </p>
+          } @else {
+            <p id="account-type-description-hint" class="m-0 text-[12px] text-ig-muted">
+              {{ t('accountTypes.form.descriptionHint') }}
+            </p>
+          }
+        </div>
+
+        @if (formError()) {
+          <p
+            data-testid="form-error"
+            class="m-0 rounded-lg border border-ig-border bg-ig-surface-raised px-4 py-3 text-[14px]"
+            role="alert"
+          >
+            {{ formError() }}
+          </p>
+        }
+
+        @if (confirmingDeactivate()) {
+          <div
+            class="flex flex-col gap-3 border-t border-ig-border pt-6"
+            data-testid="panel-deactivate-confirmation"
+          >
+            <p class="m-0 text-[14px]">
+              {{
+                t('accountTypes.list.deactivate.question', {
+                  name: accountTypeForm.controls.name.value,
+                })
+              }}
+            </p>
+            <div class="flex flex-wrap justify-end gap-2">
+              <button
+                class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-border bg-transparent px-4 text-[14px] text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                type="button"
+                [disabled]="isDeactivating()"
+                (click)="cancelDeactivate()"
+              >
+                {{ t('accountTypes.list.deactivate.cancel') }}
+              </button>
+              <button
+                data-testid="panel-confirm-deactivate"
+                class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-text bg-ig-text px-4 text-[14px] font-bold text-ig-canvas focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                type="button"
+                [disabled]="isDeactivating()"
+                (click)="confirmDeactivate()"
+              >
+                {{
+                  isDeactivating()
+                    ? t('accountTypes.list.deactivate.deactivating')
+                    : t('accountTypes.list.deactivate.confirm')
+                }}
+              </button>
+            </div>
+          </div>
+        } @else {
+          <div
+            class="flex flex-wrap items-center justify-between gap-4 border-t border-ig-border pt-6"
+          >
+            @if (isEdit()) {
+              <button
+                data-testid="panel-deactivate"
+                class="-ml-3 inline-flex min-h-11 items-center gap-2 rounded-lg border border-transparent bg-transparent px-3 text-[14px] font-medium text-ig-muted hover:text-ig-text focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                type="button"
+                (click)="askDeactivate()"
+              >
+                <svg lucideBan [size]="16" aria-hidden="true"></svg>
+                {{ t('accountTypes.list.deactivate.action') }}
+              </button>
+            }
+            <div class="ml-auto flex gap-2">
+              <a
+                class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-border px-4 text-[14px] text-ig-text no-underline hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                [routerLink]="listUrl"
+              >
+                {{ t('accountTypes.form.cancel') }}
+              </a>
+              <button
+                data-testid="account-type-submit"
+                class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-accent bg-ig-accent px-5 text-[14px] font-bold text-ig-on-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                type="submit"
+                [disabled]="isSubmitting()"
+              >
+                @if (isSubmitting()) {
+                  {{ t('accountTypes.form.saving') }}
+                } @else {
+                  {{
+                    isEdit() ? t('accountTypes.form.saveChanges') : t('accountTypes.form.create')
+                  }}
+                }
+              </button>
+            </div>
+          </div>
+        }
+      </form>
+    }
+  }
+</section>

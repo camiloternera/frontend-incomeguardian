@@ -1,27 +1,22 @@
 {
   "list": {
-    "eyebrow": "Organización",
     "title": "Tipos de cuenta",
-    "subtitle": "Define cómo clasificas tus cuentas: ahorros, tarjeta de crédito, billetera digital o lo que uses. Solo tú ves tus tipos de cuenta.",
+    "subtitle": "Cómo clasificas tus cuentas: ahorros, tarjeta de crédito, billetera digital o lo que uses.",
     "create": "Nuevo tipo",
     "loading": "Cargando tus tipos de cuenta…",
     "retry": "Intentar de nuevo",
     "edit": "Editar",
     "editNamed": "Editar el tipo de cuenta {{name}}",
-    "deactivateNamed": "Desactivar el tipo de cuenta {{name}}",
     "createdAt": "Creado el {{date}}",
     "updatedAt": "Actualizado el {{date}}",
     "search": {
       "label": "Buscar tipos de cuenta",
-      "placeholder": "Buscar por nombre o descripción",
-      "results": "{{count}} de {{total}}"
+      "placeholder": "Buscar por nombre o descripción"
     },
     "empty": {
       "allTitle": "Todavía no tienes tipos de cuenta",
       "allBody": "Crea el primero para poder clasificar tus cuentas.",
-      "searchTitle": "Ningún tipo coincide con «{{query}}»",
-      "searchBody": "Prueba con otra palabra o borra la búsqueda.",
-      "clearSearch": "Borrar búsqueda"
+      "searchTitle": "Ningún tipo coincide con «{{query}}»"
     },
     "deactivate": {
       "action": "Desactivar",
@@ -35,10 +30,11 @@
       "updated": "Guardaste los cambios de «{{name}}».",
       "deactivated": "Desactivaste el tipo de cuenta «{{name}}».",
       "dismiss": "Cerrar"
-    }
+    },
+    "editing": "Editando",
+    "moreActions": "Más acciones para {{name}}"
   },
   "form": {
-    "breadcrumb": "Ruta de navegación",
     "createTitle": "Nuevo tipo de cuenta",
     "createSubtitle": "Dale un nombre claro y una descripción que te ayude a recordar qué cuentas van aquí.",
     "editTitle": "Editar tipo de cuenta",
@@ -54,13 +50,9 @@
     "saving": "Guardando…",
     "backToList": "Volver a tipos de cuenta",
     "notFoundTitle": "Tipo de cuenta no disponible",
-    "tips": {
-      "label": "Consejos",
-      "title": "Antes de guardar",
-      "short": "Un nombre corto se lee mejor en listas y reportes.",
-      "unique": "El nombre no puede repetir el de otro de tus tipos de cuenta.",
-      "private": "Tus tipos de cuenta solo los ves tú."
-    }
+    "close": "Cerrar panel",
+    "nameHint": "Corto y único: se lee en listas y reportes.",
+    "descriptionHint": "Para recordar qué cuentas van aquí."
   },
   "errors": {
     "ACCOUNT_TYPE_NAME_REQUIRED": "Escribe un nombre para el tipo de cuenta.",
