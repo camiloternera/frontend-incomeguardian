@@ -1,32 +1,28 @@
-import { Component, computed, inject, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { Component, DestroyRef, ElementRef, afterNextRender, computed, inject, signal, viewChild } from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { AbstractControl, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
+import { LucideBan, LucideX } from '@lucide/angular';
 import { Observable, finalize } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
-import { ThemeService } from '@core/theme/theme.service';
 import { notBlank } from '@shared/forms/not-blank.validator';
 import {
   CreateAccountTypeUseCase,
   GetAccountTypeUseCase,
   UpdateAccountTypeUseCase,
 } from '../../../application/account-type-use-cases';
-import {
-  ACCOUNT_TYPE_DESCRIPTION_MAX_LENGTH,
-  ACCOUNT_TYPE_NAME_MAX_LENGTH,
-  AccountType,
-} from '../../../domain/account-type';
+import { ACCOUNT_TYPE_DESCRIPTION_MAX_LENGTH, ACCOUNT_TYPE_NAME_MAX_LENGTH, AccountType } from '../../../domain/account-type';
 import {
   AccountTypeError,
   AccountTypeErrorCode,
   DESCRIPTION_ERROR_CODES,
   NAME_ERROR_CODES,
 } from '../../../domain/account-type-error';
-import { AccountTypeNoticeState } from '../../account-type-notice';
+import { AccountTypeWorkspace } from '../../account-type-workspace';
 
-/** Estado de la vista: listo para editar, cargando o sin tipo de cuenta. */
-type FormStatus = 'ready' | 'loading' | 'notFound';
+/** Estado del panel: listo para editar, cargando o sin tipo de cuenta. */
+type PanelStatus = 'ready' | 'loading' | 'notFound';
 
 /** Códigos de error que pinta cada campo, según la validación del navegador o la respuesta del backend. */
 interface FieldErrorCodes {
@@ -44,35 +40,49 @@ const DESCRIPTION_CODES: FieldErrorCodes = {
   maxLength: AccountTypeErrorCode.DescriptionMaxLength,
 };
 
+/** Ruta del listado, a la que vuelve el panel al cerrarse. */
+const LIST_URL = '/account-types';
+
+/**
+ * Panel para crear o editar un tipo de cuenta junto a la lista (en mobile ocupa la pantalla).
+ * Vive en una ruta hija del listado y le comunica los cambios mediante `AccountTypeWorkspace`.
+ */
 @Component({
-  selector: 'app-account-type-form-page',
-  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective],
-  templateUrl: './account-type-form-page.component.html',
-  styleUrls: ['./account-type-form-page.component.css'],
+  selector: 'app-account-type-panel',
+  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective, LucideBan, LucideX],
+  templateUrl: './account-type-panel.component.html',
 })
-export class AccountTypeFormPageComponent {
+export class AccountTypePanelComponent {
   private readonly getAccountType = inject(GetAccountTypeUseCase);
   private readonly createAccountType = inject(CreateAccountTypeUseCase);
   private readonly updateAccountType = inject(UpdateAccountTypeUseCase);
+  private readonly workspace = inject(AccountTypeWorkspace);
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly router = inject(Router);
   private readonly transloco = inject(TranslocoService);
+  private readonly heading = viewChild<ElementRef<HTMLElement>>('heading');
 
-  protected readonly theme = inject(ThemeService).theme;
+  protected readonly listUrl = LIST_URL;
   protected readonly nameMax = ACCOUNT_TYPE_NAME_MAX_LENGTH;
   protected readonly descriptionMax = ACCOUNT_TYPE_DESCRIPTION_MAX_LENGTH;
   /** Parámetros que interpolan los mensajes de longitud máxima. */
   protected readonly limits = { nameMax: ACCOUNT_TYPE_NAME_MAX_LENGTH, descriptionMax: ACCOUNT_TYPE_DESCRIPTION_MAX_LENGTH };
   protected readonly notFoundCode = AccountTypeErrorCode.NotFound;
 
-  /** Identificador del tipo en edición; `null` cuando se crea uno nuevo. */
-  protected readonly accountTypeId = this.readId();
-  protected readonly isEdit = this.accountTypeId !== null;
+  /** Tipo de cuenta en edición; `null` cuando se crea uno nuevo. Cambia si se pasa de una fila a otra. */
+  protected readonly accountTypeId = signal<number | null>(null);
+  protected readonly isEdit = computed(() => this.accountTypeId() !== null);
+  /** El tipo de cuenta tal como llegó del backend, para desactivarlo con su nombre. */
+  private readonly loaded = signal<AccountType | null>(null);
 
-  protected readonly status = signal<FormStatus>(this.isEdit ? 'loading' : 'ready');
+  protected readonly status = signal<PanelStatus>('ready');
   protected readonly loadError = signal('');
   protected readonly isSubmitting = signal(false);
   protected readonly formError = signal('');
+
+  /** Si el pie del panel pide confirmar la eliminación. */
+  protected readonly confirmingDeactivate = signal(false);
+  protected readonly isDeactivating = signal(false);
 
   /** Errores que devolvió el backend para cada campo; se limpian al volver a escribir. */
   protected readonly nameServerError = signal<AccountTypeErrorCode | null>(null);
@@ -83,9 +93,7 @@ export class AccountTypeFormPageComponent {
     description: ['', [notBlank, Validators.maxLength(ACCOUNT_TYPE_DESCRIPTION_MAX_LENGTH)]],
   });
 
-  private readonly formValue = toSignal(this.accountTypeForm.valueChanges, {
-    initialValue: this.accountTypeForm.getRawValue(),
-  });
+  private readonly formValue = toSignal(this.accountTypeForm.valueChanges, { initialValue: this.accountTypeForm.getRawValue() });
 
   protected readonly nameLength = computed(() => this.formValue().name?.length ?? 0);
   protected readonly descriptionLength = computed(() => this.formValue().description?.length ?? 0);
@@ -94,9 +102,15 @@ export class AccountTypeFormPageComponent {
     this.accountTypeForm.controls.name.valueChanges.subscribe(() => this.nameServerError.set(null));
     this.accountTypeForm.controls.description.valueChanges.subscribe(() => this.descriptionServerError.set(null));
 
-    if (this.accountTypeId !== null) {
-      this.load(this.accountTypeId);
-    }
+    // Al pasar de editar una fila a otra, Angular reutiliza el panel: se reinicia con cada id.
+    inject(ActivatedRoute)
+      .paramMap.pipe(takeUntilDestroyed())
+      .subscribe((params) => this.open(parseId(params.get('id'))));
+
+    inject(DestroyRef).onDestroy(() => this.workspace.selectedId.set(null));
+
+    // Lleva el foco al título para que el lector de pantalla anuncie el panel recién abierto.
+    afterNextRender(() => this.heading()?.nativeElement.focus());
   }
 
   /** Código a mostrar bajo el nombre: primero el del backend, luego el de la validación local. */
@@ -106,15 +120,26 @@ export class AccountTypeFormPageComponent {
 
   /** Código a mostrar bajo la descripción: primero el del backend, luego el de la validación local. */
   protected descriptionError(): AccountTypeErrorCode | null {
-    return (
-      this.descriptionServerError() ?? this.localError(this.accountTypeForm.controls.description, DESCRIPTION_CODES)
-    );
+    return this.descriptionServerError() ?? this.localError(this.accountTypeForm.controls.description, DESCRIPTION_CODES);
   }
 
   protected retry(): void {
-    if (this.accountTypeId !== null) {
-      this.load(this.accountTypeId);
+    const id = this.accountTypeId();
+
+    if (id !== null) {
+      this.load(id);
     }
+  }
+
+  /** Escape cierra el panel, salvo que haya cambios sin guardar. */
+  protected closeOnEscape(): void {
+    if (!this.accountTypeForm.dirty) {
+      this.close();
+    }
+  }
+
+  protected close(): void {
+    void this.router.navigateByUrl(LIST_URL);
   }
 
   protected submit(): void {
@@ -125,22 +150,71 @@ export class AccountTypeFormPageComponent {
       return;
     }
 
+    const id = this.accountTypeId();
     const draft = this.accountTypeForm.getRawValue();
     const request: Observable<AccountType> =
-      this.accountTypeId === null
-        ? this.createAccountType.execute(draft)
-        : this.updateAccountType.execute(this.accountTypeId, draft);
+      id === null ? this.createAccountType.execute(draft) : this.updateAccountType.execute(id, draft);
 
     this.isSubmitting.set(true);
     request.pipe(finalize(() => this.isSubmitting.set(false))).subscribe({
       next: (accountType) => {
-        const state: AccountTypeNoticeState = {
-          notice: { kind: this.isEdit ? 'updated' : 'created', name: accountType.name },
-        };
-        void this.router.navigate(['/account-types'], { state });
+        this.workspace.saved(accountType, id === null ? 'created' : 'updated');
+        this.close();
       },
       error: (error: unknown) => this.handleSubmitError(error),
     });
+  }
+
+  protected askDeactivate(): void {
+    this.formError.set('');
+    this.confirmingDeactivate.set(true);
+  }
+
+  protected cancelDeactivate(): void {
+    this.confirmingDeactivate.set(false);
+  }
+
+  protected confirmDeactivate(): void {
+    const accountType = this.loaded();
+
+    if (!accountType) {
+      return;
+    }
+
+    this.isDeactivating.set(true);
+    this.workspace
+      .deactivate(accountType)
+      .pipe(finalize(() => this.isDeactivating.set(false)))
+      .subscribe({
+        next: () => this.close(),
+        error: (error: unknown) => {
+          this.confirmingDeactivate.set(false);
+
+          if (error instanceof AccountTypeError && error.code === AccountTypeErrorCode.NotFound) {
+            this.status.set('notFound');
+            return;
+          }
+
+          this.formError.set(this.messageOf(error));
+        },
+      });
+  }
+
+  /** Prepara el panel para crear (`null`) o para editar el tipo de cuenta indicado. */
+  private open(id: number | null): void {
+    this.accountTypeId.set(id);
+    this.workspace.selectedId.set(id);
+    this.loaded.set(null);
+    this.confirmingDeactivate.set(false);
+    this.formError.set('');
+    this.accountTypeForm.reset({ name: '', description: '' });
+
+    if (id === null) {
+      this.status.set('ready');
+      return;
+    }
+
+    this.load(id);
   }
 
   private load(id: number): void {
@@ -149,6 +223,7 @@ export class AccountTypeFormPageComponent {
 
     this.getAccountType.execute(id).subscribe({
       next: (accountType) => {
+        this.loaded.set(accountType);
         this.accountTypeForm.reset({ name: accountType.name, description: accountType.description });
         this.status.set('ready');
       },
@@ -186,14 +261,14 @@ export class AccountTypeFormPageComponent {
     return control.hasError('maxlength') ? codes.maxLength : codes.required;
   }
 
-  private readId(): number | null {
-    const raw = inject(ActivatedRoute).snapshot.paramMap.get('id');
-    const id = raw === null ? NaN : Number(raw);
-
-    return Number.isInteger(id) ? id : null;
-  }
-
   private messageOf(error: unknown): string {
     return error instanceof AccountTypeError ? error.message : this.transloco.translate(GENERIC_ERROR_KEY);
   }
+}
+
+/** Convierte el parámetro de la ruta en un id entero, o `null` si no hay (crear). */
+function parseId(raw: string | null): number | null {
+  const id = raw === null ? NaN : Number(raw);
+
+  return Number.isInteger(id) ? id : null;
 }
