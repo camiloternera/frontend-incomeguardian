@@ -1,6 +1,6 @@
-import { Provider } from '@angular/core';
+import { Routes } from '@angular/router';
 import { Observable, of, throwError } from 'rxjs';
-import { provideAccounts } from '../accounts.providers';
+import { accountsRoutes } from '../accounts.routes';
 import { Account, AccountDraft, AccountTypeOption } from '../domain/account';
 import { AccountError, AccountErrorCode } from '../domain/account-error';
 import { AccountRepository, AccountTypeOptionsRepository } from '../domain/account.repository';
@@ -52,7 +52,13 @@ export class FakeAccountRepository extends AccountRepository {
 
   create(draft: AccountDraft): Observable<Account> {
     this.lastDraft = draft;
-    return this.respond(() => this.fromDraft(99, draft, { isActive: true, createdAt: '2026-10-31T00:00:00Z', updatedAt: null }));
+    return this.respond(() =>
+      this.fromDraft(99, draft, {
+        isActive: true,
+        createdAt: '2026-10-31T00:00:00Z',
+        updatedAt: null,
+      }),
+    );
   }
 
   update(id: number, draft: AccountDraft): Observable<Account> {
@@ -62,14 +68,25 @@ export class FakeAccountRepository extends AccountRepository {
 
   deactivate(id: number): Observable<void> {
     return this.respond(() => {
-      this.accounts = this.accounts.map((account) => (account.id === id ? { ...account, isActive: false } : account));
+      this.accounts = this.accounts.map((account) =>
+        account.id === id ? { ...account, isActive: false } : account,
+      );
     });
   }
 
-  private fromDraft(id: number, draft: AccountDraft, rest: Pick<Account, 'isActive' | 'createdAt' | 'updatedAt'>): Account {
+  private fromDraft(
+    id: number,
+    draft: AccountDraft,
+    rest: Pick<Account, 'isActive' | 'createdAt' | 'updatedAt'>,
+  ): Account {
     const { accountTypeId, ...fields } = draft;
 
-    return { id, ...fields, accountType: { id: accountTypeId, name: `Tipo ${accountTypeId}` }, ...rest };
+    return {
+      id,
+      ...fields,
+      accountType: { id: accountTypeId, name: `Tipo ${accountTypeId}` },
+      ...rest,
+    };
   }
 
   private find(id: number): Account {
@@ -110,14 +127,26 @@ export class FakeAccountTypeOptionsRepository extends AccountTypeOptionsReposito
   }
 }
 
-/** Los proveedores reales del dominio, con los repositorios HTTP sustituidos por los falsos. */
-export function provideFakeAccounts(
+/** Las rutas reales del dominio montadas en `/accounts`, con los repositorios falsos en lugar de los HTTP. */
+export function fakeAccountsRoutes(
   fake: FakeAccountRepository,
   options = new FakeAccountTypeOptionsRepository(),
-): Provider[] {
+): Routes {
+  const [root] = accountsRoutes;
+
   return [
-    ...provideAccounts(),
-    { provide: AccountRepository, useValue: fake },
-    { provide: AccountTypeOptionsRepository, useValue: options },
+    {
+      path: 'accounts',
+      children: [
+        {
+          ...root,
+          providers: [
+            ...(root.providers ?? []),
+            { provide: AccountRepository, useValue: fake },
+            { provide: AccountTypeOptionsRepository, useValue: options },
+          ],
+        },
+      ],
+    },
   ];
 }

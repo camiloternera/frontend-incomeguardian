@@ -1,88 +1,95 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
-import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { CurrencyPipe } from '@angular/common';
+import { Component, ElementRef, HostListener, computed, inject, signal } from '@angular/core';
+import { RouterLink, RouterOutlet } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
-import { LucideBan, LucideEye, LucidePencil, LucidePlus, LucideSearch } from '@lucide/angular';
+import { LucideBan, LucideEllipsis, LucidePencil, LucidePlus, LucideSearch } from '@lucide/angular';
 import { finalize } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { LanguageService } from '@core/i18n/language.service';
 import { ThemeService } from '@core/theme/theme.service';
 import { PaginationComponent } from '@shared/ui/pagination.component';
-import { DeactivateAccountUseCase, ListAccountsUseCase } from '../../../application/account-use-cases';
-import { Account, matchesAccount } from '../../../domain/account';
-import { AccountError, AccountErrorCode } from '../../../domain/account-error';
-import { AccountNotice, AccountNoticeState } from '../../account-notice';
+import { ListAccountsUseCase } from '../../../application/account-use-cases';
+import { Account, matchesAccount, totalsByCurrency } from '../../../domain/account';
+import { AccountError } from '../../../domain/account-error';
+import { AccountWorkspace } from '../../account-workspace';
 import { balanceDigits } from '../../balance-format';
 
-/** Filtros del listado: las cuentas en uso o las que ya se desactivaron. */
-export type AccountFilter = 'active' | 'inactive';
+/** Pestañas del listado: las cuentas en uso o las que ya se desactivaron. */
+export type AccountTab = 'active' | 'inactive';
 
-const FILTERS: readonly AccountFilter[] = ['active', 'inactive'];
+const TABS: readonly AccountTab[] = ['active', 'inactive'];
 
-/** Cuentas por página, igual que en categorías y tipos de cuenta. */
-export const ACCOUNT_PAGE_SIZE = 8;
+/** Cuentas por página: caben en pantalla sin tener que desplazarse. */
+export const ACCOUNT_PAGE_SIZE = 5;
 
 @Component({
   selector: 'app-account-list-page',
   imports: [
     CurrencyPipe,
-    DatePipe,
     RouterLink,
+    RouterOutlet,
     TranslocoDirective,
     PaginationComponent,
     LucideBan,
-    LucideEye,
+    LucideEllipsis,
     LucidePencil,
     LucidePlus,
     LucideSearch,
   ],
+  providers: [AccountWorkspace],
   templateUrl: './account-list-page.component.html',
-  styleUrls: ['./account-list-page.component.css'],
+  host: { class: 'block' },
 })
 export class AccountListPageComponent {
   private readonly listAccounts = inject(ListAccountsUseCase);
-  private readonly deactivateAccount = inject(DeactivateAccountUseCase);
+  private readonly workspace = inject(AccountWorkspace);
   private readonly transloco = inject(TranslocoService);
-  private readonly router = inject(Router);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
+  protected readonly pageSize = ACCOUNT_PAGE_SIZE;
+  protected readonly tabs = TABS;
   protected readonly theme = inject(ThemeService).theme;
   protected readonly locale = inject(LanguageService).language;
-  protected readonly filters = FILTERS;
   protected readonly balanceDigits = balanceDigits;
-  private readonly listTop = viewChild<ElementRef<HTMLElement>>('listTop');
 
-  /** `null` mientras se cargan las cuentas por primera vez. */
-  protected readonly accounts = signal<Account[] | null>(null);
+  protected readonly accounts = this.workspace.accounts;
+  protected readonly notice = this.workspace.notice;
+  protected readonly selectedId = this.workspace.selectedId;
   protected readonly loadError = signal('');
-  protected readonly filter = signal<AccountFilter>('active');
+
+  /** Texto de búsqueda por nombre o tipo de cuenta. */
   protected readonly query = signal('');
+  protected readonly tab = signal<AccountTab>('active');
+  /** Si el panel de crear o editar está abierto (hay una ruta hija activa). */
+  protected readonly panelOpen = signal(false);
+  /** Fila cuyo menú de acciones está desplegado. */
+  protected readonly openMenuId = signal<number | null>(null);
 
   /** Cuenta cuya desactivación espera confirmación en su propia fila. */
   protected readonly pendingDeactivateId = signal<number | null>(null);
   protected readonly isDeactivating = signal(false);
   protected readonly deactivateError = signal('');
 
-  /** Aviso de la última acción completada, llegue desde el formulario o desde esta vista. */
-  protected readonly notice = signal<AccountNotice | null>(
-    (this.router.currentNavigation()?.extras.state as AccountNoticeState | undefined)?.notice ?? null,
+  /** Saldos de las cuentas activas por moneda; no dependen de la pestaña ni de la búsqueda. */
+  protected readonly totals = computed(() => totalsByCurrency(this.accounts() ?? []));
+
+  private readonly matching = computed(() =>
+    (this.accounts() ?? []).filter((account) => matchesAccount(account, this.query())),
   );
+  /** Coincidencias de la búsqueda en cada pestaña, para el contador de la pestaña. */
+  protected readonly counts = computed(() => {
+    const active = this.matching().filter((account) => account.isActive).length;
 
-  /** Cuentas del filtro elegido, antes de aplicar la búsqueda. */
-  private readonly inFilter = computed(() => {
-    const active = this.filter() === 'active';
-
-    return (this.accounts() ?? []).filter((account) => account.isActive === active);
+    return { active, inactive: this.matching().length - active };
   });
-
+  /** Cuentas de la pestaña elegida que coinciden con la búsqueda. */
   protected readonly visible = computed(() => {
-    const query = this.query();
+    const active = this.tab() === 'active';
 
-    return this.inFilter().filter((account) => matchesAccount(account, query));
+    return this.matching().filter((account) => account.isActive === active);
   });
+  protected readonly searching = computed(() => this.query().trim() !== '');
 
-  protected readonly filterTotal = computed(() => this.inFilter().length);
-
-  protected readonly pageSize = ACCOUNT_PAGE_SIZE;
   private readonly requestedPage = signal(1);
 
   /** Página mostrada; si una desactivación deja la página vacía, retrocede a la última que exista. */
@@ -110,31 +117,50 @@ export class AccountListPageComponent {
     });
   }
 
-  protected countFor(filter: AccountFilter): number {
-    const active = filter === 'active';
-
-    return (this.accounts() ?? []).filter((account) => account.isActive === active).length;
-  }
-
-  protected setFilter(filter: AccountFilter): void {
-    this.filter.set(filter);
+  protected search(value: string): void {
+    this.query.set(value);
     this.resetPosition();
   }
 
-  protected search(query: string): void {
-    this.query.set(query);
+  protected selectTab(tab: AccountTab): void {
+    this.tab.set(tab);
     this.resetPosition();
   }
 
-  /** Cambia de página y lleva la vista al inicio de la lista para leer el nuevo bloque desde arriba. */
   protected goToPage(page: number): void {
     this.requestedPage.set(page);
     this.pendingDeactivateId.set(null);
-    // `scrollIntoView` no existe en todos los entornos (jsdom en los tests), por eso la llamada opcional.
-    this.listTop()?.nativeElement.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
+    this.openMenuId.set(null);
+  }
+
+  /** Iniciales del nombre de la cuenta, para el monograma de la fila. */
+  protected initials(name: string): string {
+    const words = name.trim().split(/\s+/).filter(Boolean);
+    const letters = words.length > 1 ? words[0][0] + words[1][0] : (words[0] ?? '').slice(0, 2);
+
+    return letters.toUpperCase();
+  }
+
+  protected toggleMenu(id: number, event: Event): void {
+    // Evita que el clic llegue al documento y cierre el menú en el mismo instante.
+    event.stopPropagation();
+    this.openMenuId.update((current) => (current === id ? null : id));
+  }
+
+  /** Cierra el menú con Escape y devuelve el foco al botón que lo abrió. */
+  protected closeMenu(id: number): void {
+    this.openMenuId.set(null);
+    this.host.nativeElement.querySelector<HTMLButtonElement>(`#account-menu-button-${id}`)?.focus();
+  }
+
+  /** Un clic fuera de un menú abierto lo cierra. */
+  @HostListener('document:click')
+  protected closeMenus(): void {
+    this.openMenuId.set(null);
   }
 
   protected askDeactivate(account: Account): void {
+    this.openMenuId.set(null);
     this.deactivateError.set('');
     this.pendingDeactivateId.set(account.id);
   }
@@ -147,26 +173,15 @@ export class AccountListPageComponent {
     this.isDeactivating.set(true);
     this.deactivateError.set('');
 
-    this.deactivateAccount
-      .execute(account.id)
-      .pipe(finalize(() => this.isDeactivating.set(false)))
-      .subscribe({
-        next: () => {
-          // La cuenta pasa al filtro de desactivadas en vez de desaparecer.
-          this.accounts.update((accounts) => accounts?.map((item) => (item.id === account.id ? { ...item, isActive: false } : item)) ?? null);
+    this.workspace
+      .deactivate(account)
+      .pipe(
+        finalize(() => {
+          this.isDeactivating.set(false);
           this.pendingDeactivateId.set(null);
-          this.notice.set({ kind: 'deactivated', name: account.name });
-        },
-        error: (error: unknown) => {
-          // Si ya no existe, otra sesión la eliminó: se retira de la lista igualmente.
-          if (error instanceof AccountError && error.code === AccountErrorCode.NotFound) {
-            this.accounts.update((accounts) => accounts?.filter((item) => item.id !== account.id) ?? null);
-            this.pendingDeactivateId.set(null);
-          }
-
-          this.deactivateError.set(this.messageOf(error));
-        },
-      });
+        }),
+      )
+      .subscribe({ error: (error: unknown) => this.deactivateError.set(this.messageOf(error)) });
   }
 
   protected dismissNotice(): void {
@@ -176,9 +191,12 @@ export class AccountListPageComponent {
   private resetPosition(): void {
     this.requestedPage.set(1);
     this.pendingDeactivateId.set(null);
+    this.openMenuId.set(null);
   }
 
   private messageOf(error: unknown): string {
-    return error instanceof AccountError ? error.message : this.transloco.translate(GENERIC_ERROR_KEY);
+    return error instanceof AccountError
+      ? error.message
+      : this.transloco.translate(GENERIC_ERROR_KEY);
   }
 }

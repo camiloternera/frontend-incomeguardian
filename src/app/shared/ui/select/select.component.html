@@ -1,0 +1,116 @@
+<ng-container *transloco="let t">
+  <button
+    data-select-trigger
+    data-testid="select-trigger"
+    class="flex min-h-12 w-full items-center gap-3 rounded-lg border bg-ig-surface px-3 text-left text-[16px] outline-none focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60 lg:min-h-11 lg:text-[14px]"
+    [class]="isOpen() ? 'border-ig-accent' : invalid() ? 'border-ig-text' : 'border-ig-border'"
+    type="button"
+    [id]="inputId()"
+    [disabled]="isDisabled()"
+    aria-haspopup="listbox"
+    [attr.aria-expanded]="isOpen()"
+    [attr.aria-controls]="isOpen() ? listId() : null"
+    [attr.aria-invalid]="invalid()"
+    [attr.aria-describedby]="describedBy()"
+    (click)="toggle()"
+    (keydown)="onTriggerKeydown($event)"
+  >
+    <span class="min-w-0 flex-1 truncate" [class]="selected() ? 'text-ig-text' : 'text-ig-muted'">
+      {{ selected()?.label ?? placeholder() }}
+    </span>
+    <svg
+      lucideChevronDown
+      [size]="16"
+      class="shrink-0 text-ig-muted transition-transform duration-150 motion-reduce:transition-none"
+      [class.rotate-180]="isOpen()"
+      aria-hidden="true"
+    ></svg>
+  </button>
+
+  @if (isOpen()) {
+    <div
+      data-testid="select-popover"
+      (keydown.escape)="onEscape($event)"
+      class="absolute inset-x-0 top-[calc(100%+8px)] z-20 flex flex-col rounded-lg border border-ig-border bg-ig-surface-raised p-1 shadow-[0_8px_24px_rgb(0_0_0/0.16)]"
+    >
+      @if (searchable()) {
+        <label class="relative mb-1 block">
+          <span class="sr-only">{{ t('select.search') }}</span>
+          <svg
+            lucideSearch
+            [size]="16"
+            class="pointer-events-none absolute left-3 top-[14px] text-ig-muted"
+            aria-hidden="true"
+          ></svg>
+          <input
+            data-select-search
+            data-testid="select-search"
+            class="min-h-11 w-full rounded-md border border-ig-border bg-ig-surface pl-9 pr-3 text-[16px] text-ig-text outline-none placeholder:text-ig-muted focus-visible:border-ig-accent lg:text-[14px]"
+            type="search"
+            autocomplete="off"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded="true"
+            [attr.aria-controls]="listId()"
+            [attr.aria-activedescendant]="activeId()"
+            [placeholder]="t('select.search')"
+            [value]="query()"
+            (input)="search($any($event.target).value)"
+            (keydown)="onListKeydown($event)"
+          />
+        </label>
+      }
+
+      @if (filtered().length) {
+        <ul
+          class="m-0 flex list-none flex-col gap-0.5 overflow-y-auto overscroll-contain p-0 outline-none [scrollbar-color:var(--ig-border)_transparent] [scrollbar-width:thin]"
+          role="listbox"
+          tabindex="-1"
+          [id]="listId()"
+          [attr.aria-labelledby]="inputId()"
+          [attr.aria-activedescendant]="searchable() ? null : activeId()"
+          [style.max-height]="maxListHeight"
+          (keydown)="onListKeydown($event)"
+        >
+          @for (option of filtered(); track $index) {
+            @let isSelected = option.value === value();
+            <li
+              [id]="optionId($index)"
+              [attr.data-testid]="'select-option-' + $index"
+              class="flex min-h-11 shrink-0 cursor-pointer items-center gap-3 rounded-md px-3 text-[14px] text-ig-text"
+              [class]="
+                $index === activeIndex() ? 'bg-ig-accent/10' : isSelected ? 'bg-ig-accent/15' : ''
+              "
+              [class.font-bold]="isSelected"
+              role="option"
+              [attr.aria-selected]="isSelected"
+              (mouseenter)="activeIndex.set($index)"
+              (mousedown)="$event.preventDefault()"
+              (click)="choose(option)"
+            >
+              <span class="min-w-0 flex-1 break-words">{{ option.label }}</span>
+              @if (isSelected) {
+                <svg
+                  lucideCheck
+                  [size]="16"
+                  class="shrink-0 text-ig-accent-text"
+                  aria-hidden="true"
+                ></svg>
+              }
+            </li>
+          }
+        </ul>
+      } @else {
+        <p data-testid="select-empty" class="m-0 px-3 py-3 text-[13px] text-ig-muted" role="status">
+          {{
+            options().length ? t('select.noMatches', { query: query().trim() }) : t('select.empty')
+          }}
+        </p>
+      }
+
+      <div class="mt-1 border-t border-ig-border pt-1 empty:hidden">
+        <ng-content select="[selectFooter]" />
+      </div>
+    </div>
+  }
+</ng-container>

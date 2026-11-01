@@ -36,7 +36,9 @@ export interface Account {
 
 /** Ordena las cuentas alfabéticamente, sin distinguir mayúsculas ni tildes. */
 export function sortAccounts(accounts: readonly Account[]): Account[] {
-  return [...accounts].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+  return [...accounts].sort((a, b) =>
+    a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }),
+  );
 }
 
 /** Indica si la cuenta coincide con la búsqueda por su nombre o el de su tipo. */
@@ -50,4 +52,37 @@ export interface AccountDraft {
   accountTypeId: number;
   initialBalance: number;
   currency: Currency;
+}
+
+/** Suma de los saldos de las cuentas activas en una misma moneda. */
+export interface CurrencyTotal {
+  currency: Currency;
+  total: number;
+  /** Cuentas activas que aportan a la suma. */
+  count: number;
+}
+
+/**
+ * Totales por moneda de las cuentas activas, en el orden de `CURRENCIES`. Las monedas no se
+ * convierten ni se mezclan; una moneda sin cuentas activas no aparece. Mientras no existan
+ * movimientos, el saldo de cada cuenta es su saldo inicial.
+ */
+export function totalsByCurrency(accounts: readonly Account[]): CurrencyTotal[] {
+  return CURRENCIES.flatMap((currency) => {
+    const inCurrency = accounts.filter(
+      (account) => account.isActive && account.currency === currency,
+    );
+
+    if (!inCurrency.length) {
+      return [];
+    }
+
+    // Se suma en milésimas (el backend guarda 3 decimales) para no arrastrar errores de coma flotante.
+    const thousandths = inCurrency.reduce(
+      (sum, account) => sum + Math.round(account.initialBalance * 1000),
+      0,
+    );
+
+    return [{ currency, total: thousandths / 1000, count: inCurrency.length }];
+  });
 }

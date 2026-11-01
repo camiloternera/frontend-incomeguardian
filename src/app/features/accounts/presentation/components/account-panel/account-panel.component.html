@@ -1,238 +1,396 @@
-<div
+<section
   *transloco="let t"
-  data-testid="account-form-page"
-  [attr.data-theme]="theme()"
+  data-testid="account-panel"
+  class="flex flex-col gap-6 lg:rounded-lg lg:border lg:border-ig-border lg:bg-ig-surface lg:p-6"
+  aria-labelledby="account-panel-title"
+  (keydown.escape)="closeOnEscape()"
 >
-  <div class="mx-auto flex w-full max-w-[1120px] flex-col gap-8 p-4 sm:p-8">
-
-    <nav [attr.aria-label]="t('accounts.form.breadcrumb')">
-      <ol class="m-0 flex list-none flex-wrap items-center gap-2 p-0 text-[12px] text-ig-muted">
-        <li>
-          <a class="rounded text-ig-accent-text no-underline hover:underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" routerLink="/accounts">{{ t('accounts.list.title') }}</a>
-        </li>
-        <li aria-hidden="true">/</li>
-        <li aria-current="page">
-          @if (status() === 'readOnly') {
-            {{ t('accounts.form.readOnlyTitle') }}
-          } @else {
-            {{ isEdit ? t('accounts.form.editTitle') : t('accounts.form.createTitle') }}
+  <div class="flex items-start justify-between gap-4">
+    <div class="flex min-w-0 flex-col gap-2">
+      <h2
+        #heading
+        id="account-panel-title"
+        tabindex="-1"
+        class="m-0 break-words text-[20px] font-bold tracking-[-0.02em] outline-none"
+      >
+        @switch (status()) {
+          @case ('notFound') {
+            {{ t('accounts.form.notFoundTitle') }}
           }
-        </li>
-      </ol>
-    </nav>
-
-    @switch (status()) {
-      @case ('loading') {
-        @if (loadError()) {
-          <div class="flex flex-col items-start gap-4 rounded-2xl border border-ig-border bg-ig-surface px-6 py-8">
-            <p data-testid="load-error" class="m-0 text-[13px]" role="alert">{{ loadError() }}</p>
-            <button
-              class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-border bg-transparent px-5 text-[13px] font-bold text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
-              type="button"
-              (click)="retry()"
-            >
-              {{ t('accounts.list.retry') }}
-            </button>
-          </div>
-        } @else {
-          <p class="m-0 text-[13px] text-ig-muted" role="status">{{ t('accounts.form.loading') }}</p>
+          @case ('readOnly') {
+            {{ account()?.name }}
+          }
+          @default {
+            {{ isEdit() ? t('accounts.form.editTitle') : t('accounts.form.createTitle') }}
+          }
         }
+      </h2>
+      @if (status() === 'ready') {
+        <p class="m-0 text-[13px] leading-normal text-ig-muted">
+          {{ isEdit() ? t('accounts.form.editSubtitle') : t('accounts.form.createSubtitle') }}
+        </p>
       }
+    </div>
+    <a
+      data-testid="close-panel"
+      class="-mr-2 -mt-2 inline-grid size-11 shrink-0 place-items-center rounded-lg text-ig-muted hover:bg-ig-surface-raised hover:text-ig-text focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+      [routerLink]="listUrl"
+      [attr.aria-label]="t('accounts.form.close')"
+    >
+      <svg lucideX [size]="18" aria-hidden="true"></svg>
+    </a>
+  </div>
 
-      @case ('notFound') {
-        <div data-testid="account-not-found" class="flex flex-col items-start gap-4 rounded-2xl border border-ig-border bg-ig-surface px-6 py-10">
-          <h1 class="m-0 text-[20px] font-bold tracking-[-0.02em]">{{ t('accounts.form.notFoundTitle') }}</h1>
-          <p class="m-0 max-w-[520px] text-[13px] text-ig-muted">{{ t('accounts.errors.' + notFoundCode) }}</p>
+  @switch (status()) {
+    @case ('loading') {
+      @if (loadError()) {
+        <div class="flex flex-col items-start gap-4">
+          <p data-testid="load-error" class="m-0 text-[14px]" role="alert">{{ loadError() }}</p>
+          <button
+            class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-border bg-transparent px-5 text-[14px] font-bold text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+            type="button"
+            (click)="retry()"
+          >
+            {{ t('accounts.list.retry') }}
+          </button>
+        </div>
+      } @else {
+        <p class="m-0 text-[14px] text-ig-muted" role="status">{{ t('accounts.form.loading') }}</p>
+      }
+    }
+
+    @case ('notFound') {
+      <div data-testid="account-not-found" class="flex flex-col items-start gap-4">
+        <p class="m-0 text-[14px] text-ig-muted">{{ t('accounts.errors.' + notFoundCode) }}</p>
+        <a
+          class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-border px-5 text-[14px] font-bold text-ig-text no-underline hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+          [routerLink]="listUrl"
+        >
+          {{ t('accounts.form.backToList') }}
+        </a>
+      </div>
+    }
+
+    @case ('readOnly') {
+      @if (account(); as current) {
+        <div data-testid="account-read-only" class="flex flex-col gap-6">
+          <p class="m-0 text-[14px] leading-normal text-ig-muted">
+            {{ t('accounts.form.readOnly') }}
+          </p>
+          <dl class="m-0 flex flex-col gap-4 border-t border-ig-border pt-6 text-[14px]">
+            <div class="flex items-baseline justify-between gap-4">
+              <dt class="text-ig-muted">{{ t('accounts.form.typeLabel') }}</dt>
+              <dd class="m-0 break-words text-right">{{ current.accountType.name }}</dd>
+            </div>
+            <div class="flex items-baseline justify-between gap-4">
+              <dt class="text-ig-muted">{{ t('accounts.form.currencyLabel') }}</dt>
+              <dd class="m-0 text-right">{{ t('accounts.form.currency.' + current.currency) }}</dd>
+            </div>
+            <div class="flex items-baseline justify-between gap-4">
+              <dt class="text-ig-muted">{{ t('accounts.form.balanceLabel') }}</dt>
+              <dd class="m-0 text-right font-bold tabular-nums">
+                {{
+                  current.initialBalance
+                    | currency
+                      : current.currency
+                      : 'symbol'
+                      : balanceDigits(current.currency, current.initialBalance)
+                      : locale()
+                }}
+              </dd>
+            </div>
+          </dl>
           <a
-            class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-accent bg-ig-accent px-5 text-[13px] font-bold text-ig-on-accent no-underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
-            routerLink="/accounts"
+            class="inline-flex min-h-11 items-center justify-center self-start rounded-lg border border-ig-border px-5 text-[14px] font-bold text-ig-text no-underline hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+            [routerLink]="listUrl"
           >
             {{ t('accounts.form.backToList') }}
           </a>
         </div>
       }
+    }
 
-      @case ('readOnly') {
-        @if (account(); as current) {
-          <div data-testid="account-read-only" class="flex flex-col items-start gap-4 rounded-2xl border border-ig-border bg-ig-surface px-6 py-10">
-            <span class="rounded-full border border-ig-border px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.06em] text-ig-muted">
-              {{ t('accounts.list.badge.inactive') }}
-            </span>
-            <h1 class="m-0 break-words text-[20px] font-bold tracking-[-0.02em]">{{ current.name }}</h1>
-            <dl class="m-0 grid gap-x-8 gap-y-3 text-[13px] sm:grid-cols-3">
-              <div>
-                <dt class="text-[11px] font-bold text-ig-muted">{{ t('accounts.form.typeLabel') }}</dt>
-                <dd class="m-0 mt-1 break-words">{{ current.accountType.name }}</dd>
-              </div>
-              <div>
-                <dt class="text-[11px] font-bold text-ig-muted">{{ t('accounts.form.currencyLabel') }}</dt>
-                <dd class="m-0 mt-1">{{ t('accounts.form.currency.' + current.currency) }}</dd>
-              </div>
-              <div>
-                <dt class="text-[11px] font-bold text-ig-muted">{{ t('accounts.form.balanceLabel') }}</dt>
-                <dd class="m-0 mt-1 font-bold tabular-nums">
-                  {{ current.initialBalance | currency: current.currency : 'symbol' : balanceDigits(current.currency, current.initialBalance) : locale() }}
-                </dd>
-              </div>
-            </dl>
-            <p class="m-0 max-w-[620px] text-[13px]">{{ t('accounts.form.readOnly') }}</p>
-            <a
-              class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-border px-5 text-[13px] font-bold text-ig-text no-underline hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
-              routerLink="/accounts"
+    @default {
+      <form class="flex flex-col gap-6" [formGroup]="accountForm" (ngSubmit)="submit()" novalidate>
+        <div class="flex flex-col gap-2">
+          <div class="flex items-baseline justify-between gap-3">
+            <label class="text-[13px] font-bold" for="account-name">{{
+              t('accounts.form.nameLabel')
+            }}</label>
+            <span
+              id="account-name-count"
+              class="text-[12px] tabular-nums text-ig-muted"
+              [class.text-ig-text]="nameLength() > nameMax"
+              >{{ nameLength() }} / {{ nameMax }}</span
             >
-              {{ t('accounts.form.backToList') }}
-            </a>
           </div>
-        }
-      }
+          <input
+            class="min-h-12 w-full rounded-lg border bg-ig-surface px-3 text-[16px] text-ig-text outline-none placeholder:text-ig-muted focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 lg:min-h-11 lg:text-[14px]"
+            [class]="nameError() ? 'border-ig-text' : 'border-ig-border'"
+            id="account-name"
+            data-testid="account-name"
+            formControlName="name"
+            type="text"
+            autocomplete="off"
+            [placeholder]="t('accounts.form.namePlaceholder')"
+            [attr.aria-invalid]="nameError() !== null"
+            [attr.aria-describedby]="
+              nameError() ? 'account-name-error account-name-count' : 'account-name-count'
+            "
+          />
+          @if (nameError(); as message) {
+            <p
+              id="account-name-error"
+              data-testid="name-error"
+              class="m-0 text-[13px] leading-snug text-ig-text"
+              role="alert"
+            >
+              {{ t(message.key, message.params) }}
+            </p>
+          }
+        </div>
 
-      @default {
-        <section class="max-w-[760px] rounded-2xl border border-ig-border bg-ig-surface p-6 sm:p-10" aria-labelledby="account-form-title">
-          <p class="mb-2 text-[11px] font-extrabold uppercase tracking-[0.02em] text-ig-accent-text">{{ t('accounts.list.eyebrow') }}</p>
-          <h1 id="account-form-title" class="m-0 font-roboto text-[clamp(26px,3vw,36px)] font-bold leading-[1.05] tracking-[-0.04em]">
-            {{ isEdit ? t('accounts.form.editTitle') : t('accounts.form.createTitle') }}
-          </h1>
-          <p class="m-0 mt-4 max-w-[520px] text-[13px] leading-relaxed text-ig-muted">
-            {{ isEdit ? t('accounts.form.editSubtitle') : t('accounts.form.createSubtitle') }}
-          </p>
-
-          <form class="mt-8 flex flex-col gap-6" [formGroup]="accountForm" (ngSubmit)="submit()" novalidate>
-            <div>
-              <div class="mb-1.5 flex items-baseline justify-between gap-3">
-                <label class="block text-[11px] font-bold tracking-[0.02em]" for="account-name">{{ t('accounts.form.nameLabel') }}</label>
-                <span id="account-name-count" class="text-[11px] text-ig-muted" [class.text-ig-text]="nameLength() > nameMax">{{ nameLength() }}/{{ nameMax }}</span>
-              </div>
-              <input
-                class="min-h-11 w-full rounded-lg border border-ig-border bg-ig-surface-raised px-3 text-[13px] text-ig-text outline-none placeholder:text-ig-muted focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
-                id="account-name"
-                data-testid="account-name"
-                formControlName="name"
-                type="text"
-                autocomplete="off"
-                [placeholder]="t('accounts.form.namePlaceholder')"
-                [attr.aria-invalid]="nameError() !== null"
-                [attr.aria-describedby]="nameError() ? 'account-name-count account-name-error' : 'account-name-count'"
-              />
-              @if (nameError(); as message) {
-                <p id="account-name-error" data-testid="name-error" class="m-0 mt-1.5 text-[11px] text-ig-accent-text" role="alert">{{ t(message.key, message.params) }}</p>
-              }
-            </div>
-
-            <div class="grid gap-6 sm:grid-cols-2">
-              <div>
-                <label class="mb-1.5 block text-[11px] font-bold tracking-[0.02em]" for="account-type">{{ t('accounts.form.typeLabel') }}</label>
-                @switch (typeOptionsStatus()) {
-                  @case ('loading') {
-                    <p class="m-0 flex min-h-11 items-center text-[13px] text-ig-muted" role="status">{{ t('accounts.form.typesLoading') }}</p>
-                  }
-                  @case ('error') {
-                    <div class="flex min-h-11 flex-wrap items-center gap-3">
-                      <p data-testid="types-error" class="m-0 text-[13px]" role="alert">{{ t('accounts.form.typesError') }}</p>
-                      <button
-                        class="min-h-11 rounded-lg border border-ig-border bg-transparent px-4 text-[13px] font-bold text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
-                        type="button"
-                        (click)="loadTypeOptions()"
-                      >
-                        {{ t('accounts.list.retry') }}
-                      </button>
-                    </div>
-                  }
-                  @default {
-                    @if (typeOptions().length) {
-                      <select
-                        class="min-h-11 w-full rounded-lg border border-ig-border bg-ig-surface-raised px-3 text-[13px] text-ig-text outline-none focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
-                        id="account-type"
-                        data-testid="account-type"
-                        formControlName="accountTypeId"
-                        [attr.aria-invalid]="typeError() !== null"
-                        [attr.aria-describedby]="typeError() ? 'account-type-error' : null"
-                      >
-                        <option [ngValue]="null" disabled>{{ t('accounts.form.typePlaceholder') }}</option>
-                        @for (option of typeOptions(); track option.id) {
-                          <option [ngValue]="option.id">{{ option.name }}</option>
-                        }
-                      </select>
-                    } @else {
-                      <div data-testid="no-types" class="flex flex-col items-start gap-2 rounded-lg border border-dashed border-ig-border px-3 py-3">
-                        <p class="m-0 text-[13px] text-ig-muted">{{ t('accounts.form.noTypes') }}</p>
-                        <a class="text-[13px] font-bold text-ig-accent-text no-underline hover:underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" routerLink="/account-types/new">
-                          {{ t('accounts.form.createType') }}
-                        </a>
-                      </div>
-                    }
-                  }
-                }
-                @if (typeError(); as message) {
-                  <p id="account-type-error" data-testid="type-error" class="m-0 mt-1.5 text-[11px] text-ig-accent-text" role="alert">{{ t(message.key, message.params) }}</p>
-                }
-              </div>
-
-              <div>
-                <label class="mb-1.5 block text-[11px] font-bold tracking-[0.02em]" for="account-currency">{{ t('accounts.form.currencyLabel') }}</label>
-                <select
-                  class="min-h-11 w-full rounded-lg border border-ig-border bg-ig-surface-raised px-3 text-[13px] text-ig-text outline-none focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
-                  id="account-currency"
-                  data-testid="account-currency"
-                  formControlName="currency"
-                  [attr.aria-invalid]="currencyError() !== null"
-                  [attr.aria-describedby]="currencyError() ? 'account-currency-error' : null"
-                >
-                  @for (currency of currencies; track currency) {
-                    <option [ngValue]="currency">{{ t('accounts.form.currency.' + currency) }}</option>
-                  }
-                </select>
-                @if (currencyError(); as message) {
-                  <p id="account-currency-error" data-testid="currency-error" class="m-0 mt-1.5 text-[11px] text-ig-accent-text" role="alert">{{ t(message.key, message.params) }}</p>
-                }
-              </div>
-            </div>
-
-            <div class="sm:max-w-[calc(50%-12px)]">
-              <label class="mb-1.5 block text-[11px] font-bold tracking-[0.02em]" for="account-balance">{{ t('accounts.form.balanceLabel') }}</label>
-              <input
-                class="min-h-11 w-full rounded-lg border border-ig-border bg-ig-surface-raised px-3 text-[13px] tabular-nums text-ig-text outline-none placeholder:text-ig-muted focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
-                id="account-balance"
-                data-testid="account-balance"
-                formControlName="initialBalance"
-                type="text"
-                inputmode="decimal"
-                autocomplete="off"
-                [attr.aria-invalid]="balanceError() !== null"
-                [attr.aria-describedby]="balanceError() ? 'account-balance-hint account-balance-error' : 'account-balance-hint'"
-              />
-              <p id="account-balance-hint" class="m-0 mt-1.5 text-[11px] text-ig-muted">{{ t('accounts.form.balanceHint', balanceParams) }}</p>
-              @if (balanceError(); as message) {
-                <p id="account-balance-error" data-testid="balance-error" class="m-0 mt-1 text-[11px] text-ig-accent-text" role="alert">{{ t(message.key, message.params) }}</p>
-              }
-            </div>
-
-            @if (formError()) {
-              <p data-testid="form-error" class="m-0 rounded-lg border border-ig-border bg-ig-surface-raised px-4 py-3 text-[13px]" role="alert">{{ formError() }}</p>
+        <div class="flex flex-col gap-2">
+          <label class="text-[13px] font-bold" for="account-type">{{
+            t('accounts.form.typeLabel')
+          }}</label>
+          @switch (typeOptionsStatus()) {
+            @case ('loading') {
+              <p class="m-0 flex min-h-11 items-center text-[14px] text-ig-muted" role="status">
+                {{ t('accounts.form.typesLoading') }}
+              </p>
             }
+            @case ('error') {
+              <div class="flex min-h-11 flex-wrap items-center gap-3">
+                <p data-testid="types-error" class="m-0 text-[14px]" role="alert">
+                  {{ t('accounts.form.typesError') }}
+                </p>
+                <button
+                  class="min-h-11 rounded-lg border border-ig-border bg-transparent px-4 text-[14px] font-bold text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                  type="button"
+                  (click)="loadTypeOptions()"
+                >
+                  {{ t('accounts.list.retry') }}
+                </button>
+              </div>
+            }
+            @default {
+              @if (typeOptions().length) {
+                <app-select
+                  data-testid="account-type"
+                  inputId="account-type"
+                  formControlName="accountTypeId"
+                  [options]="typeSelectOptions()"
+                  [placeholder]="t('accounts.form.typePlaceholder')"
+                  [invalid]="typeError() !== null"
+                  [describedBy]="typeError() ? 'account-type-error' : null"
+                >
+                  <a
+                    selectFooter
+                    data-testid="create-type"
+                    class="flex min-h-11 items-center gap-3 rounded-md px-3 text-[14px] font-medium text-ig-accent-text no-underline hover:bg-ig-accent/10 focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:-outline-offset-2"
+                    routerLink="/account-types/new"
+                  >
+                    <svg lucidePlus [size]="16" aria-hidden="true"></svg>
+                    {{ t('accounts.form.createType') }}
+                  </a>
+                </app-select>
+              } @else {
+                <p data-testid="no-types" class="m-0 text-[14px] text-ig-muted">
+                  {{ t('accounts.form.noTypes') }}
+                </p>
+                <a
+                  data-testid="create-type"
+                  class="inline-flex min-h-11 items-center gap-2 self-start rounded text-[14px] font-medium text-ig-accent-text no-underline hover:underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                  routerLink="/account-types/new"
+                >
+                  <svg lucidePlus [size]="16" aria-hidden="true"></svg>
+                  {{ t('accounts.form.createType') }}
+                </a>
+              }
+            }
+          }
+          @if (typeError(); as message) {
+            <p
+              id="account-type-error"
+              data-testid="type-error"
+              class="m-0 text-[13px] leading-snug text-ig-text"
+              role="alert"
+            >
+              {{ t(message.key, message.params) }}
+            </p>
+          }
+        </div>
 
-            <div class="flex flex-col-reverse gap-2 border-t border-ig-border pt-6 sm:flex-row sm:justify-end">
+        <fieldset
+          class="m-0 flex min-w-0 flex-col gap-2 border-0 p-0"
+          [attr.aria-describedby]="currencyError() ? 'account-currency-error' : null"
+        >
+          <legend class="mb-2 p-0 text-[13px] font-bold">
+            {{ t('accounts.form.currencyLabel') }}
+          </legend>
+          <div
+            class="grid grid-cols-3 gap-1 rounded-lg border p-1"
+            [class]="currencyError() ? 'border-ig-text' : 'border-ig-border'"
+          >
+            @for (code of currencies; track code) {
+              <label
+                class="relative grid min-h-11 cursor-pointer place-items-center rounded-md text-[14px] text-ig-muted hover:text-ig-text has-checked:bg-ig-surface-raised has-checked:font-bold has-checked:text-ig-text has-focus-visible:outline-2 has-focus-visible:outline-ig-accent has-focus-visible:outline-offset-2"
+              >
+                <input
+                  class="sr-only"
+                  type="radio"
+                  formControlName="currency"
+                  [attr.data-testid]="'currency-' + code"
+                  [value]="code"
+                />
+                <span aria-hidden="true">{{ code }}</span>
+                <span class="sr-only">{{ t('accounts.form.currency.' + code) }}</span>
+              </label>
+            }
+          </div>
+          @if (currencyError(); as message) {
+            <p
+              id="account-currency-error"
+              data-testid="currency-error"
+              class="m-0 text-[13px] leading-snug text-ig-text"
+              role="alert"
+            >
+              {{ t(message.key, message.params) }}
+            </p>
+          }
+        </fieldset>
+
+        <div class="flex flex-col gap-2">
+          <label class="text-[13px] font-bold" for="account-balance">{{
+            t('accounts.form.balanceLabel')
+          }}</label>
+          <div
+            class="flex min-h-12 items-center rounded-lg border bg-ig-surface focus-within:border-ig-accent focus-within:outline-2 focus-within:outline-ig-accent focus-within:outline-offset-2 lg:min-h-11"
+            [class]="balanceError() ? 'border-ig-text' : 'border-ig-border'"
+          >
+            <span
+              data-testid="balance-symbol"
+              class="shrink-0 pl-3 text-[14px] text-ig-muted"
+              aria-hidden="true"
+              >{{ currencySymbol() }}</span
+            >
+            <input
+              class="min-h-11 w-full min-w-0 flex-1 border-0 bg-transparent px-2 text-[16px] tabular-nums text-ig-text outline-none lg:text-[14px]"
+              id="account-balance"
+              data-testid="account-balance"
+              formControlName="initialBalance"
+              type="text"
+              inputmode="decimal"
+              autocomplete="off"
+              [attr.aria-invalid]="balanceError() !== null"
+              [attr.aria-describedby]="
+                balanceError()
+                  ? 'account-balance-error account-balance-hint'
+                  : 'account-balance-hint'
+              "
+            />
+            @if (currencySymbol() !== currency()) {
+              <span class="shrink-0 pr-3 text-[13px] text-ig-muted" aria-hidden="true">{{
+                currency()
+              }}</span>
+            }
+          </div>
+          @if (balanceError(); as message) {
+            <p
+              id="account-balance-error"
+              data-testid="balance-error"
+              class="m-0 text-[13px] leading-snug text-ig-text"
+              role="alert"
+            >
+              {{ t(message.key, message.params) }}
+            </p>
+          }
+          <p id="account-balance-hint" class="m-0 text-[12px] text-ig-muted">
+            {{ t('accounts.form.balanceHint', balanceParams) }}
+          </p>
+        </div>
+
+        @if (formError()) {
+          <p
+            data-testid="form-error"
+            class="m-0 rounded-lg border border-ig-border bg-ig-surface-raised px-4 py-3 text-[14px]"
+            role="alert"
+          >
+            {{ formError() }}
+          </p>
+        }
+
+        @if (confirmingDeactivate()) {
+          <div
+            class="flex flex-col gap-3 border-t border-ig-border pt-6"
+            data-testid="panel-deactivate-confirmation"
+          >
+            <p class="m-0 text-[14px]">
+              {{ t('accounts.list.deactivate.question', { name: account()?.name }) }}
+            </p>
+            <div class="flex flex-wrap justify-end gap-2">
+              <button
+                class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-border bg-transparent px-4 text-[14px] text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                type="button"
+                [disabled]="isDeactivating()"
+                (click)="cancelDeactivate()"
+              >
+                {{ t('accounts.list.deactivate.cancel') }}
+              </button>
+              <button
+                data-testid="panel-confirm-deactivate"
+                class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-text bg-ig-text px-4 text-[14px] font-bold text-ig-canvas focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                type="button"
+                [disabled]="isDeactivating()"
+                (click)="confirmDeactivate()"
+              >
+                {{
+                  isDeactivating()
+                    ? t('accounts.list.deactivate.deactivating')
+                    : t('accounts.list.deactivate.confirm')
+                }}
+              </button>
+            </div>
+          </div>
+        } @else {
+          <div
+            class="flex flex-wrap items-center justify-between gap-4 border-t border-ig-border pt-6"
+          >
+            @if (isEdit()) {
+              <button
+                data-testid="panel-deactivate"
+                class="-ml-3 inline-flex min-h-11 items-center gap-2 rounded-lg border border-transparent bg-transparent px-3 text-[14px] font-medium text-ig-muted hover:text-ig-text focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                type="button"
+                (click)="askDeactivate()"
+              >
+                <svg lucideBan [size]="16" aria-hidden="true"></svg>
+                {{ t('accounts.list.deactivate.action') }}
+              </button>
+            }
+            <div class="ml-auto flex gap-2">
               <a
-                class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-border px-5 text-[13px] text-ig-text no-underline hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
-                routerLink="/accounts"
+                class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-border px-4 text-[14px] text-ig-text no-underline hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                [routerLink]="listUrl"
               >
                 {{ t('accounts.form.cancel') }}
               </a>
               <button
                 data-testid="account-submit"
-                class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-accent bg-ig-accent px-6 text-[13px] font-bold text-ig-on-accent transition-transform duration-150 hover:-translate-y-px focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-accent bg-ig-accent px-5 text-[14px] font-bold text-ig-on-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
                 type="submit"
                 [disabled]="isSubmitting()"
               >
                 @if (isSubmitting()) {
                   {{ t('accounts.form.saving') }}
                 } @else {
-                  {{ isEdit ? t('accounts.form.saveChanges') : t('accounts.form.create') }}
+                  {{ isEdit() ? t('accounts.form.saveChanges') : t('accounts.form.create') }}
                 }
               </button>
             </div>
-          </form>
-        </section>
-      }
+          </div>
+        }
+      </form>
     }
-  </div>
-</div>
+  }
+</section>

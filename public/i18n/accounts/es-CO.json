@@ -1,40 +1,39 @@
 {
   "list": {
-    "eyebrow": "Tu dinero",
     "title": "Cuentas",
-    "subtitle": "Registra dónde está tu dinero: cuentas de banco, tarjetas, billeteras o efectivo. Cada cuenta tiene un tipo, una moneda y un saldo inicial.",
+    "subtitle": "Dónde está tu dinero: bancos, tarjetas, billeteras y efectivo.",
     "create": "Nueva cuenta",
     "loading": "Cargando tus cuentas…",
     "retry": "Intentar de nuevo",
     "edit": "Editar",
-    "view": "Ver",
     "editNamed": "Editar la cuenta {{name}}",
+    "moreActions": "Más acciones para {{name}}",
     "viewNamed": "Ver la cuenta {{name}}",
-    "deactivateNamed": "Desactivar la cuenta {{name}}",
-    "initialBalance": "Saldo inicial",
-    "createdAt": "Creada el {{date}}",
-    "updatedAt": "Actualizada el {{date}}",
-    "badge": {
-      "inactive": "Desactivada"
+    "totals": {
+      "label": "Saldos por moneda",
+      "currency": {
+        "COP": "Pesos colombianos",
+        "USD": "Dólares",
+        "EUR": "Euros"
+      },
+      "countOne": "1 cuenta activa",
+      "countOther": "{{count}} cuentas activas"
     },
-    "filter": {
-      "label": "Filtrar cuentas",
+    "tabs": {
+      "label": "Estado de las cuentas",
       "active": "Activas",
       "inactive": "Desactivadas"
     },
     "search": {
       "label": "Buscar cuentas",
-      "placeholder": "Buscar por nombre o tipo",
-      "results": "{{count}} de {{total}}"
+      "placeholder": "Buscar por nombre o tipo"
     },
     "empty": {
       "activeTitle": "Todavía no tienes cuentas activas",
       "activeBody": "Crea tu primera cuenta para empezar a registrar movimientos.",
       "inactiveTitle": "No tienes cuentas desactivadas",
       "inactiveBody": "Cuando desactives una cuenta aparecerá aquí para que puedas consultarla.",
-      "searchTitle": "Ninguna cuenta coincide con «{{query}}»",
-      "searchBody": "Prueba con otra palabra o borra la búsqueda.",
-      "clearSearch": "Borrar búsqueda"
+      "searchTitle": "Ninguna cuenta coincide con «{{query}}»"
     },
     "deactivate": {
       "action": "Desactivar",
@@ -51,12 +50,11 @@
     }
   },
   "form": {
-    "breadcrumb": "Ruta de navegación",
+    "close": "Cerrar panel",
     "createTitle": "Nueva cuenta",
     "createSubtitle": "Ponle un nombre que reconozcas, elige su tipo y su moneda, e indica con cuánto dinero empieza.",
     "editTitle": "Editar cuenta",
     "editSubtitle": "La moneda solo se puede cambiar mientras la cuenta no tenga movimientos.",
-    "readOnlyTitle": "Cuenta desactivada",
     "readOnly": "Esta cuenta está desactivada: puedes consultarla, pero no editarla ni registrar movimientos nuevos en ella.",
     "loading": "Cargando la cuenta…",
     "nameLabel": "Nombre",

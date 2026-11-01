@@ -1,40 +1,39 @@
 {
   "list": {
-    "eyebrow": "Your money",
     "title": "Accounts",
-    "subtitle": "Keep track of where your money is: bank accounts, cards, wallets or cash. Each account has a type, a currency and an opening balance.",
+    "subtitle": "Where your money is: banks, cards, wallets and cash.",
     "create": "New account",
     "loading": "Loading your accounts…",
     "retry": "Try again",
     "edit": "Edit",
-    "view": "View",
     "editNamed": "Edit the {{name}} account",
+    "moreActions": "More actions for {{name}}",
     "viewNamed": "View the {{name}} account",
-    "deactivateNamed": "Deactivate the {{name}} account",
-    "initialBalance": "Opening balance",
-    "createdAt": "Created {{date}}",
-    "updatedAt": "Updated {{date}}",
-    "badge": {
-      "inactive": "Deactivated"
+    "totals": {
+      "label": "Balances by currency",
+      "currency": {
+        "COP": "Colombian pesos",
+        "USD": "US dollars",
+        "EUR": "Euros"
+      },
+      "countOne": "1 active account",
+      "countOther": "{{count}} active accounts"
     },
-    "filter": {
-      "label": "Filter accounts",
+    "tabs": {
+      "label": "Account status",
       "active": "Active",
       "inactive": "Deactivated"
     },
     "search": {
       "label": "Search accounts",
-      "placeholder": "Search by name or type",
-      "results": "{{count}} of {{total}}"
+      "placeholder": "Search by name or type"
     },
     "empty": {
       "activeTitle": "No active accounts yet",
       "activeBody": "Create your first account to start recording transactions.",
       "inactiveTitle": "No deactivated accounts",
       "inactiveBody": "When you deactivate an account it will show up here so you can still look it up.",
-      "searchTitle": "No account matches “{{query}}”",
-      "searchBody": "Try another word or clear the search.",
-      "clearSearch": "Clear search"
+      "searchTitle": "No account matches “{{query}}”"
     },
     "deactivate": {
       "action": "Deactivate",
@@ -51,12 +50,11 @@
     }
   },
   "form": {
-    "breadcrumb": "Breadcrumb",
+    "close": "Close panel",
     "createTitle": "New account",
     "createSubtitle": "Give it a name you recognize, pick its type and currency, and say how much money it starts with.",
     "editTitle": "Edit account",
     "editSubtitle": "The currency can only change while the account has no transactions.",
-    "readOnlyTitle": "Deactivated account",
     "readOnly": "This account is deactivated: you can look it up, but you cannot edit it or record new transactions in it.",
     "loading": "Loading the account…",
     "nameLabel": "Name",
