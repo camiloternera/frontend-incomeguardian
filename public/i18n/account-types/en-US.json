@@ -1,0 +1,73 @@
+{
+  "list": {
+    "eyebrow": "Organization",
+    "title": "Account types",
+    "subtitle": "Decide how you group your accounts: savings, credit card, digital wallet or whatever you use. Only you can see your account types.",
+    "create": "New type",
+    "loading": "Loading your account types…",
+    "retry": "Try again",
+    "edit": "Edit",
+    "editNamed": "Edit the {{name}} account type",
+    "deactivateNamed": "Deactivate the {{name}} account type",
+    "createdAt": "Created {{date}}",
+    "updatedAt": "Updated {{date}}",
+    "search": {
+      "label": "Search account types",
+      "placeholder": "Search by name or description",
+      "results": "{{count}} of {{total}}"
+    },
+    "empty": {
+      "allTitle": "No account types yet",
+      "allBody": "Create the first one so you can group your accounts.",
+      "searchTitle": "No type matches “{{query}}”",
+      "searchBody": "Try another word or clear the search.",
+      "clearSearch": "Clear search"
+    },
+    "deactivate": {
+      "action": "Deactivate",
+      "question": "Deactivate “{{name}}”? You will not be able to use it on new accounts; accounts that already have it keep it.",
+      "cancel": "Cancel",
+      "confirm": "Yes, deactivate",
+      "deactivating": "Deactivating…"
+    },
+    "notice": {
+      "created": "You created the “{{name}}” account type.",
+      "updated": "You saved the changes to “{{name}}”.",
+      "deactivated": "You deactivated the “{{name}}” account type.",
+      "dismiss": "Dismiss"
+    }
+  },
+  "form": {
+    "breadcrumb": "Breadcrumb",
+    "createTitle": "New account type",
+    "createSubtitle": "Give it a clear name and a description that reminds you which accounts belong here.",
+    "editTitle": "Edit account type",
+    "editSubtitle": "Changes apply to every account that uses this type.",
+    "loading": "Loading the account type…",
+    "nameLabel": "Name",
+    "namePlaceholder": "For example, Credit card",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "Cards with a credit line paid off every month",
+    "cancel": "Cancel",
+    "create": "Create type",
+    "saveChanges": "Save changes",
+    "saving": "Saving…",
+    "backToList": "Back to account types",
+    "notFoundTitle": "Account type unavailable",
+    "tips": {
+      "label": "Tips",
+      "title": "Before you save",
+      "short": "A short name reads better in lists and reports.",
+      "unique": "The name cannot repeat one of your other account types.",
+      "private": "Only you can see your account types."
+    }
+  },
+  "errors": {
+    "ACCOUNT_TYPE_NAME_REQUIRED": "Enter a name for the account type.",
+    "ACCOUNT_TYPE_NAME_MAX_LENGTH": "The name can be up to {{nameMax}} characters.",
+    "ACCOUNT_TYPE_NAME_ALREADY_EXISTS": "You already have an account type with that name.",
+    "ACCOUNT_TYPE_DESCRIPTION_REQUIRED": "Enter a description for the account type.",
+    "ACCOUNT_TYPE_DESCRIPTION_MAX_LENGTH": "The description can be up to {{descriptionMax}} characters.",
+    "ACCOUNT_TYPE_NOT_FOUND": "We could not find this account type. It may have been deactivated already."
+  }
+}

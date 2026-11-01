@@ -1,20 +1,11 @@
 import { CurrencyPipe, DatePipe, PercentPipe, formatDate } from '@angular/common';
 import { Component, computed, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { LanguageService } from '@core/i18n/language.service';
 import { ThemeService } from '@core/theme/theme.service';
-import { SessionService } from '@features/auth/application/session.service';
 import { GetOverviewUseCase } from '../../../application/get-overview.use-case';
 import { CashFlowBar, CashFlowChartComponent } from '../../components/cash-flow-chart.component';
-
-interface NavItem {
-  key: string;
-  active: boolean;
-  /** Ruta de una sección ya construida; sin ella la sección se marca como próxima. */
-  route?: string;
-}
 
 interface Kpi {
   key: string;
@@ -26,23 +17,12 @@ interface Kpi {
   good: boolean;
 }
 
-const NAV: NavItem[] = [
-  { key: 'overview', active: true },
-  { key: 'transactions', active: false },
-  { key: 'income', active: false },
-  { key: 'expenses', active: false },
-  { key: 'categories', active: false, route: '/categories' },
-  { key: 'reports', active: false },
-  { key: 'settings', active: false, route: '/settings' },
-];
-
 @Component({
   selector: 'app-home-page',
   imports: [
     CurrencyPipe,
     DatePipe,
     PercentPipe,
-    RouterLink,
     TranslocoDirective,
     CashFlowChartComponent,
   ],
@@ -52,24 +32,12 @@ const NAV: NavItem[] = [
 export class HomePageComponent {
   private readonly getOverview = inject(GetOverviewUseCase);
   private readonly languageService = inject(LanguageService);
-  private readonly sessionService = inject(SessionService);
   private readonly themeService = inject(ThemeService);
 
   protected readonly theme = this.themeService.theme;
   protected readonly locale = this.languageService.language;
-  protected readonly nav = NAV;
 
   protected readonly overview = toSignal(this.getOverview.execute(), { initialValue: null });
-
-  private readonly session = this.sessionService.current();
-  protected readonly userName = this.session?.name ?? '';
-  protected readonly userEmail = this.session?.email ?? '';
-  protected readonly initials = this.userName
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join('');
 
   protected readonly currency = computed(() => this.overview()?.currency ?? 'COP');
 

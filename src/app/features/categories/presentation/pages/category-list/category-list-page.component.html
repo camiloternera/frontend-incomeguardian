@@ -1,11 +1,9 @@
-<main
+<div
   *transloco="let t"
   data-testid="category-list-page"
-  class="min-h-screen bg-ig-canvas text-ig-text transition-colors duration-200"
   [attr.data-theme]="theme()"
 >
   <div class="mx-auto flex w-full max-w-[1120px] flex-col gap-8 p-4 sm:p-8">
-    <app-top-bar />
 
     <div class="flex flex-col items-start justify-between gap-6 border-b border-ig-border pb-8 lg:flex-row lg:items-end">
       <div class="max-w-[620px]">
@@ -181,4 +179,4 @@
       <p class="m-0 text-[13px] text-ig-muted" role="status">{{ t('categories.list.loading') }}</p>
     }
   </div>
-</main>
+</div>

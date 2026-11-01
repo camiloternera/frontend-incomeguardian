@@ -1,0 +1,136 @@
+<div *transloco="let t" data-testid="app-shell" class="min-h-screen bg-ig-canvas font-roboto text-ig-text transition-colors duration-200 lg:flex" [attr.data-theme]="theme()">
+  <a
+    class="sr-only z-30 rounded-lg bg-ig-accent px-4 py-3 text-[14px] font-bold text-ig-on-accent no-underline focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+    href="#app-content"
+  >
+    {{ t('shell.skipToContent') }}
+  </a>
+
+  <!-- Mobile: marca y botón de menú. -->
+  <header class="sticky top-0 z-20 flex min-h-16 items-center gap-2 border-b border-ig-border bg-ig-surface px-2 sm:px-4 lg:hidden">
+    <button
+      #menuButton
+      data-testid="shell-menu-button"
+      class="grid size-11 shrink-0 place-items-center rounded-lg border border-transparent bg-transparent text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ig-accent"
+      type="button"
+      aria-controls="app-shell-drawer"
+      [attr.aria-expanded]="menuOpen()"
+      [attr.aria-label]="t('shell.openMenu')"
+      (click)="openMenu()"
+    >
+      <svg lucideMenu [size]="20"></svg>
+    </button>
+    <ng-container *ngTemplateOutlet="brand" />
+  </header>
+
+  <!-- Desktop: barra lateral fija. -->
+  <aside class="hidden border-r border-ig-border bg-ig-surface lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-[248px] lg:shrink-0 lg:flex-col lg:gap-8 lg:overflow-y-auto lg:px-4 lg:py-6">
+    <ng-container *ngTemplateOutlet="brand" />
+    <ng-container *ngTemplateOutlet="panel" />
+  </aside>
+
+  <!-- Mobile: la misma navegación en un panel modal. -->
+  <dialog
+    #drawer
+    id="app-shell-drawer"
+    data-testid="shell-drawer"
+    class="fixed inset-y-0 left-0 right-auto m-0 h-dvh max-h-none w-[min(85vw,304px)] max-w-none border-0 border-r border-ig-border bg-ig-surface p-0 text-ig-text backdrop:bg-black/60 lg:hidden"
+    [attr.aria-label]="t('shell.menu')"
+    (close)="onDrawerClosed()"
+    (click)="onDrawerClick($event)"
+  >
+    <div class="flex min-h-full flex-col gap-6 px-4 pb-6 pt-2">
+      <div class="flex min-h-14 items-center justify-between gap-2">
+        <ng-container *ngTemplateOutlet="brand" />
+        <button
+          data-testid="shell-close-button"
+          class="grid size-11 shrink-0 place-items-center rounded-lg border border-transparent bg-transparent text-ig-muted hover:bg-ig-surface-raised hover:text-ig-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ig-accent"
+          type="button"
+          [attr.aria-label]="t('shell.closeMenu')"
+          (click)="closeMenu()"
+        >
+          <svg lucideX [size]="20"></svg>
+        </button>
+      </div>
+      <ng-container *ngTemplateOutlet="panel" />
+    </div>
+  </dialog>
+
+  <main id="app-content" class="min-w-0 flex-1 focus:outline-none" tabindex="-1">
+    <router-outlet />
+  </main>
+
+  <ng-template #brand>
+    <a
+      class="flex min-h-11 items-center gap-3 rounded-lg px-2 text-ig-text no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ig-accent"
+      routerLink="/home"
+      [attr.aria-label]="t('brand.home')"
+      (click)="closeMenu()"
+    >
+      <span class="grid size-8 shrink-0 place-items-center rounded-lg bg-ig-accent text-[12px] font-bold text-ig-on-accent" aria-hidden="true">IG</span>
+      <span class="text-[15px] font-bold tracking-[-0.01em]">{{ t('brand.name') }}</span>
+    </a>
+  </ng-template>
+
+  <ng-template #navItem let-item>
+    @if (item.route) {
+      <a
+        #rla="routerLinkActive"
+        class="flex min-h-11 items-center gap-3 rounded-lg border px-3 text-[14px] no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ig-accent"
+        [class]="rla.isActive ? 'border-ig-border bg-ig-surface-raised font-bold text-ig-text' : 'border-transparent text-ig-text hover:bg-ig-surface-raised'"
+        [routerLink]="item.route"
+        routerLinkActive
+        ariaCurrentWhenActive="page"
+        (click)="closeMenu()"
+      >
+        <svg [lucideIcon]="item.icon" [size]="18" [class]="rla.isActive ? 'shrink-0 text-ig-accent-text' : 'shrink-0 text-ig-muted'"></svg>
+        <span class="min-w-0 truncate">{{ t('shell.nav.' + item.key) }}</span>
+      </a>
+    } @else {
+      <span class="flex min-h-11 items-center gap-3 rounded-lg border border-transparent px-3 text-[14px] text-ig-muted">
+        <svg [lucideIcon]="item.icon" [size]="18" class="shrink-0"></svg>
+        <span class="min-w-0 truncate">{{ t('shell.nav.' + item.key) }}</span>
+        <span data-testid="shell-soon" class="ml-auto shrink-0 rounded-full border border-ig-border px-2 py-0.5 text-[11px] font-medium">{{ t('shell.soon') }}</span>
+      </span>
+    }
+  </ng-template>
+
+  <ng-template #panel>
+    <nav class="flex flex-col gap-6" [attr.aria-label]="t('shell.navLabel')">
+      @for (group of groups; track group.key) {
+        <div class="flex flex-col gap-2">
+          <p class="m-0 px-3 text-[12px] font-medium text-ig-muted">{{ t('shell.groups.' + group.key) }}</p>
+          <ul class="m-0 flex list-none flex-col gap-1 p-0">
+            @for (item of group.items; track item.key) {
+              <li><ng-container *ngTemplateOutlet="navItem; context: { $implicit: item }" /></li>
+            }
+          </ul>
+        </div>
+      }
+    </nav>
+
+    <div class="mt-auto flex flex-col gap-2">
+      <ng-container *ngTemplateOutlet="navItem; context: { $implicit: settings }" />
+
+      @if (user) {
+        <div class="flex items-center gap-3 border-t border-ig-border px-2 pt-4">
+          <span class="grid size-8 shrink-0 place-items-center rounded-full border border-ig-border bg-ig-surface-raised text-[12px] font-bold" aria-hidden="true">{{ initials }}</span>
+          <span class="min-w-0">
+            <strong data-testid="shell-user-name" class="block truncate text-[13px] font-medium">{{ user.name }}</strong>
+            <small class="block truncate text-[12px] text-ig-muted">{{ user.email }}</small>
+          </span>
+        </div>
+      }
+
+      <button
+        data-testid="shell-sign-out"
+        class="flex min-h-11 items-center gap-3 rounded-lg border border-transparent bg-transparent px-3 text-left text-[14px] text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ig-accent"
+        type="button"
+        (click)="signOut()"
+      >
+        <svg lucideLogOut [size]="18" class="shrink-0 text-ig-muted"></svg>
+        {{ t('shell.signOut') }}
+      </button>
+    </div>
+  </ng-template>
+</div>

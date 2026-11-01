@@ -60,3 +60,6 @@ __screenshots__/
 .DS_Store
 Thumbs.db
 .playwright-mcp/
+
+# Product.md
+PRODUCT.md

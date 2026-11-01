@@ -5,8 +5,7 @@
     "copyright": "© 2026 Income Guardian"
   },
   "common": {
-    "or": "OR",
-    "backToOverview": "Back to overview"
+    "or": "OR"
   },
   "errors": {
     "generic": "Something went wrong. Please try again."
@@ -17,5 +16,29 @@
     "previous": "Previous page",
     "next": "Next page",
     "page": "Go to page {{page}}"
+  },
+  "shell": {
+    "skipToContent": "Skip to content",
+    "menu": "Main menu",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "navLabel": "Sections",
+    "soon": "Soon",
+    "signOut": "Sign out",
+    "groups": {
+      "money": "Money",
+      "setup": "Setup"
+    },
+    "nav": {
+      "overview": "Overview",
+      "transactions": "Transactions",
+      "income": "Income",
+      "expenses": "Expenses",
+      "budgets": "Budgets",
+      "accounts": "Accounts",
+      "categories": "Categories",
+      "accountTypes": "Account types",
+      "settings": "Settings"
+    }
   }
 }

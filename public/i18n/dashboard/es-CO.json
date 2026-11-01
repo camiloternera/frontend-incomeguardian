@@ -1,21 +1,9 @@
 {
   "home": {
-    "label": "Inicio autenticado",
     "title": "Resumen",
     "loading": "Cargando tu mes…",
     "addIncome": "Registrar ingreso",
     "addExpense": "Registrar gasto",
-    "nav": {
-      "label": "Secciones",
-      "overview": "Resumen",
-      "transactions": "Movimientos",
-      "income": "Ingresos",
-      "expenses": "Gastos",
-      "categories": "Categorías",
-      "reports": "Informes",
-      "settings": "Ajustes",
-      "soon": "PRONTO"
-    },
     "kpi": {
       "label": "Tu mes de un vistazo",
       "balance": "Saldo neto",
