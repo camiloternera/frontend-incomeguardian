@@ -1,34 +1,14 @@
 {
   "list": {
-    "eyebrow": "Organization",
     "title": "Categories",
-    "subtitle": "Group your income and expenses under names that make sense to you. Predefined categories are shared by everyone and cannot be changed.",
+    "subtitle": "The names you group your income and expenses under. Create your own when the predefined ones fall short.",
     "create": "New category",
     "loading": "Loading your categories…",
     "retry": "Try again",
     "edit": "Edit",
     "editNamed": "Edit the {{name}} category",
-    "deleteNamed": "Delete the {{name}} category",
     "createdAt": "Created {{date}}",
     "updatedAt": "Updated {{date}}",
-    "badge": {
-      "global": "Predefined",
-      "personal": "Personal"
-    },
-    "filter": {
-      "label": "Filter categories",
-      "all": "All",
-      "personal": "Personal",
-      "global": "Predefined"
-    },
-    "empty": {
-      "allTitle": "No categories yet",
-      "allBody": "Create the first one to start sorting your transactions.",
-      "personalTitle": "You have no categories of your own yet",
-      "personalBody": "The predefined ones cover the basics. Create your own when you need something more specific.",
-      "globalTitle": "No predefined categories",
-      "globalBody": "Predefined categories will show up here once there are any."
-    },
     "delete": {
       "action": "Delete",
       "question": "Delete “{{name}}”? It will no longer show up in your lists.",
@@ -41,10 +21,29 @@
       "updated": "You saved the changes to “{{name}}”.",
       "deleted": "You deleted the “{{name}}” category.",
       "dismiss": "Dismiss"
+    },
+    "editing": "Editing",
+    "moreActions": "More actions for {{name}}",
+    "search": {
+      "label": "Search categories",
+      "placeholder": "Search by name or description",
+      "noPersonal": "None of your categories match “{{query}}”.",
+      "noPredefined": "No predefined category matches “{{query}}”."
+    },
+    "personal": {
+      "emptyTitle": "You have no categories of your own yet",
+      "emptyBody": "The predefined ones cover the basics. Create your own when you need something more specific."
+    },
+    "predefined": {
+      "empty": "Predefined categories will show up here once there are any."
+    },
+    "tabs": {
+      "label": "Category type",
+      "personal": "Your categories",
+      "predefined": "Predefined"
     }
   },
   "form": {
-    "breadcrumb": "Breadcrumb",
     "createTitle": "New category",
     "createSubtitle": "Give it a short name and a description that reminds you which transactions belong here.",
     "editTitle": "Edit category",
@@ -61,13 +60,9 @@
     "backToList": "Back to categories",
     "notFoundTitle": "Category unavailable",
     "readOnly": "This is a predefined category: you can use it, but you cannot edit or delete it.",
-    "tips": {
-      "label": "Tips",
-      "title": "Before you save",
-      "short": "A short name reads better in reports and lists.",
-      "unique": "The name cannot repeat another category, including a predefined one.",
-      "private": "Only you can see your personal categories."
-    }
+    "close": "Close panel",
+    "nameHint": "Short and unique: it shows up in lists and reports.",
+    "descriptionHint": "To remember which transactions belong here."
   },
   "errors": {
     "CATEGORY_NAME_REQUIRED": "Enter a name for the category.",

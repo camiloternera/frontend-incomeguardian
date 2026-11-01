@@ -1,34 +1,14 @@
 {
   "list": {
-    "eyebrow": "Organización",
     "title": "Categorías",
-    "subtitle": "Agrupa tus ingresos y gastos con nombres que tengan sentido para ti. Las categorías predefinidas están disponibles para todos y no se pueden cambiar.",
+    "subtitle": "Con qué nombres agrupas tus ingresos y gastos. Crea las tuyas cuando las predefinidas se queden cortas.",
     "create": "Nueva categoría",
     "loading": "Cargando tus categorías…",
     "retry": "Intentar de nuevo",
     "edit": "Editar",
     "editNamed": "Editar la categoría {{name}}",
-    "deleteNamed": "Eliminar la categoría {{name}}",
     "createdAt": "Creada el {{date}}",
     "updatedAt": "Actualizada el {{date}}",
-    "badge": {
-      "global": "Predefinida",
-      "personal": "Personal"
-    },
-    "filter": {
-      "label": "Filtrar categorías",
-      "all": "Todas",
-      "personal": "Personales",
-      "global": "Predefinidas"
-    },
-    "empty": {
-      "allTitle": "Todavía no hay categorías",
-      "allBody": "Crea la primera para empezar a ordenar tus movimientos.",
-      "personalTitle": "Aún no tienes categorías propias",
-      "personalBody": "Las predefinidas cubren lo básico. Crea una propia cuando necesites algo más específico.",
-      "globalTitle": "No hay categorías predefinidas",
-      "globalBody": "Cuando haya categorías predefinidas aparecerán aquí."
-    },
     "delete": {
       "action": "Eliminar",
       "question": "¿Eliminar «{{name}}»? Dejará de aparecer en tus listas.",
@@ -41,14 +21,33 @@
       "updated": "Guardaste los cambios de «{{name}}».",
       "deleted": "Eliminaste la categoría «{{name}}».",
       "dismiss": "Cerrar"
+    },
+    "editing": "Editando",
+    "moreActions": "Más acciones para {{name}}",
+    "search": {
+      "label": "Buscar categorías",
+      "placeholder": "Buscar por nombre o descripción",
+      "noPersonal": "Ninguna de tus categorías coincide con «{{query}}».",
+      "noPredefined": "Ninguna predefinida coincide con «{{query}}»."
+    },
+    "personal": {
+      "emptyTitle": "Aún no tienes categorías propias",
+      "emptyBody": "Las predefinidas cubren lo básico. Crea una propia cuando necesites algo más específico."
+    },
+    "predefined": {
+      "empty": "Cuando haya categorías predefinidas aparecerán aquí."
+    },
+    "tabs": {
+      "label": "Tipo de categoría",
+      "personal": "Tus categorías",
+      "predefined": "Predefinidas"
     }
   },
   "form": {
-    "breadcrumb": "Ruta de navegación",
     "createTitle": "Nueva categoría",
-    "createSubtitle": "Dale un nombre corto y una descripción que te ayude a recordar qué movimientos van aquí.",
+    "createSubtitle": "Dale un nombre corto y una descripción que te recuerde qué movimientos van aquí.",
     "editTitle": "Editar categoría",
-    "editSubtitle": "Los cambios se reflejan en todos los movimientos que usan esta categoría.",
+    "editSubtitle": "El cambio se refleja en todos los movimientos que la usan.",
     "loading": "Cargando la categoría…",
     "nameLabel": "Nombre",
     "namePlaceholder": "Por ejemplo, Mascotas",
@@ -61,13 +60,9 @@
     "backToList": "Volver a categorías",
     "notFoundTitle": "Categoría no disponible",
     "readOnly": "Esta categoría es predefinida: puedes usarla, pero no editarla ni eliminarla.",
-    "tips": {
-      "label": "Consejos",
-      "title": "Antes de guardar",
-      "short": "Un nombre corto se lee mejor en reportes y listas.",
-      "unique": "El nombre no puede repetir el de otra categoría, tampoco el de una predefinida.",
-      "private": "Tus categorías personales solo las ves tú."
-    }
+    "close": "Cerrar panel",
+    "nameHint": "Corto y único: se lee en listas y reportes.",
+    "descriptionHint": "Para recordar qué movimientos van aquí."
   },
   "errors": {
     "CATEGORY_NAME_REQUIRED": "Escribe un nombre para la categoría.",
