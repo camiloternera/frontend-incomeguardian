@@ -1,184 +1,220 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
 import { translocoTesting } from '@core/i18n/i18n.testing';
 import { LanguageService } from '@core/i18n/language.service';
 import { CategoryError, CategoryErrorCode } from '../../../domain/category-error';
-import { FakeCategoryRepository, provideFakeCategories } from '../../category-repository.fake';
-import { CategoryListPageComponent } from './category-list-page.component';
+import { FakeCategoryRepository, fakeCategoriesRoutes } from '../../category-repository.fake';
 
 describe('CategoryListPageComponent', () => {
   let fake: FakeCategoryRepository;
 
-  function render() {
-    const fixture = TestBed.createComponent(CategoryListPageComponent);
-    fixture.detectChanges();
+  async function open(url = '/categories') {
+    const harness = await RouterTestingHarness.create(url);
+    const element = harness.routeNativeElement as HTMLElement;
 
-    return fixture;
+    return { harness, element };
   }
 
   function click(element: HTMLElement, testId: string): void {
-    element.querySelector<HTMLButtonElement>(`[data-testid="${testId}"]`)!.click();
+    element.querySelector<HTMLElement>(`[data-testid="${testId}"]`)!.click();
+  }
+
+  function names(element: HTMLElement, section: 'category-rows' | 'predefined-rows'): string[] {
+    return [...element.querySelectorAll(`[data-testid="${section}"] > li`)].map(
+      (item) => item.querySelector('a span, p')?.textContent?.trim() ?? '',
+    );
   }
 
   beforeEach(async () => {
     localStorage.clear();
     fake = new FakeCategoryRepository();
+    fake.categories.push(
+      { id: 2, name: 'Alimentación', description: 'Mercado y comidas fuera', isGlobal: true, createdAt: '2026-10-01T00:00:00Z', updatedAt: null },
+      { id: 10, name: 'Coworking', description: 'Escritorio y café', isGlobal: false, createdAt: '2026-10-02T00:00:00Z', updatedAt: '2026-10-14T00:00:00Z' },
+    );
     await TestBed.configureTestingModule({
-      imports: [CategoryListPageComponent, translocoTesting()],
-      providers: [provideRouter([]), provideFakeCategories(fake)],
+      imports: [translocoTesting()],
+      providers: [
+        provideRouter(fakeCategoriesRoutes(fake))
+      ],
     }).compileComponents();
   });
 
-  it('lists personal categories before the predefined ones', () => {
-    const element = render().nativeElement as HTMLElement;
-    const names = [...element.querySelectorAll('[data-testid="category-rows"] h2')].map((h2) => h2.textContent?.trim());
+  it('shows your categories first and the predefined ones in their own tab', async () => {
+    const { harness, element } = await open();
 
-    expect(names).toEqual(['Mascotas', 'Vivienda']);
+    expect(names(element, 'category-rows')).toEqual(['Coworking', 'Mascotas']);
+    expect(element.querySelector('[data-testid="tab-personal"]')?.getAttribute('aria-pressed')).toBe('true');
+    expect(element.querySelector('[data-testid="tab-predefined"]')?.textContent).toContain('2');
+
+    click(element, 'tab-predefined');
+    harness.detectChanges();
+
+    expect(names(element, 'predefined-rows')).toEqual(['Alimentación', 'Vivienda']);
+    expect(element.querySelector('[data-testid="category-rows"]')).toBeNull();
   });
 
-  it('offers edit and delete only on personal categories', () => {
-    const element = render().nativeElement as HTMLElement;
+  it('offers actions only on your own categories', async () => {
+    const { harness, element } = await open();
 
-    expect(element.querySelector('[data-testid="category-9"] a[href="/9/edit"]')).toBeTruthy();
-    expect(element.querySelector('[data-testid="delete-9"]')).toBeTruthy();
-    expect(element.querySelector('[data-testid="category-1"] a')).toBeNull();
-    expect(element.querySelector('[data-testid="delete-1"]')).toBeNull();
+    expect(element.querySelector('[data-testid="category-9"] a[href="/categories/9/edit"]')).toBeTruthy();
+    expect(element.querySelector('[data-testid="menu-9"]')).toBeTruthy();
+
+    click(element, 'tab-predefined');
+    harness.detectChanges();
+    expect(element.querySelector('[data-testid="category-1"] a, [data-testid="category-1"] button')).toBeNull();
   });
 
-  it('filters by kind and shows an empty state', () => {
-    fake.categories = fake.categories.filter((category) => category.isGlobal);
-    const fixture = render();
-    const element = fixture.nativeElement as HTMLElement;
+  it('puts the create action at the top of the page', async () => {
+    const { element } = await open();
 
-    click(element, 'filter-personal');
-    fixture.detectChanges();
-
-    expect(element.querySelector('[data-testid="category-empty"]')?.textContent).toContain('no categories of your own');
+    expect(element.querySelector('header [data-testid="new-category"]')?.getAttribute('href')).toBe('/categories/new');
   });
 
-  it('asks before deleting and confirms afterwards', () => {
-    const fixture = render();
-    const element = fixture.nativeElement as HTMLElement;
+  it('pages five categories at a time and starts over when the tab changes', async () => {
+    fake.categories.push(
+      ...Array.from({ length: 6 }, (_, index) => ({
+        id: 100 + index,
+        name: `Propia ${index + 1}`,
+        description: 'Generada para el test',
+        isGlobal: false,
+        createdAt: '2026-10-20T00:00:00Z',
+        updatedAt: null,
+      })),
+    );
+    const { harness, element } = await open();
 
+    expect(names(element, 'category-rows')).toHaveLength(5);
+    expect(element.querySelector('[data-testid="pagination"]')?.textContent).toContain('Showing 1–5 of 8');
+
+    click(element, 'pagination-next');
+    harness.detectChanges();
+    expect(names(element, 'category-rows')).toHaveLength(3);
+
+    click(element, 'tab-predefined');
+    harness.detectChanges();
+    click(element, 'tab-personal');
+    harness.detectChanges();
+    expect(element.querySelector('[data-testid="pagination-page-1"]')?.getAttribute('aria-current')).toBe('page');
+  });
+
+  it('searches ignoring accents and case, and counts matches per tab', async () => {
+    const { harness, element } = await open();
+    const search = element.querySelector<HTMLInputElement>('[data-testid="category-search"]')!;
+
+    search.value = 'ALIMENTACION';
+    search.dispatchEvent(new Event('input'));
+    harness.detectChanges();
+
+    expect(element.querySelector('[data-testid="no-matches"]')?.textContent).toContain('None of your categories match “ALIMENTACION”.');
+    expect(element.querySelector('[data-testid="tab-predefined"]')?.textContent).toContain('1');
+
+    click(element, 'tab-predefined');
+    harness.detectChanges();
+    expect(names(element, 'predefined-rows')).toEqual(['Alimentación']);
+  });
+
+  it('opens the actions menu and closes it with Escape, back on its button', async () => {
+    const { harness, element } = await open();
+    const button = element.querySelector<HTMLButtonElement>('[data-testid="menu-9"]')!;
+
+    button.click();
+    harness.detectChanges();
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+
+    element.querySelector('#category-menu-9')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    harness.detectChanges();
+
+    expect(element.querySelector('#category-menu-9')).toBeNull();
+    expect(document.activeElement).toBe(button);
+  });
+
+  it('asks before deleting from the menu and confirms afterwards', async () => {
+    const { harness, element } = await open();
+
+    click(element, 'menu-9');
+    harness.detectChanges();
     click(element, 'delete-9');
-    fixture.detectChanges();
+    harness.detectChanges();
     expect(element.querySelector('[data-testid="delete-confirmation"]')?.textContent).toContain('Delete “Mascotas”?');
 
     click(element, 'confirm-delete');
-    fixture.detectChanges();
+    harness.detectChanges();
 
     expect(element.querySelector('[data-testid="category-9"]')).toBeNull();
     expect(element.querySelector('[data-testid="category-notice"]')?.textContent).toContain('You deleted the “Mascotas” category.');
   });
 
-  it('drops a category the backend no longer has', () => {
-    const fixture = render();
-    const element = fixture.nativeElement as HTMLElement;
+  it('drops a category the backend no longer has', async () => {
+    const { harness, element } = await open();
     fake.failWith = new CategoryError('The category was not found.', CategoryErrorCode.NotFound);
 
+    click(element, 'menu-9');
+    harness.detectChanges();
     click(element, 'delete-9');
-    fixture.detectChanges();
+    harness.detectChanges();
     click(element, 'confirm-delete');
-    fixture.detectChanges();
+    harness.detectChanges();
 
     expect(element.querySelector('[data-testid="category-9"]')).toBeNull();
     expect(element.querySelector('[data-testid="delete-error"]')?.textContent).toContain('The category was not found.');
   });
 
-  it('shows the load error with a retry', () => {
+  it('shows an empty state when you have none of your own', async () => {
+    fake.categories = fake.categories.filter((category) => category.isGlobal);
+    const { element } = await open();
+
+    expect(element.querySelector('[data-testid="category-empty"]')?.textContent).toContain('no categories of your own');
+  });
+
+  it('shows the load error with a retry', async () => {
     fake.failWith = new CategoryError('Server down.');
-    const fixture = render();
-    const element = fixture.nativeElement as HTMLElement;
+    const { harness, element } = await open();
 
     expect(element.querySelector('[data-testid="load-error"]')?.textContent).toContain('Server down.');
 
-    element.querySelector<HTMLButtonElement>('[data-testid="load-error"] + button')!.click();
-    fixture.detectChanges();
+    click(element, 'retry');
+    harness.detectChanges();
 
-    expect(element.querySelectorAll('[data-testid="category-rows"] li').length).toBe(2);
+    expect(names(element, 'category-rows')).toHaveLength(2);
   });
 
-  describe('pagination', () => {
-    beforeEach(() => {
-      // 1 predefinida + 11 personales = 12 categorías, dos páginas de 8.
-      fake.categories = [
-        ...fake.categories.filter((category) => category.isGlobal),
-        ...Array.from({ length: 11 }, (_, index) => ({
-          id: 100 + index,
-          name: `Propia ${String(index + 1).padStart(2, '0')}`,
-          description: 'Generada para el test',
-          isGlobal: false,
-          createdAt: '2026-10-20T00:00:00Z',
-          updatedAt: null,
-        })),
-      ];
-    });
+  it('keeps the list beside the panel and marks the row being edited', async () => {
+    const { element } = await open('/categories/9/edit');
 
-    function rows(element: HTMLElement): number {
-      return element.querySelectorAll('[data-testid="category-rows"] > li').length;
+    expect(element.querySelector('[data-testid="category-panel"]')).toBeTruthy();
+    expect(element.querySelector('[data-testid="category-browser"]')?.className).toContain('lg:flex');
+    expect(element.querySelector('[data-testid="category-9"] a')?.getAttribute('aria-current')).toBe('true');
+    expect(element.querySelector('[data-testid="new-category-mobile"]')).toBeNull();
+  });
+
+  it('adds a created category to the list without reloading it', async () => {
+    const { harness, element } = await open('/categories/new');
+    const list = vi.spyOn(fake, 'list');
+
+    for (const [testId, value] of [['category-name', 'Viajes'], ['category-description', 'Vuelos y hoteles']]) {
+      const field = element.querySelector<HTMLInputElement>(`[data-testid="${testId}"]`)!;
+      field.value = value;
+      field.dispatchEvent(new Event('input'));
     }
+    element.querySelector('form')!.dispatchEvent(new Event('submit'));
+    await harness.fixture.whenStable();
+    harness.detectChanges();
 
-    it('shows one page at a time with its range', () => {
-      const fixture = render();
-      const element = fixture.nativeElement as HTMLElement;
-
-      expect(rows(element)).toBe(8);
-      expect(element.querySelector('[data-testid="pagination"]')?.textContent).toContain('Showing 1–8 of 12');
-
-      click(element, 'pagination-next');
-      fixture.detectChanges();
-
-      expect(rows(element)).toBe(4);
-      expect(element.querySelector('[data-testid="pagination"]')?.textContent).toContain('Showing 9–12 of 12');
-      expect(element.querySelector('[data-testid="pagination-page-2"]')?.getAttribute('aria-current')).toBe('page');
-    });
-
-    it('goes back to the first page when the filter changes', () => {
-      const fixture = render();
-      const element = fixture.nativeElement as HTMLElement;
-
-      click(element, 'pagination-page-2');
-      fixture.detectChanges();
-      click(element, 'filter-personal');
-      fixture.detectChanges();
-
-      expect(element.querySelector('[data-testid="pagination-page-1"]')?.getAttribute('aria-current')).toBe('page');
-    });
-
-    it('steps back when deleting empties the last page', () => {
-      // Solo personales: la fila que queda sola en la página 2 debe poder eliminarse.
-      fake.categories = fake.categories.filter((category) => !category.isGlobal).slice(0, 9);
-      const fixture = render();
-      const element = fixture.nativeElement as HTMLElement;
-
-      click(element, 'pagination-next');
-      fixture.detectChanges();
-      expect(rows(element)).toBe(1);
-
-      const lastId = element.querySelector('[data-testid="category-rows"] > li')!.getAttribute('data-testid')!.replace('category-', '');
-      click(element, `delete-${lastId}`);
-      fixture.detectChanges();
-      click(element, 'confirm-delete');
-      fixture.detectChanges();
-
-      expect(rows(element)).toBe(8);
-      expect(element.querySelector('[data-testid="pagination"]')).toBeNull();
-    });
-
-    it('hides the bar when everything fits on one page', () => {
-      fake.categories = fake.categories.slice(0, 8);
-      const element = render().nativeElement as HTMLElement;
-
-      expect(element.querySelector('[data-testid="pagination"]')).toBeNull();
-    });
+    expect(element.querySelector('[data-testid="category-panel"]')).toBeNull();
+    expect(names(element, 'category-rows')).toEqual(['Coworking', 'Mascotas', 'Viajes']);
+    expect(element.querySelector('[data-testid="category-notice"]')?.textContent).toContain('You created the “Viajes” category.');
+    expect(list).not.toHaveBeenCalled();
   });
 
-  it('translates the view into Spanish', () => {
+  it('translates the view into Spanish', async () => {
     TestBed.inject(LanguageService).setLanguage('es-CO');
-    const element = render().nativeElement as HTMLElement;
+    const { element } = await open();
 
     expect(element.querySelector('h1')?.textContent).toContain('Categorías');
-    expect(element.textContent).toContain('Predefinida');
+    expect(element.textContent).toContain('Tus categorías');
+    expect(element.textContent).toContain('Predefinidas');
     expect(element.textContent).toContain('Nueva categoría');
   });
 });

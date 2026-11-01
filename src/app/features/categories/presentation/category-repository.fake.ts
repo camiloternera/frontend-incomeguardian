@@ -1,6 +1,6 @@
-import { Provider } from '@angular/core';
+import { Routes } from '@angular/router';
+import { categoriesRoutes } from '../categories.routes';
 import { Observable, of, throwError } from 'rxjs';
-import { provideCategories } from '../categories.providers';
 import { Category, CategoryDraft } from '../domain/category';
 import { CategoryError, CategoryErrorCode } from '../domain/category-error';
 import { CategoryRepository } from '../domain/category.repository';
@@ -64,7 +64,14 @@ export class FakeCategoryRepository extends CategoryRepository {
   }
 }
 
-/** Los proveedores reales del dominio, con el repositorio HTTP sustituido por el falso. */
-export function provideFakeCategories(fake: FakeCategoryRepository): Provider[] {
-  return [...provideCategories(), { provide: CategoryRepository, useValue: fake }];
+/** Las rutas reales del dominio montadas en `/categories`, con el repositorio falso en lugar del HTTP. */
+export function fakeCategoriesRoutes(fake: FakeCategoryRepository): Routes {
+  const [root] = categoriesRoutes;
+
+  return [
+    {
+      path: 'categories',
+      children: [{ ...root, providers: [...(root.providers ?? []), { provide: CategoryRepository, useValue: fake }] }],
+    },
+  ];
 }

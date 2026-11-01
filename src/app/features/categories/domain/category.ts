@@ -24,3 +24,15 @@ export interface CategoryDraft {
   name: string;
   description: string;
 }
+
+/** Quita tildes y mayúsculas para comparar textos como los escribe una persona. */
+function normalized(text: string): string {
+  return text.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase();
+}
+
+/** Indica si la categoría coincide con la búsqueda por nombre o descripción; una búsqueda vacía coincide siempre. */
+export function matchesCategory(category: Category, query: string): boolean {
+  const needle = normalized(query.trim());
+
+  return needle === '' || normalized(category.name).includes(needle) || normalized(category.description).includes(needle);
+}
