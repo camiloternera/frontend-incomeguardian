@@ -48,11 +48,23 @@ const BASELINE = VIEW.top + VIEW.plotHeight;
           [attr.x]="view.left - 10"
           [attr.y]="line.y + 4"
           text-anchor="end"
-          font-size="10"
+          font-size="12"
           class="fill-ig-muted"
         >
           {{ line.label }}
         </text>
+      }
+
+      @if (averageY(); as y) {
+        <line
+          [attr.x1]="view.left"
+          [attr.y1]="y"
+          [attr.x2]="view.left + view.plotWidth"
+          [attr.y2]="y"
+          class="stroke-ig-accent-text"
+          stroke-width="1.5"
+          stroke-dasharray="6 5"
+        />
       }
 
       @for (group of groups(); track group.label) {
@@ -76,7 +88,7 @@ const BASELINE = VIEW.top + VIEW.plotHeight;
           [attr.x]="group.labelX"
           [attr.y]="baseline + 20"
           text-anchor="middle"
-          font-size="11"
+          font-size="13"
           class="fill-ig-muted"
         >
           {{ group.label }}
@@ -99,14 +111,23 @@ export class CashFlowChartComponent {
   readonly chartLabel = input('');
   /** Formats a grid value, so the axis follows the active language. */
   readonly formatTick = input<(value: number) => string>((value) => String(value));
+  /** Ingreso promedio a marcar con una línea punteada; `null` la oculta. La leyenda va fuera del gráfico. */
+  readonly average = input<number | null>(null);
 
   protected readonly view = VIEW;
   protected readonly barWidth = BAR_WIDTH;
   protected readonly baseline = BASELINE;
 
+  /** Altura de la línea del promedio, o `null` si no hay promedio. */
+  protected readonly averageY = computed(() => {
+    const average = this.average();
+
+    return average !== null && average > 0 ? this.toY(average) : null;
+  });
+
   /** Rounds the top of the scale up so the tallest bar never touches the frame. */
   private readonly scaleMax = computed(() => {
-    const peak = Math.max(...this.bars().flatMap((bar) => [bar.income, bar.expenses]), 0);
+    const peak = Math.max(...this.bars().flatMap((bar) => [bar.income, bar.expenses]), this.average() ?? 0, 0);
     const step = this.tickStep(peak);
 
     return Math.max(Math.ceil(peak / step) * step, step);

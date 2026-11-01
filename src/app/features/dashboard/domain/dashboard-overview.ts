@@ -1,6 +1,6 @@
 export type MovementKind = 'income' | 'expense';
 
-/** Spending buckets. The key names a translation, never the copy itself. */
+/** Grupos de gasto. La clave nombra una traducción, nunca el copy. */
 export type CategoryKey =
   | 'housing'
   | 'food'
@@ -9,22 +9,8 @@ export type CategoryKey =
   | 'health'
   | 'other';
 
-export interface OverviewTotals {
-  balance: number;
-  income: number;
-  expenses: number;
-  /** Share of the income kept this month, 0 to 1. */
-  savingsRate: number;
-  /** Ratios against the previous month, 0.062 meaning 6.2% up. */
-  balanceChange: number;
-  incomeChange: number;
-  expensesChange: number;
-  /** Difference in percentage points, not a ratio. */
-  savingsRateChange: number;
-}
-
 export interface CashFlowPoint {
-  /** ISO year and month, such as `2026-10`. */
+  /** Año y mes ISO, por ejemplo `2026-10`. */
   month: string;
   income: number;
   expenses: number;
@@ -33,13 +19,13 @@ export interface CashFlowPoint {
 export interface CategorySpend {
   key: CategoryKey;
   amount: number;
-  /** Share of the month's spending, 0 to 1. */
+  /** Parte del gasto del mes, de 0 a 1. */
   share: number;
 }
 
 export interface MovementSummary {
   id: string;
-  /** ISO date, such as `2026-10-16`. */
+  /** Fecha ISO, por ejemplo `2026-10-16`. */
   date: string;
   description: string;
   category: CategoryKey | 'salary' | 'freelance' | 'investment';
@@ -48,10 +34,32 @@ export interface MovementSummary {
   kind: MovementKind;
 }
 
+/** Metas del usuario contra las que se comparan los indicadores. */
+export interface OverviewGoals {
+  /** Tasa de ahorro deseada, de 0 a 1. */
+  savingsRate: number;
+  /** Meses de gastos que el colchón debería cubrir. */
+  cushionMonths: number;
+}
+
 export interface DashboardOverview {
+  /** Mes del resumen, año y mes ISO. */
   month: string;
+  /** Día al que corresponden los datos, fecha ISO dentro de `month`. */
+  asOf: string;
   currency: string;
-  totals: OverviewTotals;
+  /** Ingreso recibido en el mes. */
+  income: number;
+  /** Cuántos pagos componen ese ingreso. */
+  incomePayments: number;
+  /** Gastado en el mes hasta `asOf`. */
+  expenses: number;
+  /** Gastos fijos del mes que aún faltan por pagar. */
+  committed: number;
+  /** Dinero ahorrado disponible como colchón. */
+  savings: number;
+  goals: OverviewGoals;
+  /** Últimos meses, incluido el actual, del más antiguo al más reciente. */
   cashFlow: CashFlowPoint[];
   categories: CategorySpend[];
   recent: MovementSummary[];

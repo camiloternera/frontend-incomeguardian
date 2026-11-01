@@ -2,32 +2,64 @@
   "home": {
     "title": "Overview",
     "loading": "Loading your month…",
-    "addIncome": "Add income",
-    "addExpense": "Add expense",
-    "kpi": {
-      "label": "This month at a glance",
-      "balance": "Net balance",
+    "hideAmounts": "Hide amounts",
+    "showAmounts": "Show amounts",
+    "addMovement": "Add transaction",
+    "soon": "Soon",
+    "hero": {
+      "label": "Your month at a glance",
+      "availableUntil": "Available to spend until {{date}}",
+      "overspentTitle": "This month you've used more than you received",
+      "summary": "You received {{income}} in {{payments}} payments this month. You've spent {{expenses}} and have {{committed}} committed to fixed costs.",
+      "summaryOnePayment": "You received {{income}} in one payment this month. You've spent {{expenses}} and have {{committed}} committed to fixed costs.",
+      "overspentBody": "What you've spent and committed is {{amount}} more than what came in. See which fixed costs can move to next month.",
+      "split": "This month's income: {{spent}} spent, {{committed}} committed and {{available}} available",
+      "spent": "Spent",
+      "committed": "Committed",
+      "available": "Available",
+      "perDay": "≈ {{amount}} a day for the next {{days}} days",
+      "perDayLast": "≈ {{amount}} for the last day of the month"
+    },
+    "cushion": {
+      "title": "Your cushion",
+      "months": "{{months}} months",
+      "body": "Your savings cover {{months}} months of spending at your average pace ({{average}} a month).",
+      "goal": "Goal: {{months}} months",
+      "meter": "{{months}} of a {{goal}}-month goal",
+      "empty": "Once you have earlier months recorded, we'll show how long your savings last."
+    },
+    "stats": {
+      "label": "This month's indicators",
       "income": "Income this month",
       "expenses": "Expenses this month",
-      "savingsRate": "Savings rate",
-      "vsLastMonth": "vs last month"
+      "savings": "Projected savings",
+      "aboveAverage": "{{pct}} above your {{count}}-month average",
+      "belowAverage": "{{pct}} below your {{count}}-month average",
+      "ofAverage": "{{pct}} of your monthly average",
+      "ofAverageDays": "{{pct}} of your average, {{days}} days before month end",
+      "aboveGoal": "Above your {{goal}} goal",
+      "belowGoal": "Below your {{goal}} goal",
+      "noAverage": "No earlier months to compare yet"
     },
     "cashFlow": {
       "title": "Cash flow",
+      "period": "last {{count}} months",
       "income": "Income",
       "expenses": "Expenses",
-      "chartLabel": "Income and expenses over the last six months"
+      "average": "Average {{amount}}",
+      "chartLabel": "Income and expenses over the last months"
     },
     "categories": {
-      "title": "Where it went"
+      "title": "Where it went",
+      "empty": "No spending this month yet."
     },
     "recent": {
       "title": "Recent transactions",
-      "date": "Date",
-      "description": "Description",
-      "category": "Category",
-      "account": "Account",
-      "amount": "Amount"
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "income": "Income",
+      "expense": "Expense",
+      "empty": "No transactions this month yet."
     }
   },
   "categories": {
@@ -38,7 +70,7 @@
     "health": "Health",
     "other": "Everything else",
     "salary": "Salary",
-    "freelance": "Freelance",
+    "freelance": "Freelance work",
     "investment": "Investment"
   }
 }

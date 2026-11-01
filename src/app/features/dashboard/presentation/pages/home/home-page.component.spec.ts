@@ -1,75 +1,131 @@
 import { TestBed } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { provideRouter } from '@angular/router';
+import { firstValueFrom, of } from 'rxjs';
 import { translocoTesting } from '@core/i18n/i18n.testing';
 import { LanguageService } from '@core/i18n/language.service';
-import { provideAuth } from '@features/auth/auth.providers';
 import { HomePageComponent } from './home-page.component';
 import { provideDashboard } from '../../../dashboard.providers';
+import { DashboardOverview } from '../../../domain/dashboard-overview';
+import { DashboardRepository } from '../../../domain/dashboard.repository';
+import { InMemoryDashboardRepository } from '../../../infrastructure/in-memory-dashboard.repository';
+
+async function setup(changes: Partial<DashboardOverview> = {}) {
+  const sample = await firstValueFrom(new InMemoryDashboardRepository().overview());
+
+  await TestBed.configureTestingModule({
+    imports: [HomePageComponent, translocoTesting()],
+    providers: [
+      provideDashboard(),
+      { provide: DashboardRepository, useValue: { overview: () => of({ ...sample, ...changes }) } },
+    ],
+  }).compileComponents();
+}
 
 function render() {
   const fixture = TestBed.createComponent(HomePageComponent);
   fixture.detectChanges();
 
-  return fixture;
+  return { fixture, element: fixture.nativeElement as HTMLElement };
+}
+
+function text(element: HTMLElement, testId: string): string {
+  return element.querySelector(`[data-testid="${testId}"]`)?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
 }
 
 describe('HomePageComponent', () => {
-  beforeEach(async () => {
-    sessionStorage.clear();
+  beforeEach(() => {
     localStorage.clear();
-    await TestBed.configureTestingModule({
-      imports: [HomePageComponent, translocoTesting()],
-      providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
-        provideRouter([]),
-        provideAuth(),
-        provideDashboard(),
-      ],
-    }).compileComponents();
   });
 
-  it('shows the four headline numbers', () => {
-    const element = render().nativeElement as HTMLElement;
+  describe('with the sample month', () => {
+    beforeEach(() => setup());
 
-    for (const key of ['balance', 'income', 'expenses', 'savingsRate']) {
-      expect(element.querySelector(`[data-testid="kpi-${key}"]`)).toBeTruthy();
-    }
+    it('leads with what is available to spend until the end of the month', () => {
+      const { element } = render();
 
-    expect(element.querySelector('[data-testid="kpi-savingsRate"]')?.textContent).toContain('30.7');
+      expect(text(element, 'available')).toContain('2,840,000');
+      expect(text(element, 'hero')).toContain('Available to spend until October 31');
+      expect(text(element, 'per-day')).toContain('next 11 days');
+    });
+
+    it('shows how long the savings last against the goal', () => {
+      const { element } = render();
+
+      expect(text(element, 'cushion')).toContain('2.4 months');
+      expect(text(element, 'cushion')).toContain('Goal: 6 months');
+      expect(element.querySelectorAll('[data-testid="cushion"] [role="img"] > span').length).toBe(6);
+    });
+
+    it('compares the month with the average of the previous months', () => {
+      const { element } = render();
+
+      expect(text(element, 'stat-income')).toContain('18.3% above your 5-month average');
+      expect(text(element, 'stat-expenses')).toContain('60.8% of your average, 11 days before month end');
+      expect(text(element, 'stat-savings')).toContain('45.8%');
+      expect(text(element, 'stat-savings')).toContain('Above your 30% goal');
+    });
+
+    it('groups the recent movements by day', () => {
+      const { element } = render();
+      const days = element.querySelectorAll('[data-testid="movement-day"]');
+
+      expect(days.length).toBe(3);
+      expect(days[0].querySelector('h3')?.textContent).toContain('Today');
+      expect(days[1].querySelector('h3')?.textContent).toContain('Yesterday');
+      expect(days[0].querySelectorAll('li').length).toBe(2);
+    });
+
+    it('draws a pair of bars per month and the income average', () => {
+      const { element } = render();
+
+      expect(element.querySelectorAll('app-cash-flow-chart svg rect').length).toBe(12);
+      expect(element.querySelector('app-cash-flow-chart line[stroke-dasharray]')).toBeTruthy();
+    });
+
+    it('masks every amount on demand', () => {
+      const { fixture, element } = render();
+      const toggle = element.querySelector('[data-testid="toggle-amounts"]') as HTMLButtonElement;
+
+      toggle.click();
+      fixture.detectChanges();
+
+      expect(toggle.getAttribute('aria-pressed')).toBe('true');
+      expect(text(element, 'available')).toBe('•••••');
+      expect(element.textContent).not.toContain('6,200,000');
+      expect(element.textContent).not.toContain('3,200,000');
+      expect(toggle.textContent).toContain('Show amounts');
+    });
+
+    it('translates the view into Spanish', () => {
+      TestBed.inject(LanguageService).setLanguage('es-CO');
+      const { element } = render();
+
+      expect(element.querySelector('h1')?.textContent).toContain('Resumen');
+      expect(text(element, 'hero')).toContain('Disponible para gastar hasta el 31 de octubre');
+      expect(element.textContent).toContain('Flujo de caja');
+      expect(element.textContent).toContain('Vivienda');
+    });
   });
 
-  it('keeps the accent off a rise in spending', () => {
-    const element = render().nativeElement as HTMLElement;
-    const tile = element.querySelector('[data-testid="kpi-expenses"]')?.closest('article');
-    const income = element.querySelector('[data-testid="kpi-income"]')?.closest('article');
+  describe('when the month is overspent', () => {
+    beforeEach(() => setup({ expenses: 5_800_000 }));
 
-    // Earning more is the welcome direction; spending more is not.
-    expect(income?.querySelector('.text-ig-accent-text')).toBeTruthy();
-    expect(tile?.querySelector('.text-ig-accent-text')).toBeNull();
+    it('says so calmly and drops the daily amount', () => {
+      const { element } = render();
+
+      expect(text(element, 'hero')).toContain("used more than you received");
+      expect(text(element, 'hero')).toContain('600,000 more than what came in');
+      expect(element.querySelector('[data-testid="per-day"]')).toBeNull();
+    });
   });
 
-  it('lists the recent movements and the category split', () => {
-    const element = render().nativeElement as HTMLElement;
+  describe('without previous months', () => {
+    beforeEach(() => setup({ cashFlow: [{ month: '2026-10', income: 6_200_000, expenses: 2_360_000 }] }));
 
-    expect(element.querySelectorAll('tbody tr').length).toBe(6);
-    expect(element.querySelectorAll('section ul li').length).toBeGreaterThanOrEqual(5);
-  });
+    it('explains that there is nothing to compare yet', () => {
+      const { element } = render();
 
-  it('draws a pair of bars per month', () => {
-    const element = render().nativeElement as HTMLElement;
-
-    expect(element.querySelectorAll('app-cash-flow-chart svg rect').length).toBe(12);
-  });
-
-  it('translates the view into Spanish', () => {
-    TestBed.inject(LanguageService).setLanguage('es-CO');
-    const element = render().nativeElement as HTMLElement;
-
-    expect(element.querySelector('h1')?.textContent).toContain('Resumen');
-    expect(element.textContent).toContain('Flujo de caja');
-    expect(element.textContent).toContain('Vivienda');
+      expect(text(element, 'stat-income')).toContain('No earlier months to compare yet');
+      expect(text(element, 'cushion')).toContain('Once you have earlier months recorded');
+    });
   });
 });
