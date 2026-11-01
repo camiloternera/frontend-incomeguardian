@@ -1,14 +1,24 @@
-import { CurrencyPipe } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { CurrencyPipe, getCurrencySymbol } from '@angular/common';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  afterNextRender,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
+import { LucideBan, LucidePlus, LucideX } from '@lucide/angular';
 import { Observable, finalize } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { LanguageService } from '@core/i18n/language.service';
-import { ThemeService } from '@core/theme/theme.service';
 import { notBlank } from '@shared/forms/not-blank.validator';
+import { SelectComponent, SelectOption } from '@shared/ui/select/select.component';
 import {
   CreateAccountUseCase,
   GetAccountUseCase,
@@ -31,12 +41,12 @@ import {
   NAME_ERROR_CODES,
   TYPE_ERROR_CODES,
 } from '../../../domain/account-error';
-import { AccountNoticeState } from '../../account-notice';
+import { AccountWorkspace } from '../../account-workspace';
 import { balanceDigits } from '../../balance-format';
 import { balanceValidator, parseBalance } from '../../validators/balance.validator';
 
-/** Estado de la vista: listo para editar, cargando, sin cuenta o con una cuenta desactivada. */
-type FormStatus = 'ready' | 'loading' | 'notFound' | 'readOnly';
+/** Estado del panel: listo para editar, cargando, sin cuenta o con una cuenta desactivada. */
+type PanelStatus = 'ready' | 'loading' | 'notFound' | 'readOnly';
 
 /** Estado del selector de tipos de cuenta, que se carga aparte de la cuenta. */
 type TypeOptionsStatus = 'loading' | 'ready' | 'error';
@@ -47,39 +57,63 @@ interface FieldMessage {
   params?: Record<string, unknown>;
 }
 
+/** Ruta del listado, a la que vuelve el panel al cerrarse. */
+const LIST_URL = '/accounts';
+
+/**
+ * Panel para crear, editar o consultar una cuenta junto a la lista (en mobile ocupa la pantalla).
+ * Vive en una ruta hija del listado y le comunica los cambios mediante `AccountWorkspace`.
+ */
 @Component({
-  selector: 'app-account-form-page',
-  imports: [CurrencyPipe, ReactiveFormsModule, RouterLink, TranslocoDirective],
-  templateUrl: './account-form-page.component.html',
-  styleUrls: ['./account-form-page.component.css'],
+  selector: 'app-account-panel',
+  imports: [
+    CurrencyPipe,
+    ReactiveFormsModule,
+    RouterLink,
+    TranslocoDirective,
+    LucideBan,
+    LucidePlus,
+    LucideX,
+    SelectComponent,
+  ],
+  templateUrl: './account-panel.component.html',
 })
-export class AccountFormPageComponent {
+export class AccountPanelComponent {
   private readonly getAccount = inject(GetAccountUseCase);
   private readonly createAccount = inject(CreateAccountUseCase);
   private readonly updateAccount = inject(UpdateAccountUseCase);
   private readonly listTypeOptions = inject(ListAccountTypeOptionsUseCase);
+  private readonly workspace = inject(AccountWorkspace);
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly router = inject(Router);
   private readonly transloco = inject(TranslocoService);
+  private readonly heading = viewChild<ElementRef<HTMLElement>>('heading');
 
-  protected readonly theme = inject(ThemeService).theme;
+  protected readonly listUrl = LIST_URL;
   protected readonly locale = inject(LanguageService).language;
   protected readonly currencies = CURRENCIES;
   protected readonly nameMax = ACCOUNT_NAME_MAX_LENGTH;
   protected readonly balanceDigits = balanceDigits;
-  protected readonly balanceParams = { decimals: ACCOUNT_BALANCE_MAX_DECIMALS, digits: ACCOUNT_BALANCE_MAX_INTEGER_DIGITS };
+  protected readonly balanceParams = {
+    decimals: ACCOUNT_BALANCE_MAX_DECIMALS,
+    digits: ACCOUNT_BALANCE_MAX_INTEGER_DIGITS,
+  };
   protected readonly notFoundCode = AccountErrorCode.NotFound;
 
-  /** Identificador de la cuenta en edición; `null` cuando se crea una nueva. */
-  protected readonly accountId = this.readId();
-  protected readonly isEdit = this.accountId !== null;
+  /** Cuenta en edición; `null` cuando se crea una nueva. Cambia si se pasa de una fila a otra. */
+  protected readonly accountId = signal<number | null>(null);
+  protected readonly isEdit = computed(() => this.accountId() !== null);
+  /** La cuenta tal como llegó del backend, para desactivarla y para el resumen de solo lectura. */
+  protected readonly account = signal<Account | null>(null);
 
-  protected readonly status = signal<FormStatus>(this.isEdit ? 'loading' : 'ready');
+  protected readonly status = signal<PanelStatus>('ready');
   protected readonly loadError = signal('');
   protected readonly isSubmitting = signal(false);
   protected readonly formError = signal('');
-  /** Cuenta cargada, para el resumen de solo lectura de una cuenta desactivada. */
-  protected readonly account = signal<Account | null>(null);
+
+  /** Si el pie del panel pide confirmar la desactivación. */
+  protected readonly confirmingDeactivate = signal(false);
+  protected readonly isDeactivating = signal(false);
 
   protected readonly typeOptionsStatus = signal<TypeOptionsStatus>('loading');
   private readonly loadedTypeOptions = signal<AccountTypeOption[]>([]);
@@ -92,8 +126,15 @@ export class AccountFormPageComponent {
     const options = this.loadedTypeOptions();
     const current = this.account()?.accountType;
 
-    return current && !options.some((option) => option.id === current.id) ? [current, ...options] : options;
+    return current && !options.some((option) => option.id === current.id)
+      ? [current, ...options]
+      : options;
   });
+
+  /** Los tipos en la forma que espera el selector compartido. */
+  protected readonly typeSelectOptions = computed<SelectOption<number>[]>(() =>
+    this.typeOptions().map((option) => ({ value: option.id, label: option.name })),
+  );
 
   /** Errores que devolvió el backend para cada campo; se limpian al cambiar el campo. */
   protected readonly nameServerError = signal<AccountErrorCode | null>(null);
@@ -107,9 +148,17 @@ export class AccountFormPageComponent {
     initialBalance: ['0', balanceValidator],
   });
 
-  private readonly formValue = toSignal(this.accountForm.valueChanges, { initialValue: this.accountForm.getRawValue() });
+  private readonly formValue = toSignal(this.accountForm.valueChanges, {
+    initialValue: this.accountForm.getRawValue(),
+  });
 
   protected readonly nameLength = computed(() => this.formValue().name?.length ?? 0);
+  protected readonly currency = computed(() => this.formValue().currency ?? 'COP');
+
+  /** Símbolo de la moneda elegida para el prefijo del saldo; el código se añade solo si el símbolo no lo dice. */
+  protected readonly currencySymbol = computed(() =>
+    getCurrencySymbol(this.currency(), 'wide', this.locale()),
+  );
 
   constructor() {
     const controls = this.accountForm.controls;
@@ -119,14 +168,25 @@ export class AccountFormPageComponent {
 
     this.loadTypeOptions();
 
-    if (this.accountId !== null) {
-      this.load(this.accountId);
-    }
+    // Al pasar de editar una fila a otra, Angular reutiliza el panel: se reinicia con cada id.
+    inject(ActivatedRoute)
+      .paramMap.pipe(takeUntilDestroyed())
+      .subscribe((params) => this.open(parseId(params.get('id'))));
+
+    inject(DestroyRef).onDestroy(() => this.workspace.selectedId.set(null));
+
+    // Lleva el foco al título para que el lector de pantalla anuncie el panel recién abierto.
+    afterNextRender(() => this.heading()?.nativeElement.focus());
   }
 
   protected nameError(): FieldMessage | null {
     const control = this.accountForm.controls.name;
-    const code = this.nameServerError() ?? (this.showsError(control) ? (control.hasError('maxlength') ? AccountErrorCode.NameMaxLength : AccountErrorCode.NameRequired) : null);
+    const local = this.showsError(control)
+      ? control.hasError('maxlength')
+        ? AccountErrorCode.NameMaxLength
+        : AccountErrorCode.NameRequired
+      : null;
+    const code = this.nameServerError() ?? local;
 
     return code ? this.codeMessage(code) : null;
   }
@@ -138,11 +198,17 @@ export class AccountFormPageComponent {
       return this.codeMessage(code);
     }
 
-    return this.showsError(this.accountForm.controls.accountTypeId) ? { key: 'accounts.form.typeRequired' } : null;
+    return this.showsError(this.accountForm.controls.accountTypeId)
+      ? { key: 'accounts.form.typeRequired' }
+      : null;
   }
 
   protected currencyError(): FieldMessage | null {
-    const code = this.currencyServerError() ?? (this.showsError(this.accountForm.controls.currency) ? AccountErrorCode.CurrencyRequired : null);
+    const code =
+      this.currencyServerError() ??
+      (this.showsError(this.accountForm.controls.currency)
+        ? AccountErrorCode.CurrencyRequired
+        : null);
 
     return code ? this.codeMessage(code) : null;
   }
@@ -164,8 +230,10 @@ export class AccountFormPageComponent {
   }
 
   protected retry(): void {
-    if (this.accountId !== null) {
-      this.load(this.accountId);
+    const id = this.accountId();
+
+    if (id !== null) {
+      this.load(id);
     }
   }
 
@@ -180,6 +248,17 @@ export class AccountFormPageComponent {
     });
   }
 
+  /** Escape cierra el panel, salvo que haya cambios sin guardar. */
+  protected closeOnEscape(): void {
+    if (!this.accountForm.dirty) {
+      this.close();
+    }
+  }
+
+  protected close(): void {
+    void this.router.navigateByUrl(LIST_URL);
+  }
+
   protected submit(): void {
     this.formError.set('');
 
@@ -188,6 +267,7 @@ export class AccountFormPageComponent {
       return;
     }
 
+    const id = this.accountId();
     const value = this.accountForm.getRawValue();
     const draft = {
       name: value.name,
@@ -196,16 +276,71 @@ export class AccountFormPageComponent {
       initialBalance: parseBalance(value.initialBalance),
     };
     const request: Observable<Account> =
-      this.accountId === null ? this.createAccount.execute(draft) : this.updateAccount.execute(this.accountId, draft);
+      id === null ? this.createAccount.execute(draft) : this.updateAccount.execute(id, draft);
 
     this.isSubmitting.set(true);
     request.pipe(finalize(() => this.isSubmitting.set(false))).subscribe({
       next: (account) => {
-        const state: AccountNoticeState = { notice: { kind: this.isEdit ? 'updated' : 'created', name: account.name } };
-        void this.router.navigate(['/accounts'], { state });
+        this.workspace.saved(account, id === null ? 'created' : 'updated');
+        this.close();
       },
       error: (error: unknown) => this.handleSubmitError(error),
     });
+  }
+
+  protected askDeactivate(): void {
+    this.formError.set('');
+    this.confirmingDeactivate.set(true);
+  }
+
+  protected cancelDeactivate(): void {
+    this.confirmingDeactivate.set(false);
+  }
+
+  protected confirmDeactivate(): void {
+    const account = this.account();
+
+    if (!account) {
+      return;
+    }
+
+    this.isDeactivating.set(true);
+    this.workspace
+      .deactivate(account)
+      .pipe(finalize(() => this.isDeactivating.set(false)))
+      .subscribe({
+        next: () => this.close(),
+        error: (error: unknown) => {
+          this.confirmingDeactivate.set(false);
+
+          if (error instanceof AccountError && error.code === AccountErrorCode.NotFound) {
+            this.status.set('notFound');
+            return;
+          }
+
+          this.formError.set(this.messageOf(error));
+        },
+      });
+  }
+
+  /** Prepara el panel para crear (`null`) o para editar la cuenta indicada. */
+  private open(id: number | null): void {
+    this.accountId.set(id);
+    this.workspace.selectedId.set(id);
+    this.account.set(null);
+    this.confirmingDeactivate.set(false);
+    this.formError.set('');
+    this.nameServerError.set(null);
+    this.typeServerError.set(null);
+    this.currencyServerError.set(null);
+    this.accountForm.reset({ name: '', accountTypeId: null, currency: 'COP', initialBalance: '0' });
+
+    if (id === null) {
+      this.status.set('ready');
+      return;
+    }
+
+    this.load(id);
   }
 
   private load(id: number): void {
@@ -262,14 +397,16 @@ export class AccountFormPageComponent {
     return control.touched && !control.valid;
   }
 
-  private readId(): number | null {
-    const raw = inject(ActivatedRoute).snapshot.paramMap.get('id');
-    const id = raw === null ? NaN : Number(raw);
-
-    return Number.isInteger(id) ? id : null;
-  }
-
   private messageOf(error: unknown): string {
-    return error instanceof AccountError ? error.message : this.transloco.translate(GENERIC_ERROR_KEY);
+    return error instanceof AccountError
+      ? error.message
+      : this.transloco.translate(GENERIC_ERROR_KEY);
   }
+}
+
+/** Convierte el parámetro de la ruta en un id entero, o `null` si no hay (crear). */
+function parseId(raw: string | null): number | null {
+  const id = raw === null ? NaN : Number(raw);
+
+  return Number.isInteger(id) ? id : null;
 }

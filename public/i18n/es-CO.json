@@ -17,6 +17,11 @@
     "next": "Página siguiente",
     "page": "Ir a la página {{page}}"
   },
+  "select": {
+    "search": "Buscar",
+    "noMatches": "Nada coincide con «{{query}}».",
+    "empty": "No hay opciones disponibles."
+  },
   "shell": {
     "skipToContent": "Saltar al contenido",
     "menu": "Menú principal",

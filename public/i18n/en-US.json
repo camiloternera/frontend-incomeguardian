@@ -17,6 +17,11 @@
     "next": "Next page",
     "page": "Go to page {{page}}"
   },
+  "select": {
+    "search": "Search",
+    "noMatches": "Nothing matches “{{query}}”.",
+    "empty": "No options available."
+  },
   "shell": {
     "skipToContent": "Skip to content",
     "menu": "Main menu",
