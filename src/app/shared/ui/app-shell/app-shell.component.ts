@@ -99,6 +99,8 @@ export class AppShellComponent {
 
   /** Si el panel de navegación mobile está abierto. */
   protected readonly menuOpen = signal(false);
+  /** Mientras el backend revoca la sesión, el botón de salir no se puede pulsar otra vez. */
+  protected readonly signingOut = signal(false);
 
   private readonly drawer = viewChild.required<ElementRef<HTMLDialogElement>>('drawer');
   private readonly menuButton = viewChild.required<ElementRef<HTMLButtonElement>>('menuButton');
@@ -153,10 +155,19 @@ export class AppShellComponent {
     }
   }
 
-  /** Cierra la sesión y vuelve al login. */
+  /** Revoca la sesión de este dispositivo, borra los tokens y vuelve al login. */
   protected signOut(): void {
-    this.closeMenu();
-    this.currentUser.signOut();
-    void this.router.navigateByUrl('/login');
+    if (this.signingOut()) {
+      return;
+    }
+
+    this.signingOut.set(true);
+    this.currentUser.signOut().subscribe({
+      complete: () => {
+        this.signingOut.set(false);
+        this.closeMenu();
+        void this.router.navigateByUrl('/login');
+      },
+    });
   }
 }

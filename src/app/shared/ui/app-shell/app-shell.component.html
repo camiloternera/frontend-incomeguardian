@@ -124,8 +124,10 @@
 
       <button
         data-testid="shell-sign-out"
-        class="flex min-h-11 items-center gap-3 rounded-lg border border-transparent bg-transparent px-3 text-left text-[14px] text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ig-accent"
+        class="flex min-h-11 items-center gap-3 rounded-lg border border-transparent bg-transparent px-3 text-left text-[14px] text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ig-accent disabled:cursor-wait disabled:opacity-60"
         type="button"
+        [disabled]="signingOut()"
+        [attr.aria-busy]="signingOut()"
         (click)="signOut()"
       >
         <svg lucideLogOut [size]="18" class="shrink-0 text-ig-muted"></svg>

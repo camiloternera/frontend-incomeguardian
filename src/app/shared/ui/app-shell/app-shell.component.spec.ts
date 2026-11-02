@@ -5,27 +5,11 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { translocoTesting } from '@core/i18n/i18n.testing';
 import { LanguageService } from '@core/i18n/language.service';
 import { CurrentUser, CurrentUserProfile } from '@core/session/current-user';
+import { FakeCurrentUser } from '@core/session/current-user.testing';
 import { AppShellComponent } from './app-shell.component';
 
 @Component({ template: '<h1>Contenido</h1>' })
 class StubPageComponent {}
-
-/** Usuario falso: guarda si se pidió cerrar la sesión. */
-class FakeCurrentUser extends CurrentUser {
-  signedOut = false;
-
-  constructor(private readonly user: CurrentUserProfile | null) {
-    super();
-  }
-
-  profile(): CurrentUserProfile | null {
-    return this.signedOut ? null : this.user;
-  }
-
-  signOut(): void {
-    this.signedOut = true;
-  }
-}
 
 async function render(url = '/home', user: CurrentUserProfile | null = { name: 'Camila Rojas', email: 'camila@example.com' }) {
   const currentUser = new FakeCurrentUser(user);

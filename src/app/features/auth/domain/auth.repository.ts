@@ -13,4 +13,7 @@ export abstract class AuthRepository {
 
   /** Fails with an `AuthError` when the code is wrong or expired. */
   abstract confirmEmail(confirmation: EmailConfirmation): Observable<void>;
+
+  /** Revoca en el backend solo la sesión actual. Falla con un `AuthError`. */
+  abstract logout(): Observable<void>;
 }
