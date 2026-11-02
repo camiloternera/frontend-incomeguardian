@@ -1,3 +1,5 @@
+import { Observable } from 'rxjs';
+
 /** Datos del usuario con sesión que la interfaz necesita mostrar. */
 export interface CurrentUserProfile {
   name: string;
@@ -12,6 +14,6 @@ export abstract class CurrentUser {
   /** Perfil del usuario con sesión, o `null` si no hay sesión. */
   abstract profile(): CurrentUserProfile | null;
 
-  /** Cierra la sesión actual. */
-  abstract signOut(): void;
+  /** Cierra la sesión de este dispositivo; siempre completa y deja la sesión local borrada. */
+  abstract signOut(): Observable<void>;
 }

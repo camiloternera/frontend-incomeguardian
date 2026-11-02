@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpStatusCode } from '@angular/common/http';
 import { TranslocoService } from '@jsverse/transloco';
-import { Observable, catchError, map, throwError } from 'rxjs';
+import { Observable, catchError, map, of, throwError } from 'rxjs';
 import { environment } from '@env/environment';
 import { ApiResponse } from '@core/http/api-response';
 import { resolveApiError } from '@core/http/api-error';
@@ -37,6 +37,7 @@ export class AuthHttpRepository extends AuthRepository {
   private readonly loginUrl = `${environment.apiUrl}/api/v1/User/login`;
   private readonly registerUrl = `${environment.apiUrl}/api/v1/User`;
   private readonly confirmUrl = `${environment.apiUrl}/api/v1/User/confirm`;
+  private readonly logoutUrl = `${environment.apiUrl}/api/v1/User/logout`;
 
   login(credentials: Credentials): Observable<AuthSession> {
     return this.http.post<ApiResponse<LoginResponseDto>>(this.loginUrl, credentials).pipe(
@@ -75,6 +76,25 @@ export class AuthHttpRepository extends AuthRepository {
       }),
       catchError((error: unknown) =>
         throwError(() => new AuthError(this.toMessage(error))),
+      ),
+    );
+  }
+
+  logout(): Observable<void> {
+    return this.revoke(this.logoutUrl);
+  }
+
+  /**
+   * Pide al backend revocar la sesión; responde 204 sin cuerpo. Un 401 significa que el token
+   * ya no era válido (la sesión se cerró en otro lado), así que el objetivo ya se cumplió.
+   */
+  private revoke(url: string): Observable<void> {
+    return this.http.post<void>(url, null).pipe(
+      map(() => undefined),
+      catchError((error: unknown) =>
+        error instanceof HttpErrorResponse && error.status === HttpStatusCode.Unauthorized
+          ? of(undefined)
+          : throwError(() => new AuthError(this.toMessage(error))),
       ),
     );
   }
