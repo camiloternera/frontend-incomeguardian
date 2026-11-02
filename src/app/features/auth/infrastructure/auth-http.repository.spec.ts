@@ -3,6 +3,7 @@ import { TranslocoService } from '@jsverse/transloco';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { translocoTesting } from '@core/i18n/i18n.testing';
+import { environment } from '@env/environment';
 import { AuthError } from '../domain/auth-error';
 import { AuthHttpRepository } from './auth-http.repository';
 
@@ -89,5 +90,39 @@ describe('AuthHttpRepository', () => {
     });
 
     expect((error as AuthError).message).toBe('Something new happened.');
+  });
+
+  describe('logout', () => {
+    const url = `${environment.apiUrl}/api/v1/User/logout`;
+
+    it('posts without a body and completes on 204', () => {
+      let completed = false;
+      repository.logout().subscribe({ complete: () => (completed = true) });
+
+      const request = http.expectOne(url);
+      expect(request.request.method).toBe('POST');
+      expect(request.request.body).toBeNull();
+      request.flush(null, { status: 204, statusText: 'No Content' });
+
+      expect(completed).toBe(true);
+    });
+
+    it('treats a 401 as an already closed session', () => {
+      let completed = false;
+      repository.logout().subscribe({ complete: () => (completed = true) });
+
+      http.expectOne(url).flush(null, { status: 401, statusText: 'Unauthorized' });
+
+      expect(completed).toBe(true);
+    });
+
+    it('fails with an AuthError when the backend cannot revoke the session', () => {
+      let error: unknown;
+      repository.logout().subscribe({ error: (value) => (error = value) });
+
+      http.expectOne(url).flush(null, { status: 500, statusText: 'Server Error' });
+
+      expect(error).toBeInstanceOf(AuthError);
+    });
   });
 });
