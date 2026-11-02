@@ -3,10 +3,10 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
-import { LucideEye, LucideEyeOff } from '@lucide/angular';
 import { finalize } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { ThemeService } from '@core/theme/theme.service';
+import { PasswordVisibilityIconComponent } from '@shared/ui/password-visibility-icon.component';
 import { RegisterUserUseCase } from '../../../application/register-user.use-case';
 import { AuthError } from '../../../domain/auth-error';
 import { passwordStrength } from '../../../domain/password-strength';
@@ -18,7 +18,7 @@ interface StrengthSegment {
 
 @Component({
   selector: 'app-register-page',
-  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective, LucideEye, LucideEyeOff],
+  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective, PasswordVisibilityIconComponent],
   templateUrl: './register-page.component.html',
   styleUrls: ['./register-page.component.css'],
 })

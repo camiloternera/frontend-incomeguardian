@@ -2,14 +2,14 @@ import { Component, inject, signal } from '@angular/core';
 import { ReactiveFormsModule, Validators, NonNullableFormBuilder } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
-import { LucideEye, LucideEyeOff } from '@lucide/angular';
 import { finalize } from 'rxjs';
+import { PasswordVisibilityIconComponent } from '@shared/ui/password-visibility-icon.component';
 import { ThemeService } from '@core/theme/theme.service';
 import { LoginUseCase } from '../../../application/login.use-case';
 
 @Component({
   selector: 'app-login-page',
-  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective, LucideEye, LucideEyeOff],
+  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective, PasswordVisibilityIconComponent],
   templateUrl: './login-page.component.html',
   styleUrls: ['./login-page.component.css'],
 })
