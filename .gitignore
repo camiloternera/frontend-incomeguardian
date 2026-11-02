@@ -63,3 +63,6 @@ Thumbs.db
 
 # Product.md
 PRODUCT.md
+
+# Codegraph generated files
+.codegraph/
