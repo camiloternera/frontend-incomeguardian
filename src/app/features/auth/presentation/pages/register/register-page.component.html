@@ -128,11 +128,7 @@
                 (click)="togglePassword()"
                 [attr.aria-label]="showPassword() ? t('auth.common.hidePassword') : t('auth.common.showPassword')"
               >
-                @if (showPassword()) {
-                  <svg lucideEyeOff [size]="18" aria-hidden="true"></svg>
-                } @else {
-                  <svg lucideEye [size]="18" aria-hidden="true"></svg>
-                }
+                <app-password-visibility-icon [visible]="showPassword()" />
               </button>
             </div>
 
