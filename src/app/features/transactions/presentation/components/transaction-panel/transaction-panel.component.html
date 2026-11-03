@@ -1,0 +1,506 @@
+<section
+  *transloco="let t"
+  data-testid="transaction-panel"
+  class="flex flex-col gap-6 lg:rounded-lg lg:border lg:border-ig-border lg:bg-ig-surface lg:p-6"
+  aria-labelledby="transaction-panel-title"
+  (keydown.escape)="closeOnEscape()"
+>
+  <div class="flex items-start justify-between gap-4">
+    <div class="flex min-w-0 flex-col gap-2">
+      <h2
+        #heading
+        id="transaction-panel-title"
+        tabindex="-1"
+        class="m-0 break-words text-[20px] font-bold tracking-[-0.02em] outline-none"
+      >
+        {{ t('transactions.form.title.' + type()) }}
+      </h2>
+      <p class="m-0 text-[13px] leading-normal text-ig-muted">
+        {{ t('transactions.form.subtitle.' + type()) }}
+      </p>
+    </div>
+    <a
+      data-testid="close-panel"
+      class="-mr-2 -mt-2 inline-grid size-11 shrink-0 place-items-center rounded-lg text-ig-muted hover:bg-ig-surface-raised hover:text-ig-text focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+      [routerLink]="listUrl"
+      queryParamsHandling="preserve"
+      [attr.aria-label]="t('transactions.form.close')"
+    >
+      <svg lucideX [size]="18" aria-hidden="true"></svg>
+    </a>
+  </div>
+
+  <nav
+    class="grid grid-cols-3 gap-1 rounded-lg border border-ig-border p-1"
+    [attr.aria-label]="t('transactions.form.typeLabel')"
+  >
+    @for (option of typeOrder; track option) {
+      <a
+        [attr.data-testid]="'type-' + option"
+        class="grid min-h-11 place-items-center rounded-md px-2 text-center text-[14px] leading-tight no-underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+        [class]="
+          type() === option
+            ? 'bg-ig-surface-raised font-bold text-ig-text'
+            : 'text-ig-muted hover:text-ig-text'
+        "
+        [routerLink]="[listUrl, 'new', option]"
+        queryParamsHandling="preserve"
+        [attr.aria-current]="type() === option ? 'page' : null"
+      >
+        {{ t('transactions.types.' + option) }}
+      </a>
+    }
+  </nav>
+
+  @switch (accountsStatus()) {
+    @case ('loading') {
+      <p class="m-0 text-[14px] text-ig-muted" role="status">
+        {{ t('transactions.form.accountsLoading') }}
+      </p>
+    }
+    @case ('error') {
+      <div class="flex flex-col items-start gap-4">
+        <p data-testid="accounts-error" class="m-0 text-[14px]" role="alert">
+          {{ t('transactions.form.accountsError') }}
+        </p>
+        <button
+          class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-border bg-transparent px-5 text-[14px] font-bold text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+          type="button"
+          (click)="loadAccounts()"
+        >
+          {{ t('transactions.form.retry') }}
+        </button>
+      </div>
+    }
+    @default {
+      @if (!hasUsableAccounts()) {
+        <div data-testid="no-accounts" class="flex flex-col items-start gap-4">
+          <p class="m-0 text-[14px] text-ig-muted">{{ t('transactions.form.noAccounts') }}</p>
+          <a
+            class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-border px-5 text-[14px] font-bold text-ig-text no-underline hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+            routerLink="/accounts/new"
+          >
+            {{ t('transactions.form.createAccount') }}
+          </a>
+        </div>
+      } @else {
+        <form class="flex flex-col gap-6" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+          <!-- Monto -->
+          <div class="flex flex-col gap-2">
+            <label class="text-[13px] font-bold" for="transaction-amount">{{
+              t(type() === 'transfer' ? 'transactions.form.amountSentLabel' : 'transactions.form.amountLabel')
+            }}</label>
+            <div
+              class="flex min-h-16 items-center rounded-lg border bg-ig-surface focus-within:border-ig-accent focus-within:outline-2 focus-within:outline-ig-accent focus-within:outline-offset-2"
+              [class]="amountError() ? 'border-ig-text' : 'border-ig-border'"
+            >
+              <span
+                data-testid="amount-prefix"
+                class="shrink-0 whitespace-nowrap pl-4 text-[20px] font-bold tabular-nums"
+                [class]="type() === 'income' ? 'text-ig-accent-text' : 'text-ig-muted'"
+                aria-hidden="true"
+                >@if (type() === 'income') {+ } @else if (type() === 'expense') {− }{{ symbol() }}</span
+              >
+              <input
+                class="min-h-14 w-full min-w-0 flex-1 border-0 bg-transparent px-2 text-[28px] font-bold tabular-nums tracking-[-0.02em] text-ig-text outline-none placeholder:text-ig-muted"
+                id="transaction-amount"
+                data-testid="transaction-amount"
+                formControlName="amount"
+                type="text"
+                inputmode="decimal"
+                autocomplete="off"
+                [placeholder]="t('transactions.form.amountPlaceholder')"
+                [attr.aria-invalid]="amountError() !== null"
+                [attr.aria-describedby]="amountError() ? 'transaction-amount-error' : null"
+              />
+              <span class="shrink-0 pr-4 text-[13px] text-ig-muted" aria-hidden="true">{{
+                currency()
+              }}</span>
+            </div>
+            @if (amountError(); as message) {
+              <p
+                id="transaction-amount-error"
+                data-testid="amount-error"
+                class="m-0 text-[13px] leading-snug text-ig-text"
+                role="alert"
+              >
+                {{ t(message.key, message.params) }}
+              </p>
+            }
+          </div>
+
+          @if (type() === 'transfer') {
+            <!-- Desde -->
+            <div class="flex flex-col gap-2">
+              <label class="text-[13px] font-bold" for="transaction-from">{{
+                t('transactions.form.fromLabel')
+              }}</label>
+              <app-select
+                data-testid="transaction-from"
+                inputId="transaction-from"
+                formControlName="fromAccountId"
+                [options]="accountOptions()"
+                [placeholder]="t('transactions.form.accountPlaceholder')"
+                [invalid]="fromError() !== null"
+                [describedBy]="fromError() ? 'transaction-from-error' : 'transaction-from-balance'"
+              >
+                <a
+                  selectFooter
+                  data-testid="create-account-from"
+                  class="flex min-h-11 items-center gap-3 rounded-md px-3 text-[14px] font-medium text-ig-accent-text no-underline hover:bg-ig-accent/10 focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:-outline-offset-2"
+                  routerLink="/accounts/new"
+                >
+                  <svg lucidePlus [size]="16" aria-hidden="true"></svg>
+                  {{ t('transactions.form.createAccount') }}
+                </a>
+              </app-select>
+              @if (fromError(); as message) {
+                <p
+                  id="transaction-from-error"
+                  data-testid="from-error"
+                  class="m-0 text-[13px] leading-snug text-ig-text"
+                  role="alert"
+                >
+                  {{ t(message.key, message.params) }}
+                </p>
+              }
+              @if (balanceText()) {
+                <p id="transaction-from-balance" data-testid="from-balance" class="m-0 text-[12px] text-ig-muted">
+                  {{ t('transactions.form.balance', { amount: balanceText() }) }}
+                </p>
+              }
+            </div>
+
+            <!-- Hacia -->
+            <div class="flex flex-col gap-2">
+              <label class="text-[13px] font-bold" for="transaction-to">{{
+                t('transactions.form.toLabel')
+              }}</label>
+              <app-select
+                data-testid="transaction-to"
+                inputId="transaction-to"
+                formControlName="toAccountId"
+                [options]="destinationOptions()"
+                [placeholder]="t('transactions.form.accountPlaceholder')"
+                [invalid]="toError() !== null"
+                [describedBy]="toError() ? 'transaction-to-error' : 'transaction-to-balance'"
+              >
+                <a
+                  selectFooter
+                  data-testid="create-account-to"
+                  class="flex min-h-11 items-center gap-3 rounded-md px-3 text-[14px] font-medium text-ig-accent-text no-underline hover:bg-ig-accent/10 focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:-outline-offset-2"
+                  routerLink="/accounts/new"
+                >
+                  <svg lucidePlus [size]="16" aria-hidden="true"></svg>
+                  {{ t('transactions.form.createAccount') }}
+                </a>
+              </app-select>
+              @if (toError(); as message) {
+                <p
+                  id="transaction-to-error"
+                  data-testid="account-error"
+                  class="m-0 text-[13px] leading-snug text-ig-text"
+                  role="alert"
+                >
+                  {{ t(message.key, message.params) }}
+                </p>
+              }
+              @if (destinationBalanceText()) {
+                <p id="transaction-to-balance" data-testid="to-balance" class="m-0 text-[12px] text-ig-muted">
+                  {{ t('transactions.form.balance', { amount: destinationBalanceText() }) }}
+                </p>
+              }
+            </div>
+
+            @if (crossCurrency()) {
+              <div
+                data-testid="conversion"
+                class="flex flex-col gap-4 rounded-lg border border-ig-border bg-ig-surface-raised p-4"
+              >
+                @switch (rateState().status) {
+                  @case ('error') {
+                    <div class="flex flex-col items-start gap-4">
+                      <p data-testid="rate-error" class="m-0 text-[14px]" role="alert">
+                        {{ rateMessage() }}
+                      </p>
+                      <button
+                        data-testid="rate-retry"
+                        class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-border bg-transparent px-5 text-[14px] font-bold text-ig-text hover:bg-ig-surface focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                        type="button"
+                        (click)="retryRate()"
+                      >
+                        {{ t('transactions.form.retry') }}
+                      </button>
+                    </div>
+                  }
+                  @case ('ready') {
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                      <span id="transaction-destination-label" class="text-[13px] font-bold">{{
+                        t('transactions.form.rate.arrivesLabel')
+                      }}</span>
+                      <span
+                        class="inline-flex items-center gap-1.5 rounded-full border border-ig-border px-2.5 py-1 text-[12px] text-ig-muted"
+                      >
+                        <svg lucideLock [size]="12" aria-hidden="true"></svg>
+                        {{ t('transactions.form.rate.calculated') }}
+                      </span>
+                    </div>
+                    <output
+                      data-testid="destination-amount"
+                      for="transaction-amount"
+                      aria-labelledby="transaction-destination-label"
+                      aria-live="polite"
+                      class="block text-[28px] font-bold tabular-nums tracking-[-0.02em]"
+                      [class.text-ig-muted]="!preview()"
+                    >
+                      {{ preview() ?? t('transactions.form.rate.enterAmount') }}
+                    </output>
+                    @if (rateDetails(); as details) {
+                      <dl class="m-0 flex flex-col gap-2 border-t border-ig-border pt-4 text-[13px]">
+                        <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                          <dt class="text-ig-muted">
+                            {{ t('transactions.form.rate.validity', details.validity) }}
+                          </dt>
+                          <dd data-testid="rate-value" class="m-0 font-bold tabular-nums">{{ details.rate }}</dd>
+                        </div>
+                        @if (details.formula; as formula) {
+                          <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                            <dt class="text-ig-muted">{{ t('transactions.form.rate.formulaLabel') }}</dt>
+                            <dd data-testid="rate-formula" class="m-0 tabular-nums">
+                              {{ t(formula.key, formula.params) }}
+                            </dd>
+                          </div>
+                        }
+                      </dl>
+                    }
+                    <p class="m-0 text-[12px] leading-normal text-ig-muted">
+                      {{ t('transactions.form.rate.help') }}
+                    </p>
+                  }
+                  @case ('idle') {
+                    <!-- Sin una fecha válida no hay TRM que consultar: se explica en vez de quedar cargando. -->
+                    <p data-testid="rate-needs-date" class="m-0 text-[14px] text-ig-muted">
+                      {{ t('transactions.form.rate.needsDate') }}
+                    </p>
+                  }
+                  @default {
+                    <p data-testid="rate-loading" class="m-0 text-[14px] text-ig-muted" role="status">
+                      {{ t('transactions.form.rate.loading') }}
+                    </p>
+                  }
+                }
+              </div>
+            }
+          } @else {
+            <!-- Cuenta de un ingreso o gasto -->
+            <div class="flex flex-col gap-2">
+              <label class="text-[13px] font-bold" for="transaction-account">{{
+                t('transactions.form.accountLabel.' + type())
+              }}</label>
+              <app-select
+                data-testid="transaction-account"
+                inputId="transaction-account"
+                formControlName="accountId"
+                [options]="accountOptions()"
+                [placeholder]="t('transactions.form.accountPlaceholder')"
+                [invalid]="accountError() !== null"
+                [describedBy]="accountError() ? 'transaction-account-error' : 'transaction-account-balance'"
+              >
+                <a
+                  selectFooter
+                  data-testid="create-account"
+                  class="flex min-h-11 items-center gap-3 rounded-md px-3 text-[14px] font-medium text-ig-accent-text no-underline hover:bg-ig-accent/10 focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:-outline-offset-2"
+                  routerLink="/accounts/new"
+                >
+                  <svg lucidePlus [size]="16" aria-hidden="true"></svg>
+                  {{ t('transactions.form.createAccount') }}
+                </a>
+              </app-select>
+              @if (accountError(); as message) {
+                <p
+                  id="transaction-account-error"
+                  data-testid="account-error"
+                  class="m-0 text-[13px] leading-snug text-ig-text"
+                  role="alert"
+                >
+                  {{ t(message.key, message.params) }}
+                </p>
+              }
+              @if (balanceText()) {
+                <p
+                  id="transaction-account-balance"
+                  data-testid="account-balance"
+                  class="m-0 text-[12px] text-ig-muted"
+                >
+                  {{ t('transactions.form.balance', { amount: balanceText() }) }}
+                </p>
+              }
+            </div>
+
+            <!-- Categoría -->
+            <div class="flex flex-col gap-2">
+              <label class="text-[13px] font-bold" for="transaction-category">
+                {{ t('transactions.form.categoryLabel') }}
+                <span class="font-normal text-ig-muted">{{ t('transactions.form.optional') }}</span>
+              </label>
+              @switch (categoriesStatus()) {
+                @case ('loading') {
+                  <p class="m-0 flex min-h-11 items-center text-[14px] text-ig-muted" role="status">
+                    {{ t('transactions.form.categoriesLoading') }}
+                  </p>
+                }
+                @case ('error') {
+                  <div class="flex min-h-11 flex-wrap items-center gap-3">
+                    <p data-testid="categories-error" class="m-0 text-[14px]" role="alert">
+                      {{ t('transactions.form.categoriesError') }}
+                    </p>
+                    <button
+                      class="min-h-11 rounded-lg border border-ig-border bg-transparent px-4 text-[14px] font-bold text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                      type="button"
+                      (click)="loadCategories()"
+                    >
+                      {{ t('transactions.form.retry') }}
+                    </button>
+                  </div>
+                }
+                @default {
+                  <app-select
+                    data-testid="transaction-category"
+                    inputId="transaction-category"
+                    formControlName="categoryId"
+                    [options]="categoryOptions(t('transactions.form.noCategory'))"
+                    [placeholder]="t('transactions.form.noCategory')"
+                    [invalid]="categoryError() !== null"
+                    [describedBy]="categoryError() ? 'transaction-category-error' : null"
+                  >
+                    <a
+                      selectFooter
+                      data-testid="create-category"
+                      class="flex min-h-11 items-center gap-3 rounded-md px-3 text-[14px] font-medium text-ig-accent-text no-underline hover:bg-ig-accent/10 focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:-outline-offset-2"
+                      routerLink="/categories/new"
+                    >
+                      <svg lucidePlus [size]="16" aria-hidden="true"></svg>
+                      {{ t('transactions.form.createCategory') }}
+                    </a>
+                  </app-select>
+                }
+              }
+              @if (categoryError(); as message) {
+                <p
+                  id="transaction-category-error"
+                  data-testid="category-error"
+                  class="m-0 text-[13px] leading-snug text-ig-text"
+                  role="alert"
+                >
+                  {{ t(message.key, message.params) }}
+                </p>
+              }
+            </div>
+          }
+
+          <!-- Descripción -->
+          <div class="flex flex-col gap-2">
+            <div class="flex items-baseline justify-between gap-3">
+              <label class="text-[13px] font-bold" for="transaction-description">
+                {{ t('transactions.form.descriptionLabel') }}
+                <span class="font-normal text-ig-muted">{{ t('transactions.form.optional') }}</span>
+              </label>
+              <span
+                id="transaction-description-count"
+                class="text-[12px] tabular-nums text-ig-muted"
+                [class.text-ig-text]="descriptionLength() > descriptionMax"
+                >{{ descriptionLength() }} / {{ descriptionMax }}</span
+              >
+            </div>
+            <input
+              class="min-h-12 w-full rounded-lg border bg-ig-surface px-3 text-[16px] text-ig-text outline-none placeholder:text-ig-muted focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 lg:min-h-11 lg:text-[14px]"
+              [class]="descriptionError() ? 'border-ig-text' : 'border-ig-border'"
+              id="transaction-description"
+              data-testid="transaction-description"
+              formControlName="description"
+              type="text"
+              autocomplete="off"
+              [placeholder]="t('transactions.form.descriptionPlaceholder.' + type())"
+              [attr.aria-invalid]="descriptionError() !== null"
+              [attr.aria-describedby]="
+                descriptionError()
+                  ? 'transaction-description-error transaction-description-count'
+                  : 'transaction-description-count'
+              "
+            />
+            @if (descriptionError(); as message) {
+              <p
+                id="transaction-description-error"
+                data-testid="description-error"
+                class="m-0 text-[13px] leading-snug text-ig-text"
+                role="alert"
+              >
+                {{ t(message.key, message.params) }}
+              </p>
+            }
+          </div>
+
+          <!-- Fecha -->
+          <div class="flex flex-col gap-2">
+            <label class="text-[13px] font-bold" for="transaction-date">{{
+              t('transactions.form.dateLabel')
+            }}</label>
+            <input
+              class="min-h-12 w-full rounded-lg border bg-ig-surface px-3 text-[16px] text-ig-text outline-none focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 sm:max-w-[240px] lg:min-h-11 lg:text-[14px]"
+              [class]="dateError() ? 'border-ig-text' : 'border-ig-border'"
+              id="transaction-date"
+              data-testid="transaction-date"
+              formControlName="date"
+              type="date"
+              [max]="today"
+              [attr.aria-invalid]="dateError() !== null"
+              [attr.aria-describedby]="dateError() ? 'transaction-date-error' : null"
+            />
+            @if (dateError(); as message) {
+              <p
+                id="transaction-date-error"
+                data-testid="date-error"
+                class="m-0 text-[13px] leading-snug text-ig-text"
+                role="alert"
+              >
+                {{ t(message.key, message.params) }}
+              </p>
+            }
+          </div>
+
+          @if (formError()) {
+            <p
+              data-testid="form-error"
+              class="m-0 rounded-lg border border-ig-border bg-ig-surface-raised px-4 py-3 text-[14px]"
+              role="alert"
+            >
+              {{ formError() }}
+            </p>
+          }
+
+          <div class="flex flex-wrap items-center justify-end gap-2 border-t border-ig-border pt-6">
+            <a
+              class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-border px-4 text-[14px] text-ig-text no-underline hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+              [routerLink]="listUrl"
+              queryParamsHandling="preserve"
+            >
+              {{ t('transactions.form.cancel') }}
+            </a>
+            <button
+              data-testid="transaction-submit"
+              class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-accent bg-ig-accent px-5 text-[14px] font-bold text-ig-on-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+              type="submit"
+              [disabled]="!canSubmit()"
+            >
+              @if (isSubmitting()) {
+                {{ t('transactions.form.saving') }}
+              } @else {
+                {{ t('transactions.form.submit.' + type()) }}
+              }
+            </button>
+          </div>
+        </form>
+      }
+    }
+  }
+</section>
