@@ -57,6 +57,7 @@ describe('AccountHttpRepository', () => {
         name: 'Visa 4417',
         accountType: { id: 3, name: 'Tarjeta de crédito' },
         initialBalance: -250000.5,
+        currentBalance: -250000.5,
         currency: 'COP',
         isActive: true,
         createdAt: '2026-10-31T12:00:00+00:00',

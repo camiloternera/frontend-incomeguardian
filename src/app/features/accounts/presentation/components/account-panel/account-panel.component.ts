@@ -31,8 +31,9 @@ import {
   ACCOUNT_NAME_MAX_LENGTH,
   Account,
   AccountTypeOption,
-  CURRENCIES,
   Currency,
+  SELECTABLE_CURRENCIES,
+  isSelectableCurrency,
 } from '../../../domain/account';
 import {
   AccountError,
@@ -42,7 +43,7 @@ import {
   TYPE_ERROR_CODES,
 } from '../../../domain/account-error';
 import { AccountWorkspace } from '../../account-workspace';
-import { balanceDigits } from '../../balance-format';
+import { moneyDigits as balanceDigits } from '@shared/money/money-format';
 import { balanceValidator, parseBalance } from '../../validators/balance.validator';
 
 /** Estado del panel: listo para editar, cargando, sin cuenta o con una cuenta desactivada. */
@@ -91,7 +92,7 @@ export class AccountPanelComponent {
 
   protected readonly listUrl = LIST_URL;
   protected readonly locale = inject(LanguageService).language;
-  protected readonly currencies = CURRENCIES;
+  protected readonly currencies = SELECTABLE_CURRENCIES;
   protected readonly nameMax = ACCOUNT_NAME_MAX_LENGTH;
   protected readonly balanceDigits = balanceDigits;
   protected readonly balanceParams = {
@@ -356,8 +357,8 @@ export class AccountPanelComponent {
           currency: account.currency,
           initialBalance: String(account.initialBalance),
         });
-        // Una cuenta desactivada solo se consulta; el backend no permite editarla.
-        this.status.set(account.isActive ? 'ready' : 'readOnly');
+        // Una cuenta desactivada o en una moneda que ya no se admite (EUR) solo se consulta.
+        this.status.set(account.isActive && isSelectableCurrency(account.currency) ? 'ready' : 'readOnly');
       },
       error: (error: unknown) => {
         if (error instanceof AccountError && error.code === AccountErrorCode.NotFound) {

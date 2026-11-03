@@ -13,6 +13,7 @@ export class FakeAccountRepository extends AccountRepository {
       name: 'Visa 4417',
       accountType: { id: 3, name: 'Tarjeta de crédito' },
       initialBalance: -250000,
+      currentBalance: -250000,
       currency: 'COP',
       isActive: true,
       createdAt: '2026-10-20T00:00:00Z',
@@ -23,6 +24,7 @@ export class FakeAccountRepository extends AccountRepository {
       name: 'Bancolombia',
       accountType: { id: 1, name: 'Ahorros' },
       initialBalance: 1250000,
+      currentBalance: 1250000,
       currency: 'COP',
       isActive: true,
       createdAt: '2026-10-01T00:00:00Z',
@@ -33,6 +35,7 @@ export class FakeAccountRepository extends AccountRepository {
       name: 'Wise',
       accountType: { id: 1, name: 'Ahorros' },
       initialBalance: 320.5,
+      currentBalance: 320.5,
       currency: 'USD',
       isActive: false,
       createdAt: '2026-09-01T00:00:00Z',
@@ -84,6 +87,7 @@ export class FakeAccountRepository extends AccountRepository {
     return {
       id,
       ...fields,
+      currentBalance: fields.initialBalance,
       accountType: { id: accountTypeId, name: `Tipo ${accountTypeId}` },
       ...rest,
     };

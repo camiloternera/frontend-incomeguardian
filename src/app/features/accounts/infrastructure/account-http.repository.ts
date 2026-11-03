@@ -24,6 +24,8 @@ function toAccount(dto: AccountDto): Account {
     name: dto.name,
     accountType: { id: dto.accountType.id, name: dto.accountType.name },
     initialBalance: dto.initialBalance,
+    // Mientras el backend no lo informe, el saldo actual es el inicial.
+    currentBalance: dto.currentBalance ?? dto.initialBalance,
     currency: dto.currency,
     isActive: dto.isActive,
     createdAt: dto.createdAt,
