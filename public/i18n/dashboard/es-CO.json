@@ -5,7 +5,6 @@
     "hideAmounts": "Ocultar montos",
     "showAmounts": "Mostrar montos",
     "addMovement": "Registrar movimiento",
-    "soon": "Pronto",
     "hero": {
       "label": "Tu mes de un vistazo",
       "availableUntil": "Disponible para gastar hasta el {{date}}",

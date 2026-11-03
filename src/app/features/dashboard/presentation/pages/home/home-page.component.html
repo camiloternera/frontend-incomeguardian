@@ -28,15 +28,14 @@
           {{ t('dashboard.home.hideAmounts') }}
         }
       </button>
-      <button
-        class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-ig-accent bg-ig-accent px-5 text-[14px] font-bold text-ig-on-accent disabled:cursor-not-allowed disabled:opacity-60"
-        type="button"
-        disabled
+      <a
+        data-testid="add-movement"
+        class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-ig-accent bg-ig-accent px-5 text-[14px] font-bold text-ig-on-accent no-underline hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ig-accent"
+        routerLink="/transactions/new/expense"
       >
         <svg lucidePlus [size]="18"></svg>
         {{ t('dashboard.home.addMovement') }}
-        <span class="rounded-full border border-ig-on-accent/40 px-2 py-0.5 text-[11px] font-medium">{{ t('dashboard.home.soon') }}</span>
-      </button>
+      </a>
     </div>
   </header>
 

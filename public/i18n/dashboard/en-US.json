@@ -5,7 +5,6 @@
     "hideAmounts": "Hide amounts",
     "showAmounts": "Show amounts",
     "addMovement": "Add transaction",
-    "soon": "Soon",
     "hero": {
       "label": "Your month at a glance",
       "availableUntil": "Available to spend until {{date}}",

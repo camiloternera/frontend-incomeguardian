@@ -37,8 +37,6 @@
     "nav": {
       "overview": "Overview",
       "transactions": "Transactions",
-      "income": "Income",
-      "expenses": "Expenses",
       "budgets": "Budgets",
       "accounts": "Accounts",
       "categories": "Categories",
