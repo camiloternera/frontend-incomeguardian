@@ -11,6 +11,8 @@ import accountTypesEnUS from '../../../../public/i18n/account-types/en-US.json';
 import accountTypesEsCO from '../../../../public/i18n/account-types/es-CO.json';
 import accountsEnUS from '../../../../public/i18n/accounts/en-US.json';
 import accountsEsCO from '../../../../public/i18n/accounts/es-CO.json';
+import transactionsEnUS from '../../../../public/i18n/transactions/en-US.json';
+import transactionsEsCO from '../../../../public/i18n/transactions/es-CO.json';
 import settingsEnUS from '../../../../public/i18n/settings/en-US.json';
 import settingsEsCO from '../../../../public/i18n/settings/es-CO.json';
 import { LANGUAGES } from './language.service';
@@ -20,8 +22,8 @@ import './locale-data';
 export function translocoTesting(options: TranslocoTestingOptions = {}) {
   return TranslocoTestingModule.forRoot({
     langs: {
-      'en-US': { ...enUS, auth: authEnUS, dashboard: dashboardEnUS, categories: categoriesEnUS, accountTypes: accountTypesEnUS, accounts: accountsEnUS, settings: settingsEnUS },
-      'es-CO': { ...esCO, auth: authEsCO, dashboard: dashboardEsCO, categories: categoriesEsCO, accountTypes: accountTypesEsCO, accounts: accountsEsCO, settings: settingsEsCO },
+      'en-US': { ...enUS, auth: authEnUS, dashboard: dashboardEnUS, categories: categoriesEnUS, accountTypes: accountTypesEnUS, accounts: accountsEnUS, settings: settingsEnUS, transactions: transactionsEnUS },
+      'es-CO': { ...esCO, auth: authEsCO, dashboard: dashboardEsCO, categories: categoriesEsCO, accountTypes: accountTypesEsCO, accounts: accountsEsCO, settings: settingsEsCO, transactions: transactionsEsCO },
     },
     translocoConfig: { availableLangs: [...LANGUAGES], defaultLang: 'en-US', reRenderOnLangChange: true },
     preloadLangs: true,
