@@ -3,9 +3,7 @@ import { Component, DestroyRef, ElementRef, inject, signal, viewChild } from '@a
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import {
-  LucideArrowDownLeft,
   LucideArrowLeftRight,
-  LucideArrowUpRight,
   LucideChartPie,
   LucideDynamicIcon,
   LucideIcon,
@@ -42,9 +40,7 @@ const GROUPS: ShellNavGroup[] = [
     key: 'money',
     items: [
       { key: 'overview', icon: LucideLayoutDashboard, route: '/home' },
-      { key: 'transactions', icon: LucideArrowLeftRight },
-      { key: 'income', icon: LucideArrowDownLeft },
-      { key: 'expenses', icon: LucideArrowUpRight },
+      { key: 'transactions', icon: LucideArrowLeftRight, route: '/transactions' },
       { key: 'budgets', icon: LucideChartPie },
     ],
   },

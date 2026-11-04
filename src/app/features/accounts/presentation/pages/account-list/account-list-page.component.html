@@ -165,7 +165,7 @@
                     [routerLink]="[account.id, 'edit']"
                     [attr.aria-current]="selected ? 'true' : null"
                     [attr.aria-label]="
-                      t(account.isActive ? 'accounts.list.editNamed' : 'accounts.list.viewNamed', {
+                      t(isEditable(account) ? 'accounts.list.editNamed' : 'accounts.list.viewNamed', {
                         name: account.name,
                       })
                     "
@@ -188,11 +188,11 @@
                       class="shrink-0 text-right text-[15px] font-bold tabular-nums"
                     >
                       {{
-                        account.initialBalance
+                        account.currentBalance
                           | currency
                             : account.currency
                             : 'symbol'
-                            : balanceDigits(account.currency, account.initialBalance)
+                            : balanceDigits(account.currency, account.currentBalance)
                             : locale()
                       }}
                     </span>

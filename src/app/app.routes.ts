@@ -17,6 +17,10 @@ export const routes: Routes = [
         loadChildren: () => import('@features/dashboard/dashboard.routes').then((m) => m.dashboardRoutes),
       },
       {
+        path: 'transactions',
+        loadChildren: () => import('@features/transactions/transactions.routes').then((m) => m.transactionsRoutes),
+      },
+      {
         path: 'categories',
         loadChildren: () => import('@features/categories/categories.routes').then((m) => m.categoriesRoutes),
       },

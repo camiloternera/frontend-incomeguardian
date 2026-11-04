@@ -1,0 +1,136 @@
+{
+  "types": {
+    "income": "Ingreso",
+    "expense": "Gasto",
+    "transfer": "Transferencia"
+  },
+  "list": {
+    "title": "Movimientos",
+    "subtitle": "Lo que entra, lo que sale y lo que mueves entre tus cuentas.",
+    "create": "Registrar movimiento",
+    "loading": "Cargando tus movimientos…",
+    "retry": "Intentar de nuevo",
+    "route": "{{from}} → {{to}}",
+    "unknownAccount": "Cuenta no disponible",
+    "arrived": "llegaron",
+    "filter": {
+      "label": "Filtrar por cuenta",
+      "allAccounts": "Todas las cuentas"
+    },
+    "tabs": {
+      "label": "Tipo de movimiento",
+      "all": "Todos",
+      "income": "Ingresos",
+      "expense": "Gastos",
+      "transfer": "Transferencias"
+    },
+    "empty": {
+      "allTitle": "Todavía no hay movimientos",
+      "allBody": "Registra un ingreso, un gasto o una transferencia para verlo aquí.",
+      "incomeTitle": "No hay ingresos",
+      "incomeBody": "Los ingresos que registres aparecerán en esta pestaña.",
+      "expenseTitle": "No hay gastos",
+      "expenseBody": "Los gastos que registres aparecerán en esta pestaña.",
+      "transferTitle": "No hay transferencias",
+      "transferBody": "Cuando muevas dinero entre tus cuentas lo verás aquí."
+    },
+    "notice": {
+      "income": "Ingreso registrado: {{amount}}",
+      "expense": "Gasto registrado: {{amount}}",
+      "transfer": "Transferencia registrada: {{amount}}",
+      "transferConverted": "Transferencia registrada: llegaron {{amount}}",
+      "dismiss": "Cerrar"
+    }
+  },
+  "form": {
+    "title": {
+      "income": "Nuevo ingreso",
+      "expense": "Nuevo gasto",
+      "transfer": "Nueva transferencia"
+    },
+    "subtitle": {
+      "income": "Dinero que entra a una de tus cuentas.",
+      "expense": "Dinero que sale de una de tus cuentas.",
+      "transfer": "Dinero que pasa de una cuenta a otra."
+    },
+    "close": "Cerrar el panel",
+    "typeLabel": "Tipo de movimiento",
+    "retry": "Reintentar",
+    "accountsLoading": "Cargando tus cuentas…",
+    "accountsError": "No pudimos cargar tus cuentas.",
+    "noAccounts": "Necesitas una cuenta activa en pesos o dólares para registrar movimientos.",
+    "createAccount": "Crear una cuenta",
+    "amountLabel": "Monto",
+    "amountSentLabel": "Monto que envías",
+    "amountPlaceholder": "0",
+    "amountRequired": "Escribe el monto.",
+    "amountInvalid": "Escribe un número con hasta {{decimals}} decimales.",
+    "amountTooLarge": "El monto puede tener hasta {{digits}} cifras enteras.",
+    "amountPositive": "El monto debe ser mayor que cero.",
+    "accountLabel": {
+      "income": "Entra a",
+      "expense": "Sale de"
+    },
+    "accountRequired": {
+      "income": "Elige la cuenta a la que entra el dinero.",
+      "expense": "Elige la cuenta de la que sale el dinero."
+    },
+    "accountPlaceholder": "Elige una cuenta",
+    "balance": "Saldo actual: {{amount}}",
+    "fromLabel": "Desde",
+    "toLabel": "Hacia",
+    "fromRequired": "Elige la cuenta de origen.",
+    "toRequired": "Elige la cuenta de destino.",
+    "categoryLabel": "Categoría",
+    "optional": "(opcional)",
+    "categoriesLoading": "Cargando categorías…",
+    "categoriesError": "No pudimos cargar las categorías.",
+    "descriptionLabel": "Descripción",
+    "descriptionPlaceholder": {
+      "income": "Ej.: Salario de noviembre",
+      "expense": "Ej.: Mercado de la semana",
+      "transfer": "Ej.: Ahorro para el viaje"
+    },
+    "dateLabel": "Fecha",
+    "dateRequired": "Elige la fecha.",
+    "dateFuture": "La fecha no puede ser posterior a hoy.",
+    "cancel": "Cancelar",
+    "saving": "Guardando…",
+    "submit": {
+      "income": "Guardar ingreso",
+      "expense": "Guardar gasto",
+      "transfer": "Transferir"
+    },
+    "rate": {
+      "loading": "Consultando la TRM…",
+      "arrivesLabel": "Monto que llega",
+      "calculated": "Calculado",
+      "enterAmount": "Escribe el monto",
+      "validity": "TRM vigente {{from}}–{{to}}",
+      "formulaLabel": "Cálculo",
+      "formulaDivide": "{{amount}} ÷ {{rate}}",
+      "formulaMultiply": "{{amount}} × {{rate}}",
+      "help": "Se calcula con la TRM oficial. Si quieres que llegue otro valor, ajusta el monto que envías.",
+      "needsDate": "Elige una fecha de hoy o anterior para calcular con la TRM."
+    },
+    "noCategory": "Sin categoría",
+    "createCategory": "Crear una categoría"
+  },
+  "errors": {
+    "TRANSACTION_AMOUNT_INVALID": "El monto debe ser mayor que cero y tener hasta 2 decimales.",
+    "TRANSACTION_TYPE_INVALID": "Ese tipo de movimiento no existe.",
+    "TRANSACTION_ACCOUNT_REQUIRED": "Elige la cuenta del movimiento.",
+    "TRANSACTION_ACCOUNTS_MUST_DIFFER": "La cuenta de destino debe ser distinta de la de origen.",
+    "TRANSACTION_ACCOUNT_NOT_FOUND": "No encontramos esa cuenta. Elige otra de la lista.",
+    "ACCOUNT_INACTIVE": "Esa cuenta está desactivada. Elige una cuenta activa.",
+    "TRANSACTION_CATEGORY_NOT_FOUND": "Esa categoría ya no está disponible. Elige otra.",
+    "TRANSACTION_CATEGORY_KIND_MISMATCH": "Esa categoría no aplica a este tipo de movimiento.",
+    "TRANSACTION_DESCRIPTION_MAX_LENGTH": "La descripción puede tener hasta {{descriptionMax}} caracteres.",
+    "TRANSACTION_PAGE_INVALID": "Esa página no existe.",
+    "TRANSACTION_DATE_RANGE_INVALID": "El rango de fechas no es válido.",
+    "TRANSACTION_NOT_FOUND": "No encontramos ese movimiento.",
+    "TRANSACTION_ACCOUNT_CURRENCY_UNSUPPORTED": "Esa cuenta está en una moneda que no admite movimientos. Elige una en pesos o dólares.",
+    "EXCHANGE_RATE_UNAVAILABLE": "La TRM no está disponible en este momento.",
+    "EXCHANGE_RATE_DATE_INVALID": "No hay TRM para esa fecha. Elige hoy o una fecha anterior."
+  }
+}

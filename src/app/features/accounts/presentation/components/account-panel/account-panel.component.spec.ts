@@ -86,7 +86,9 @@ describe('AccountPanelComponent', () => {
     expect(element.querySelector<HTMLInputElement>('[data-testid="currency-COP"]')!.checked).toBe(
       true,
     );
-    expect(element.querySelector('[data-testid="currency-EUR"]')).toBeTruthy();
+    expect(element.querySelector('[data-testid="currency-USD"]')).toBeTruthy();
+    // EUR ya no se admite para cuentas nuevas.
+    expect(element.querySelector('[data-testid="currency-EUR"]')).toBeNull();
     expect(element.querySelector('[data-testid="create-type"]')?.getAttribute('href')).toBe(
       '/account-types/new',
     );
@@ -155,7 +157,7 @@ describe('AccountPanelComponent', () => {
       AccountErrorCode.CurrencyLocked,
     );
 
-    click(element, 'currency-EUR');
+    click(element, 'currency-USD');
     submit(element);
     harness.detectChanges();
 

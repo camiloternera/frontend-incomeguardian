@@ -1,0 +1,136 @@
+{
+  "types": {
+    "income": "Income",
+    "expense": "Expense",
+    "transfer": "Transfer"
+  },
+  "list": {
+    "title": "Transactions",
+    "subtitle": "What comes in, what goes out and what you move between accounts.",
+    "create": "Add transaction",
+    "loading": "Loading your transactions…",
+    "retry": "Try again",
+    "route": "{{from}} → {{to}}",
+    "unknownAccount": "Unavailable account",
+    "arrived": "arrived",
+    "filter": {
+      "label": "Filter by account",
+      "allAccounts": "All accounts"
+    },
+    "tabs": {
+      "label": "Transaction type",
+      "all": "All",
+      "income": "Income",
+      "expense": "Expenses",
+      "transfer": "Transfers"
+    },
+    "empty": {
+      "allTitle": "No transactions yet",
+      "allBody": "Add an income, an expense or a transfer to see it here.",
+      "incomeTitle": "No income",
+      "incomeBody": "The income you add will show up in this tab.",
+      "expenseTitle": "No expenses",
+      "expenseBody": "The expenses you add will show up in this tab.",
+      "transferTitle": "No transfers",
+      "transferBody": "When you move money between your accounts you will see it here."
+    },
+    "notice": {
+      "income": "Income saved: {{amount}}",
+      "expense": "Expense saved: {{amount}}",
+      "transfer": "Transfer saved: {{amount}}",
+      "transferConverted": "Transfer saved: {{amount}} arrived",
+      "dismiss": "Dismiss"
+    }
+  },
+  "form": {
+    "title": {
+      "income": "New income",
+      "expense": "New expense",
+      "transfer": "New transfer"
+    },
+    "subtitle": {
+      "income": "Money coming into one of your accounts.",
+      "expense": "Money leaving one of your accounts.",
+      "transfer": "Money moving from one account to another."
+    },
+    "close": "Close the panel",
+    "typeLabel": "Transaction type",
+    "retry": "Retry",
+    "accountsLoading": "Loading your accounts…",
+    "accountsError": "We could not load your accounts.",
+    "noAccounts": "You need an active account in pesos or dollars to add transactions.",
+    "createAccount": "Create an account",
+    "amountLabel": "Amount",
+    "amountSentLabel": "Amount you send",
+    "amountPlaceholder": "0",
+    "amountRequired": "Enter the amount.",
+    "amountInvalid": "Enter a number with up to {{decimals}} decimals.",
+    "amountTooLarge": "The amount can have up to {{digits}} whole digits.",
+    "amountPositive": "The amount must be greater than zero.",
+    "accountLabel": {
+      "income": "Goes into",
+      "expense": "Comes out of"
+    },
+    "accountRequired": {
+      "income": "Pick the account the money goes into.",
+      "expense": "Pick the account the money comes out of."
+    },
+    "accountPlaceholder": "Pick an account",
+    "balance": "Current balance: {{amount}}",
+    "fromLabel": "From",
+    "toLabel": "To",
+    "fromRequired": "Pick the source account.",
+    "toRequired": "Pick the destination account.",
+    "categoryLabel": "Category",
+    "optional": "(optional)",
+    "categoriesLoading": "Loading categories…",
+    "categoriesError": "We could not load the categories.",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": {
+      "income": "E.g. November salary",
+      "expense": "E.g. Weekly groceries",
+      "transfer": "E.g. Savings for the trip"
+    },
+    "dateLabel": "Date",
+    "dateRequired": "Pick the date.",
+    "dateFuture": "The date cannot be later than today.",
+    "cancel": "Cancel",
+    "saving": "Saving…",
+    "submit": {
+      "income": "Save income",
+      "expense": "Save expense",
+      "transfer": "Transfer"
+    },
+    "rate": {
+      "loading": "Checking the exchange rate…",
+      "arrivesLabel": "Amount that arrives",
+      "calculated": "Calculated",
+      "enterAmount": "Enter the amount",
+      "validity": "TRM valid {{from}}–{{to}}",
+      "formulaLabel": "Calculation",
+      "formulaDivide": "{{amount}} ÷ {{rate}}",
+      "formulaMultiply": "{{amount}} × {{rate}}",
+      "help": "Calculated with the official TRM. To have a different amount arrive, adjust the amount you send.",
+      "needsDate": "Pick today or an earlier date to calculate with the official rate."
+    },
+    "noCategory": "No category",
+    "createCategory": "Create a category"
+  },
+  "errors": {
+    "TRANSACTION_AMOUNT_INVALID": "The amount must be greater than zero with up to 2 decimals.",
+    "TRANSACTION_TYPE_INVALID": "That transaction type does not exist.",
+    "TRANSACTION_ACCOUNT_REQUIRED": "Pick the account for the transaction.",
+    "TRANSACTION_ACCOUNTS_MUST_DIFFER": "The destination account must differ from the source.",
+    "TRANSACTION_ACCOUNT_NOT_FOUND": "We could not find that account. Pick another one from the list.",
+    "ACCOUNT_INACTIVE": "That account is deactivated. Pick an active account.",
+    "TRANSACTION_CATEGORY_NOT_FOUND": "That category is no longer available. Pick another one.",
+    "TRANSACTION_CATEGORY_KIND_MISMATCH": "That category does not apply to this kind of transaction.",
+    "TRANSACTION_DESCRIPTION_MAX_LENGTH": "The description can be up to {{descriptionMax}} characters.",
+    "TRANSACTION_PAGE_INVALID": "That page does not exist.",
+    "TRANSACTION_DATE_RANGE_INVALID": "The date range is not valid.",
+    "TRANSACTION_NOT_FOUND": "We could not find that transaction.",
+    "TRANSACTION_ACCOUNT_CURRENCY_UNSUPPORTED": "That account uses a currency that does not allow transactions. Pick one in pesos or dollars.",
+    "EXCHANGE_RATE_UNAVAILABLE": "The exchange rate is not available right now.",
+    "EXCHANGE_RATE_DATE_INVALID": "There is no TRM for that date. Pick today or an earlier date."
+  }
+}

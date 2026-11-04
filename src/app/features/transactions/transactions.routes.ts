@@ -1,0 +1,40 @@
+import { inject } from '@angular/core';
+import { CanActivateFn, Router, Routes } from '@angular/router';
+import { provideTranslocoScope } from '@jsverse/transloco';
+import { isTransactionType } from './domain/transaction';
+import { provideTransactions } from './transactions.providers';
+import { TransactionListPageComponent } from './presentation/pages/transaction-list/transaction-list-page.component';
+
+/** Ruta del listado, a la que vuelve cualquier dirección de panel que no exista. */
+export const TRANSACTIONS_URL = '/transactions';
+
+/** Registrar un movimiento abre un panel junto a la lista; en mobile el panel ocupa la pantalla. */
+const loadPanel = () =>
+  import('./presentation/components/transaction-panel/transaction-panel.component').then(
+    (m) => m.TransactionPanelComponent,
+  );
+
+/** Solo se abre el panel para un tipo conocido; cualquier otro vuelve al listado conservando los filtros. */
+const knownType: CanActivateFn = (route, state) => {
+  if (isTransactionType(route.paramMap.get('type'))) {
+    return true;
+  }
+
+  const router = inject(Router);
+
+  return router.createUrlTree([TRANSACTIONS_URL], {
+    queryParams: router.parseUrl(state.url).queryParams,
+  });
+};
+
+export const transactionsRoutes: Routes = [
+  {
+    path: '',
+    providers: [provideTranslocoScope('transactions'), provideTransactions()],
+    component: TransactionListPageComponent,
+    children: [
+      { path: 'new', pathMatch: 'full', redirectTo: 'new/expense' },
+      { path: 'new/:type', canActivate: [knownType], loadComponent: loadPanel },
+    ],
+  },
+];

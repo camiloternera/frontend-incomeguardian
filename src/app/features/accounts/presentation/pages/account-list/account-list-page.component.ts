@@ -9,10 +9,10 @@ import { LanguageService } from '@core/i18n/language.service';
 import { ThemeService } from '@core/theme/theme.service';
 import { PaginationComponent } from '@shared/ui/pagination.component';
 import { ListAccountsUseCase } from '../../../application/account-use-cases';
-import { Account, matchesAccount, totalsByCurrency } from '../../../domain/account';
+import { Account, isSelectableCurrency, matchesAccount, totalsByCurrency } from '../../../domain/account';
 import { AccountError } from '../../../domain/account-error';
 import { AccountWorkspace } from '../../account-workspace';
-import { balanceDigits } from '../../balance-format';
+import { moneyDigits as balanceDigits } from '@shared/money/money-format';
 
 /** Pestañas del listado: las cuentas en uso o las que ya se desactivaron. */
 export type AccountTab = 'active' | 'inactive';
@@ -51,6 +51,9 @@ export class AccountListPageComponent {
   protected readonly theme = inject(ThemeService).theme;
   protected readonly locale = inject(LanguageService).language;
   protected readonly balanceDigits = balanceDigits;
+  /** Misma regla que el panel: solo se edita una cuenta activa en una moneda admitida. */
+  protected readonly isEditable = (account: Account): boolean =>
+    account.isActive && isSelectableCurrency(account.currency);
 
   protected readonly accounts = this.workspace.accounts;
   protected readonly notice = this.workspace.notice;

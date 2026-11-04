@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { firstValueFrom, of } from 'rxjs';
 import { translocoTesting } from '@core/i18n/i18n.testing';
 import { LanguageService } from '@core/i18n/language.service';
@@ -14,6 +15,7 @@ async function setup(changes: Partial<DashboardOverview> = {}) {
   await TestBed.configureTestingModule({
     imports: [HomePageComponent, translocoTesting()],
     providers: [
+      provideRouter([]),
       provideDashboard(),
       { provide: DashboardRepository, useValue: { overview: () => of({ ...sample, ...changes }) } },
     ],
