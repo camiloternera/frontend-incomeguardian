@@ -78,6 +78,32 @@ describe('TransactionPanelComponent', () => {
     return href;
   }
 
+  /** Fecha (`YYYY-MM-DD`) que tiene el selector de fecha. */
+  function dateValue(element: HTMLElement): string {
+    return query(element, 'date-picker-trigger')!.getAttribute('data-value')!;
+  }
+
+  /** La fecha `days` días antes o después de `date` (`YYYY-MM-DD`). */
+  function shiftDate(date: string, days: number): string {
+    const [year, month, day] = date.split('-').map(Number);
+
+    return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+  }
+
+  /** Abre el calendario, retrocede mes a mes hasta ver la fecha y la elige. */
+  function pickDate(element: HTMLElement, date: string, harness: RouterTestingHarness): void {
+    query(element, 'date-picker-trigger')!.click();
+    harness.detectChanges();
+
+    for (let months = 0; months < 24 && !element.querySelector(`[data-date="${date}"]`); months++) {
+      click(element, 'date-picker-previous');
+      harness.detectChanges();
+    }
+
+    element.querySelector<HTMLButtonElement>(`[data-date="${date}"]`)!.click();
+    harness.detectChanges();
+  }
+
   function click(element: HTMLElement, testId: string): void {
     query(element, testId)!.click();
   }
@@ -138,7 +164,7 @@ describe('TransactionPanelComponent', () => {
     expect(footerHref(element, 'transaction-category', 'create-category', harness)).toBe('/categories/new');
     choose(element, 'transaction-category', 'Salario', harness);
     type(element, 'transaction-description', '  Salario noviembre ');
-    type(element, 'transaction-date', '2026-11-01');
+    pickDate(element, '2026-11-01', harness);
     submit(element);
     await settle(harness);
 
@@ -212,7 +238,7 @@ describe('TransactionPanelComponent', () => {
     await settle(harness);
 
     // La TRM se pide para la fecha elegida, que por defecto es hoy.
-    expect(fakes.rates.requestedDates).toEqual([query<HTMLInputElement>(element, 'transaction-date')!.value]);
+    expect(fakes.rates.requestedDates).toEqual([dateValue(element)]);
     const output = query(element, 'destination-amount')!;
     expect(output.tagName).toBe('OUTPUT');
     expect(output.textContent).toContain('US$');
@@ -235,17 +261,36 @@ describe('TransactionPanelComponent', () => {
     expect(optionLabels(element, 'transaction-category', harness)).not.toContain('Arriendo viejo');
   });
 
-  it('asks for a valid date instead of loading the rate forever', async () => {
+  it('asks for the rate of the date picked in the calendar, never a future one', async () => {
     const { harness, element } = await open('/transactions/new/transfer');
 
     choose(element, 'transaction-from', 'Bancolombia', harness);
     choose(element, 'transaction-to', 'Wise', harness);
-    type(element, 'transaction-date', '');
+    const today = dateValue(element);
+    const lastWeek = shiftDate(today, -7);
+    pickDate(element, lastWeek, harness);
     await settle(harness);
 
-    expect(query(element, 'rate-needs-date')).toBeTruthy();
-    expect(query(element, 'rate-loading')).toBeNull();
-    expect(submitButton(element).disabled).toBe(true);
+    expect(dateValue(element)).toBe(lastWeek);
+    expect(fakes.rates.requestedDates.at(-1)).toBe(lastWeek);
+
+    query(element, 'date-picker-trigger')!.click();
+    harness.detectChanges();
+    const tomorrow = element.querySelector<HTMLButtonElement>(`[data-date="${shiftDate(today, 1)}"]`);
+    // Mañana puede caer en el mes siguiente, que no se muestra; si se muestra, no se puede elegir.
+    expect(tomorrow === null || tomorrow.disabled).toBe(true);
+  });
+
+  it('closes the calendar with Escape without closing the panel', async () => {
+    const { harness, element } = await open('/transactions/new/expense');
+
+    query(element, 'date-picker-trigger')!.click();
+    harness.detectChanges();
+    query(element, 'date-picker-popover')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await settle(harness);
+
+    expect(query(element, 'date-picker-popover')).toBeNull();
+    expect(TestBed.inject(Router).url).toBe('/transactions/new/expense');
   });
 
   it('blocks the transfer when the exchange rate fails and lets the user retry', async () => {

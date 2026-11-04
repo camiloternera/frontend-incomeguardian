@@ -15,6 +15,7 @@ import { LucideLock, LucidePlus, LucideX } from '@lucide/angular';
 import { Observable, Subject, Subscription, catchError, finalize, map, merge, of, startWith, switchMap } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { LanguageService } from '@core/i18n/language.service';
+import { DatePickerComponent } from '@shared/ui/date-picker/date-picker.component';
 import { SelectComponent, SelectOption } from '@shared/ui/select/select.component';
 import {
   CreateTransactionUseCase,
@@ -83,7 +84,7 @@ const TYPE_ORDER: readonly TransactionType[] = ['expense', 'income', 'transfer']
  */
 @Component({
   selector: 'app-transaction-panel',
-  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective, LucideLock, LucidePlus, LucideX, SelectComponent],
+  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective, LucideLock, LucidePlus, LucideX, SelectComponent, DatePickerComponent],
   templateUrl: './transaction-panel.component.html',
 })
 export class TransactionPanelComponent {
