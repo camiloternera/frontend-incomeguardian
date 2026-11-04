@@ -22,6 +22,22 @@
     "noMatches": "Nada coincide con «{{query}}».",
     "empty": "No hay opciones disponibles."
   },
+  "datePicker": {
+    "placeholder": "Elige una fecha",
+    "relativeToday": "Hoy, {{date}}",
+    "relativeYesterday": "Ayer, {{date}}",
+    "todayLabel": "{{date}} (hoy)",
+    "shortcuts": "Atajos",
+    "today": "Hoy",
+    "yesterday": "Ayer",
+    "lastWeek": "Hace 7 días",
+    "chooseMonth": "{{month}}. Cambiar mes",
+    "backToDays": "{{month}}. Volver a los días",
+    "previousMonth": "Mes anterior",
+    "nextMonth": "Mes siguiente",
+    "previousYear": "Año anterior",
+    "nextYear": "Año siguiente"
+  },
   "shell": {
     "skipToContent": "Saltar al contenido",
     "menu": "Menú principal",
