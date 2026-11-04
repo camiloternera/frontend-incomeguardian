@@ -445,16 +445,15 @@
             <label class="text-[13px] font-bold" for="transaction-date">{{
               t('transactions.form.dateLabel')
             }}</label>
-            <input
-              class="min-h-12 w-full rounded-lg border bg-ig-surface px-3 text-[16px] text-ig-text outline-none focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 sm:max-w-[240px] lg:min-h-11 lg:text-[14px]"
-              [class]="dateError() ? 'border-ig-text' : 'border-ig-border'"
-              id="transaction-date"
+            <app-date-picker
+              class="sm:max-w-[240px]"
               data-testid="transaction-date"
+              inputId="transaction-date"
               formControlName="date"
-              type="date"
+              [today]="today"
               [max]="today"
-              [attr.aria-invalid]="dateError() !== null"
-              [attr.aria-describedby]="dateError() ? 'transaction-date-error' : null"
+              [invalid]="dateError() !== null"
+              [describedBy]="dateError() ? 'transaction-date-error' : null"
             />
             @if (dateError(); as message) {
               <p

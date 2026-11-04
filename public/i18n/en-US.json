@@ -22,6 +22,22 @@
     "noMatches": "Nothing matches “{{query}}”.",
     "empty": "No options available."
   },
+  "datePicker": {
+    "placeholder": "Pick a date",
+    "relativeToday": "Today, {{date}}",
+    "relativeYesterday": "Yesterday, {{date}}",
+    "todayLabel": "{{date}} (today)",
+    "shortcuts": "Shortcuts",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "lastWeek": "7 days ago",
+    "chooseMonth": "{{month}}. Change month",
+    "backToDays": "{{month}}. Back to days",
+    "previousMonth": "Previous month",
+    "nextMonth": "Next month",
+    "previousYear": "Previous year",
+    "nextYear": "Next year"
+  },
   "shell": {
     "skipToContent": "Skip to content",
     "menu": "Main menu",
