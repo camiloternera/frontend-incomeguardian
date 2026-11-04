@@ -1,0 +1,247 @@
+import { Injectable, inject } from '@angular/core';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { TranslocoService } from '@jsverse/transloco';
+import { Observable, OperatorFunction, catchError, map, pipe, throwError } from 'rxjs';
+import { environment } from '@env/environment';
+import { ApiResponse } from '@core/http/api-response';
+import { GENERIC_ERROR_KEY, apiErrorCode, resolveApiError } from '@core/http/api-error';
+import {
+  CategoryKind,
+  ExchangeRate,
+  Transaction,
+  TransactionAccountOption,
+  TransactionCategoryOption,
+  TransactionDraft,
+  TransactionPage,
+  TransactionQuery,
+  isTransactionType,
+} from '../domain/transaction';
+import { TransactionError, isTransactionErrorCode } from '../domain/transaction-error';
+import {
+  ExchangeRateRepository,
+  TransactionAccountOptionsRepository,
+  TransactionCategoryOptionsRepository,
+  TransactionRepository,
+} from '../domain/transaction.repository';
+import { TRANSACTION_ERROR_KEYS, TRANSACTION_ERROR_PARAMS } from './transaction-error-messages';
+import {
+  ExchangeRateDto,
+  TransactionAccountOptionDto,
+  TransactionCategoryOptionDto,
+  TransactionDto,
+  TransactionPageDto,
+  TransactionRequestDto,
+} from './transaction.dto';
+
+/** Respuesta con un valor que la app no conoce: se trata como inválida en vez de inventar uno. */
+class InvalidResponseError extends Error {}
+
+/** Clases de categoría que entiende este dominio. */
+const CATEGORY_KINDS: readonly CategoryKind[] = ['income', 'expense', 'both'];
+
+function isCategoryKind(value: unknown): value is CategoryKind {
+  return typeof value === 'string' && (CATEGORY_KINDS as readonly string[]).includes(value);
+}
+
+function toTransaction(dto: TransactionDto): Transaction {
+  if (!isTransactionType(dto.type)) {
+    throw new InvalidResponseError(String(dto.type));
+  }
+
+  return {
+    id: dto.id,
+    type: dto.type,
+    amount: dto.amount,
+    date: dto.date,
+    fromAccountId: dto.fromAccountId ?? null,
+    toAccountId: dto.toAccountId ?? null,
+    categoryId: dto.categoryId ?? null,
+    description: dto.description ?? null,
+    // El backend actual puede no enviar los campos de multimoneda todavía.
+    fromCurrency: dto.fromCurrency ?? null,
+    toCurrency: dto.toCurrency ?? null,
+    destinationAmount: dto.destinationAmount ?? null,
+    exchangeRate: dto.exchangeRate ?? null,
+    exchangeRateDate: dto.exchangeRateDate ?? null,
+  };
+}
+
+function toPage(dto: TransactionPageDto): TransactionPage {
+  return {
+    items: dto.items.map(toTransaction),
+    page: dto.page,
+    pageSize: dto.pageSize,
+    totalItems: dto.totalItems,
+  };
+}
+
+/** Arma el cuerpo de creación con solo las cuentas que aplican al tipo y sin campos vacíos. */
+function toRequest(draft: TransactionDraft): TransactionRequestDto {
+  const body: TransactionRequestDto = { type: draft.type, amount: draft.amount, date: draft.date };
+
+  if (draft.type !== 'income') {
+    body.fromAccountId = draft.fromAccountId;
+  }
+  if (draft.type !== 'expense') {
+    body.toAccountId = draft.toAccountId;
+  }
+  if (draft.categoryId !== null) {
+    body.categoryId = draft.categoryId;
+  }
+  if (draft.description !== null) {
+    body.description = draft.description;
+  }
+
+  return body;
+}
+
+/** Filtros del listado: solo se envían los que tienen valor. */
+function toListParams(query: TransactionQuery): HttpParams {
+  let params = new HttpParams().set('page', query.page).set('pageSize', query.pageSize);
+
+  if (query.type !== undefined) {
+    params = params.set('type', query.type);
+  }
+  if (query.accountId !== undefined) {
+    params = params.set('accountId', query.accountId);
+  }
+
+  return params;
+}
+
+/** El saldo actual cae al inicial mientras el backend no lo calcule. */
+function toAccountOption(dto: TransactionAccountOptionDto): TransactionAccountOption {
+  return {
+    id: dto.id,
+    name: dto.name,
+    currency: dto.currency,
+    currentBalance: dto.currentBalance ?? dto.initialBalance,
+    isActive: dto.isActive,
+  };
+}
+
+/** Una categoría sin `kind` (o con uno desconocido) aplica a cualquier movimiento. */
+function toCategoryOption(dto: TransactionCategoryOptionDto): TransactionCategoryOption {
+  return {
+    id: dto.id,
+    name: dto.name,
+    kind: isCategoryKind(dto.kind) ? dto.kind : 'both',
+    isActive: dto.isActive !== false,
+  };
+}
+
+function toExchangeRate(dto: ExchangeRateDto): ExchangeRate {
+  if (dto.base !== 'USD' || dto.quote !== 'COP') {
+    throw new InvalidResponseError(`${dto.base}/${dto.quote}`);
+  }
+
+  return {
+    base: 'USD',
+    quote: 'COP',
+    rate: dto.rate,
+    validFrom: dto.validFrom,
+    validTo: dto.validTo,
+    source: dto.source,
+  };
+}
+
+/** Extrae `data` del sobre de respuesta; un éxito sin `data` se trata como fallo. */
+function unwrap<T>(): OperatorFunction<ApiResponse<T>, T> {
+  return map((response) => {
+    // Un 2xx es éxito salvo que el sobre diga lo contrario.
+    if (!response?.isSuccess || response.data === null || response.data === undefined) {
+      throw response;
+    }
+
+    return response.data;
+  });
+}
+
+/** Convierte cualquier fallo del backend en un `TransactionError` traducido que conserva su código. */
+function toTransactionError(error: unknown, transloco: TranslocoService): TransactionError {
+  if (error instanceof InvalidResponseError) {
+    return new TransactionError(transloco.translate(GENERIC_ERROR_KEY));
+  }
+
+  const code = apiErrorCode(error);
+  const message = resolveApiError(error, TRANSACTION_ERROR_KEYS, (key) =>
+    transloco.translate(key, TRANSACTION_ERROR_PARAMS),
+  );
+
+  return new TransactionError(message, isTransactionErrorCode(code) ? code : null);
+}
+
+/** Operador común a los adaptadores: todo fallo sale como `TransactionError`. */
+function toErrors<T>(transloco: TranslocoService): OperatorFunction<T, T> {
+  return pipe(catchError((error: unknown) => throwError(() => toTransactionError(error, transloco))));
+}
+
+@Injectable()
+export class TransactionHttpRepository extends TransactionRepository {
+  private readonly http = inject(HttpClient);
+  private readonly transloco = inject(TranslocoService);
+  private readonly baseUrl = `${environment.apiUrl}/api/v1/transactions`;
+
+  list(query: TransactionQuery): Observable<TransactionPage> {
+    return this.http
+      .get<ApiResponse<TransactionPageDto>>(this.baseUrl, { params: toListParams(query) })
+      .pipe(unwrap(), map(toPage), toErrors(this.transloco));
+  }
+
+  create(draft: TransactionDraft): Observable<Transaction> {
+    return this.http
+      .post<ApiResponse<TransactionDto>>(this.baseUrl, toRequest(draft))
+      .pipe(unwrap(), map(toTransaction), toErrors(this.transloco));
+  }
+}
+
+/** Lee las cuentas del usuario para los selectores del formulario; incluye las que no se pueden usar. */
+@Injectable()
+export class TransactionAccountOptionsHttpRepository extends TransactionAccountOptionsRepository {
+  private readonly http = inject(HttpClient);
+  private readonly transloco = inject(TranslocoService);
+  private readonly url = `${environment.apiUrl}/api/v1/accounts`;
+
+  list(): Observable<TransactionAccountOption[]> {
+    return this.http.get<ApiResponse<TransactionAccountOptionDto[]>>(this.url).pipe(
+      unwrap(),
+      map((dtos) => dtos.map(toAccountOption)),
+      toErrors(this.transloco),
+    );
+  }
+}
+
+/** Lee las categorías activas del usuario, filtradas por clase si se indica. */
+@Injectable()
+export class TransactionCategoryOptionsHttpRepository extends TransactionCategoryOptionsRepository {
+  private readonly http = inject(HttpClient);
+  private readonly transloco = inject(TranslocoService);
+  private readonly url = `${environment.apiUrl}/api/v1/categories`;
+
+  list(kind?: CategoryKind): Observable<TransactionCategoryOption[]> {
+    const params = kind ? new HttpParams().set('kind', kind) : undefined;
+
+    return this.http.get<ApiResponse<TransactionCategoryOptionDto[]>>(this.url, { params }).pipe(
+      unwrap(),
+      // Se conservan las desactivadas: el listado las necesita para nombrar movimientos antiguos.
+      map((dtos) => dtos.map(toCategoryOption)),
+      toErrors(this.transloco),
+    );
+  }
+}
+
+/** Lee la TRM oficial vigente para una fecha. */
+@Injectable()
+export class ExchangeRateHttpRepository extends ExchangeRateRepository {
+  private readonly http = inject(HttpClient);
+  private readonly transloco = inject(TranslocoService);
+  private readonly url = `${environment.apiUrl}/api/v1/exchange-rates/trm`;
+
+  trm(date?: string): Observable<ExchangeRate> {
+    const params = date ? new HttpParams().set('date', date) : undefined;
+
+    return this.http
+      .get<ApiResponse<ExchangeRateDto>>(this.url, { params })
+      .pipe(unwrap(), map(toExchangeRate), toErrors(this.transloco));
+  }
+}

@@ -56,6 +56,7 @@
     "editTitle": "Editar cuenta",
     "editSubtitle": "La moneda solo se puede cambiar mientras la cuenta no tenga movimientos.",
     "readOnly": "Esta cuenta está desactivada: puedes consultarla, pero no editarla ni registrar movimientos nuevos en ella.",
+    "readOnlyCurrency": "Esta cuenta está en una moneda que ya no se admite: puedes consultarla, pero no editarla ni registrar movimientos nuevos en ella.",
     "loading": "Cargando la cuenta…",
     "nameLabel": "Nombre",
     "namePlaceholder": "Por ejemplo, Bancolombia ahorros",

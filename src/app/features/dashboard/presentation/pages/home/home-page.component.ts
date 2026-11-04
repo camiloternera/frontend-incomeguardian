@@ -1,6 +1,7 @@
 import { formatCurrency, formatDate, formatNumber, formatPercent } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { LucideArrowDownLeft, LucideArrowUpRight, LucideEye, LucideEyeOff, LucidePlus, LucideShield } from '@lucide/angular';
 import { LanguageService } from '@core/i18n/language.service';
@@ -21,6 +22,7 @@ interface MeterSegment {
 @Component({
   selector: 'app-home-page',
   imports: [
+    RouterLink,
     TranslocoDirective,
     CashFlowChartComponent,
     LucideArrowDownLeft,

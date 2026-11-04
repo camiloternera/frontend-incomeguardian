@@ -56,6 +56,7 @@
     "editTitle": "Edit account",
     "editSubtitle": "The currency can only change while the account has no transactions.",
     "readOnly": "This account is deactivated: you can look it up, but you cannot edit it or record new transactions in it.",
+    "readOnlyCurrency": "This account uses a currency that is no longer supported: you can look it up, but you cannot edit it or record new transactions in it.",
     "loading": "Loading the account…",
     "nameLabel": "Name",
     "namePlaceholder": "For example, Chase savings",

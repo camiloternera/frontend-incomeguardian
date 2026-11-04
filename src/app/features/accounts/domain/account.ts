@@ -15,6 +15,18 @@ export function isCurrency(value: unknown): value is Currency {
   return typeof value === 'string' && (CURRENCIES as readonly string[]).includes(value);
 }
 
+/**
+ * Monedas en las que se puede crear o editar una cuenta. Las cuentas en otras monedas
+ * (EUR) que ya existan quedan de solo lectura.
+ */
+export const SELECTABLE_CURRENCIES = ['COP', 'USD'] as const satisfies readonly Currency[];
+export type SelectableCurrency = (typeof SELECTABLE_CURRENCIES)[number];
+
+/** Indica si la moneda se puede elegir al crear o editar una cuenta. */
+export function isSelectableCurrency(value: unknown): value is SelectableCurrency {
+  return typeof value === 'string' && (SELECTABLE_CURRENCIES as readonly string[]).includes(value);
+}
+
 /** Tipo de cuenta tal como lo ve el dominio de cuentas: solo lo necesario para elegirlo y mostrarlo. */
 export interface AccountTypeOption {
   id: number;
@@ -27,6 +39,8 @@ export interface Account {
   name: string;
   accountType: AccountTypeOption;
   initialBalance: number;
+  /** Saldo inicial más el neto de los movimientos. */
+  currentBalance: number;
   currency: Currency;
   /** Las cuentas desactivadas se pueden consultar, pero no editar ni usar en movimientos nuevos. */
   isActive: boolean;
@@ -64,8 +78,8 @@ export interface CurrencyTotal {
 
 /**
  * Totales por moneda de las cuentas activas, en el orden de `CURRENCIES`. Las monedas no se
- * convierten ni se mezclan; una moneda sin cuentas activas no aparece. Mientras no existan
- * movimientos, el saldo de cada cuenta es su saldo inicial.
+ * convierten ni se mezclan; una moneda sin cuentas activas no aparece. Se suma el saldo
+ * actual de cada cuenta.
  */
 export function totalsByCurrency(accounts: readonly Account[]): CurrencyTotal[] {
   return CURRENCIES.flatMap((currency) => {
@@ -79,7 +93,7 @@ export function totalsByCurrency(accounts: readonly Account[]): CurrencyTotal[] 
 
     // Se suma en milésimas (el backend guarda 3 decimales) para no arrastrar errores de coma flotante.
     const thousandths = inCurrency.reduce(
-      (sum, account) => sum + Math.round(account.initialBalance * 1000),
+      (sum, account) => sum + Math.round(account.currentBalance * 1000),
       0,
     );
 

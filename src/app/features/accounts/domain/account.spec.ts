@@ -11,6 +11,7 @@ function account(
     name: `Cuenta ${id}`,
     accountType: { id: 1, name: 'Ahorros' },
     initialBalance,
+    currentBalance: initialBalance,
     currency,
     isActive,
     createdAt: '2026-10-01T00:00:00Z',

@@ -33,17 +33,18 @@ describe('AccountListPageComponent', () => {
   }
 
   function account(id: number, name: string, overrides: Partial<Account> = {}): Account {
-    return {
+    const base = {
       id,
       name,
       accountType: { id: 1, name: 'Ahorros' },
       initialBalance: 0,
-      currency: 'COP',
+      currency: 'COP' as const,
       isActive: true,
       createdAt: '2026-10-20T00:00:00Z',
       updatedAt: null,
       ...overrides,
     };
+    return { ...base, currentBalance: overrides.currentBalance ?? base.initialBalance };
   }
 
   beforeEach(async () => {
