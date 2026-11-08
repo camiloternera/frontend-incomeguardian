@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { Observable, tap } from 'rxjs';
 import { DeleteCategoryUseCase } from '../application/category-use-cases';
-import { Category, sortCategories } from '../domain/category';
+import { Category, CategoryType, sortCategories } from '../domain/category';
 import { CategoryError, CategoryErrorCode } from '../domain/category-error';
 
 /** Acción completada que la vista confirma al usuario. */
@@ -24,9 +24,12 @@ export class CategoryWorkspace {
   readonly notice = signal<CategoryNotice | null>(null);
   /** Categoría abierta en el panel, para resaltarla en la lista. */
   readonly selectedId = signal<number | null>(null);
+  /** Pestaña visible del listado; también es el tipo que propone el panel al crear. */
+  readonly type = signal<CategoryType>('expense');
 
-  /** Incorpora a la lista una categoría recién creada o editada y avisa del cambio. */
+  /** Incorpora a la lista una categoría recién creada o editada, muestra su pestaña y avisa del cambio. */
   saved(category: Category, kind: 'created' | 'updated'): void {
+    this.type.set(category.type);
     this.categories.update((categories) =>
       categories === null ? null : sortCategories([...categories.filter((item) => item.id !== category.id), category]),
     );
