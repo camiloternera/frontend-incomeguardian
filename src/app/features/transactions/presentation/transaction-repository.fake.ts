@@ -1,7 +1,6 @@
 import { Routes } from '@angular/router';
 import { Observable, of, throwError } from 'rxjs';
 import {
-  CategoryKind,
   ExchangeRate,
   Transaction,
   TransactionAccountOption,
@@ -10,6 +9,7 @@ import {
   TransactionDraft,
   TransactionPage,
   TransactionQuery,
+  TransactionType,
   previewDestinationAmount,
 } from '../domain/transaction';
 import {
@@ -52,26 +52,22 @@ export class FakeTransactionAccountOptionsRepository extends TransactionAccountO
   }
 }
 
-/** Categorías en memoria de cada clase; recuerda la última clase pedida. */
+/** Categorías en memoria de cada tipo; recuerda el último tipo pedido. */
 export class FakeTransactionCategoryOptionsRepository extends TransactionCategoryOptionsRepository {
   categories: TransactionCategoryOption[] = [
-    { id: 1, name: 'Mercado', kind: 'expense', isActive: true },
-    { id: 2, name: 'Salario', kind: 'income', isActive: true },
-    { id: 3, name: 'Transporte', kind: 'expense', isActive: true },
-    { id: 4, name: 'Otros', kind: 'both', isActive: true },
-    { id: 5, name: 'Arriendo viejo', kind: 'expense', isActive: false },
+    { id: 1, name: 'Mercado', type: 'expense', isActive: true },
+    { id: 2, name: 'Salario', type: 'income', isActive: true },
+    { id: 3, name: 'Transporte', type: 'expense', isActive: true },
+    { id: 4, name: 'Ahorro', type: 'transfer', isActive: true },
+    { id: 5, name: 'Arriendo viejo', type: 'expense', isActive: false },
   ];
   failWith: unknown = null;
-  lastKind: CategoryKind | undefined = undefined;
+  lastType: TransactionType | undefined = undefined;
 
-  list(kind?: CategoryKind): Observable<TransactionCategoryOption[]> {
-    this.lastKind = kind;
+  list(type?: TransactionType): Observable<TransactionCategoryOption[]> {
+    this.lastType = type;
 
-    return respond(this, () =>
-      this.categories.filter(
-        (category) => kind === undefined || category.kind === kind || category.kind === 'both',
-      ),
-    );
+    return respond(this, () => this.categories.filter((category) => type === undefined || category.type === type));
   }
 }
 

@@ -1,7 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { Observable, of } from 'rxjs';
 import {
-  CategoryKind,
   ExchangeRate,
   Transaction,
   TransactionAccountOption,
@@ -9,6 +8,7 @@ import {
   TransactionDraft,
   TransactionPage,
   TransactionQuery,
+  TransactionType,
 } from '../domain/transaction';
 import {
   ExchangeRateRepository,
@@ -80,14 +80,14 @@ class MemoryAccountOptionsRepository extends TransactionAccountOptionsRepository
 }
 
 class MemoryCategoryOptionsRepository extends TransactionCategoryOptionsRepository {
-  kinds: (CategoryKind | undefined)[] = [];
+  types: (TransactionType | undefined)[] = [];
 
-  list(kind?: CategoryKind): Observable<TransactionCategoryOption[]> {
-    this.kinds.push(kind);
+  list(type?: TransactionType): Observable<TransactionCategoryOption[]> {
+    this.types.push(type);
     return of([
-      { id: 1, name: 'Salario', kind: 'income', isActive: true },
-      { id: 2, name: 'arriendo', kind: 'expense', isActive: true },
-      { id: 3, name: 'Éxtras', kind: 'both', isActive: true },
+      { id: 1, name: 'Salario', type: 'income', isActive: true },
+      { id: 2, name: 'arriendo', type: 'expense', isActive: true },
+      { id: 3, name: 'Éxtras', type: 'expense', isActive: true },
     ]);
   }
 }
@@ -173,13 +173,13 @@ describe('transaction use cases', () => {
     expect(names).toEqual(['ahorros', 'Ávila', 'Nequi', 'Wise']);
   });
 
-  it('passes the kind and sorts the category options by name', () => {
+  it('passes the type and sorts the category options by name', () => {
     let names: string[] = [];
     TestBed.inject(ListTransactionCategoryOptionsUseCase)
       .execute('expense')
       .subscribe((value) => (names = value.map((category) => category.name)));
 
-    expect(categories.kinds).toEqual(['expense']);
+    expect(categories.types).toEqual(['expense']);
     expect(names).toEqual(['arriendo', 'Éxtras', 'Salario']);
   });
 

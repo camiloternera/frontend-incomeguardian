@@ -6,7 +6,6 @@ import { environment } from '@env/environment';
 import { ApiResponse } from '@core/http/api-response';
 import { GENERIC_ERROR_KEY, apiErrorCode, resolveApiError } from '@core/http/api-error';
 import {
-  CategoryKind,
   ExchangeRate,
   Transaction,
   TransactionAccountOption,
@@ -14,6 +13,7 @@ import {
   TransactionDraft,
   TransactionPage,
   TransactionQuery,
+  TransactionType,
   isTransactionType,
 } from '../domain/transaction';
 import { TransactionError, isTransactionErrorCode } from '../domain/transaction-error';
@@ -36,12 +36,12 @@ import {
 /** Respuesta con un valor que la app no conoce: se trata como inválida en vez de inventar uno. */
 class InvalidResponseError extends Error {}
 
-/** Clases de categoría que entiende este dominio. */
-const CATEGORY_KINDS: readonly CategoryKind[] = ['income', 'expense', 'both'];
+/** Identificador que usa el backend (`transactionTypeId`) para el tipo de movimiento de una categoría. */
+const CATEGORY_TYPE_IDS: Record<TransactionType, number> = { income: 1, expense: 2, transfer: 3 };
 
-function isCategoryKind(value: unknown): value is CategoryKind {
-  return typeof value === 'string' && (CATEGORY_KINDS as readonly string[]).includes(value);
-}
+const CATEGORY_TYPES_BY_ID = new Map<number, TransactionType>(
+  Object.entries(CATEGORY_TYPE_IDS).map(([type, id]) => [id, type as TransactionType]),
+);
 
 function toTransaction(dto: TransactionDto): Transaction {
   if (!isTransactionType(dto.type)) {
@@ -120,12 +120,12 @@ function toAccountOption(dto: TransactionAccountOptionDto): TransactionAccountOp
   };
 }
 
-/** Una categoría sin `kind` (o con uno desconocido) aplica a cualquier movimiento. */
+/** Una categoría con un tipo desconocido conserva su nombre, pero no aplica a ningún movimiento. */
 function toCategoryOption(dto: TransactionCategoryOptionDto): TransactionCategoryOption {
   return {
     id: dto.id,
     name: dto.name,
-    kind: isCategoryKind(dto.kind) ? dto.kind : 'both',
+    type: CATEGORY_TYPES_BY_ID.get(dto.transactionTypeId) ?? null,
     isActive: dto.isActive !== false,
   };
 }
@@ -211,15 +211,15 @@ export class TransactionAccountOptionsHttpRepository extends TransactionAccountO
   }
 }
 
-/** Lee las categorías activas del usuario, filtradas por clase si se indica. */
+/** Lee las categorías del usuario, filtradas por tipo de movimiento si se indica. */
 @Injectable()
 export class TransactionCategoryOptionsHttpRepository extends TransactionCategoryOptionsRepository {
   private readonly http = inject(HttpClient);
   private readonly transloco = inject(TranslocoService);
   private readonly url = `${environment.apiUrl}/api/v1/categories`;
 
-  list(kind?: CategoryKind): Observable<TransactionCategoryOption[]> {
-    const params = kind ? new HttpParams().set('kind', kind) : undefined;
+  list(type?: TransactionType): Observable<TransactionCategoryOption[]> {
+    const params = type ? new HttpParams().set('transactionTypeId', CATEGORY_TYPE_IDS[type]) : undefined;
 
     return this.http.get<ApiResponse<TransactionCategoryOptionDto[]>>(this.url, { params }).pipe(
       unwrap(),

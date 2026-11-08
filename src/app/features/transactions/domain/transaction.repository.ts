@@ -1,6 +1,5 @@
 import { Observable } from 'rxjs';
 import {
-  CategoryKind,
   ExchangeRate,
   Transaction,
   TransactionAccountOption,
@@ -8,6 +7,7 @@ import {
   TransactionDraft,
   TransactionPage,
   TransactionQuery,
+  TransactionType,
 } from './transaction';
 
 /**
@@ -30,9 +30,9 @@ export abstract class TransactionAccountOptionsRepository {
   abstract list(): Observable<TransactionAccountOption[]>;
 }
 
-/** Puerto: las categorías activas visibles para el usuario, filtradas por su clase. */
+/** Puerto: las categorías del usuario, filtradas por tipo de movimiento si se indica. */
 export abstract class TransactionCategoryOptionsRepository {
-  abstract list(kind?: CategoryKind): Observable<TransactionCategoryOption[]>;
+  abstract list(type?: TransactionType): Observable<TransactionCategoryOption[]>;
 }
 
 /** Puerto: la TRM vigente para una fecha `YYYY-MM-DD` (hoy en Colombia si se omite). */
