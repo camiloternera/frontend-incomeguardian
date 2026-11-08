@@ -9,14 +9,9 @@ import { LanguageService } from '@core/i18n/language.service';
 import { ThemeService } from '@core/theme/theme.service';
 import { PaginationComponent } from '@shared/ui/pagination.component';
 import { ListCategoriesUseCase } from '../../../application/category-use-cases';
-import { Category, matchesCategory } from '../../../domain/category';
+import { CATEGORY_TYPES, Category, CategoryType, matchesCategory } from '../../../domain/category';
 import { CategoryError } from '../../../domain/category-error';
 import { CategoryWorkspace } from '../../category-workspace';
-
-/** Pestañas del listado: las categorías propias o las predefinidas. */
-export type CategoryTab = 'personal' | 'predefined';
-
-const TABS: readonly CategoryTab[] = ['personal', 'predefined'];
 
 /** Categorías por página: caben en pantalla sin tener que desplazarse. */
 export const CATEGORY_PAGE_SIZE = 5;
@@ -45,7 +40,8 @@ export class CategoryListPageComponent {
   private readonly transloco = inject(TranslocoService);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
-  protected readonly tabs = TABS;
+  /** Una pestaña por tipo de movimiento. */
+  protected readonly tabs = CATEGORY_TYPES;
   protected readonly pageSize = CATEGORY_PAGE_SIZE;
   protected readonly theme = inject(ThemeService).theme;
   protected readonly locale = inject(LanguageService).language;
@@ -55,7 +51,7 @@ export class CategoryListPageComponent {
   protected readonly selectedId = this.workspace.selectedId;
   protected readonly loadError = signal('');
 
-  /** Texto de búsqueda; filtra las dos secciones a la vez. */
+  /** Texto de búsqueda; filtra todas las pestañas a la vez. */
   protected readonly query = signal('');
   /** Si el panel de crear o editar está abierto (hay una ruta hija activa). */
   protected readonly panelOpen = signal(false);
@@ -69,14 +65,22 @@ export class CategoryListPageComponent {
 
   private readonly matching = computed(() => (this.categories() ?? []).filter((category) => matchesCategory(category, this.query())));
 
-  protected readonly personal = computed(() => this.matching().filter((category) => !category.isGlobal));
-  protected readonly predefined = computed(() => this.matching().filter((category) => category.isGlobal));
+  /** Cuántas categorías de cada tipo coinciden con la búsqueda, para el contador de cada pestaña. */
+  protected readonly counts = computed(() => {
+    const counts: Record<CategoryType, number> = { income: 0, expense: 0, transfer: 0 };
+
+    for (const category of this.matching()) {
+      counts[category.type]++;
+    }
+
+    return counts;
+  });
   protected readonly searching = computed(() => this.query().trim() !== '');
 
-  /** Pestaña visible; empieza en las propias, que son las que se pueden cambiar. */
-  protected readonly tab = signal<CategoryTab>('personal');
+  /** Pestaña visible; vive en el workspace para que el panel proponga ese tipo al crear. */
+  protected readonly tab = this.workspace.type;
   /** Categorías de la pestaña visible que coinciden con la búsqueda. */
-  protected readonly visible = computed(() => (this.tab() === 'personal' ? this.personal() : this.predefined()));
+  protected readonly visible = computed(() => this.matching().filter((category) => category.type === this.tab()));
 
   private readonly requestedPage = signal(1);
 
@@ -109,7 +113,7 @@ export class CategoryListPageComponent {
     this.requestedPage.set(1);
   }
 
-  protected selectTab(tab: CategoryTab): void {
+  protected selectTab(tab: CategoryType): void {
     this.tab.set(tab);
     this.requestedPage.set(1);
     this.pendingDeleteId.set(null);
