@@ -44,7 +44,7 @@
 
         @if (categories(); as all) {
           <div class="flex flex-col-reverse gap-4">
-            <div class="flex gap-5 overflow-x-auto border-b border-ig-border sm:gap-6" role="group" [attr.aria-label]="t('categories.list.tabs.label')">
+            <div class="flex gap-5 border-b border-ig-border sm:gap-6" role="group" [attr.aria-label]="t('categories.list.tabs.label')">
               @for (option of tabs; track option) {
                 <button
                   [attr.data-testid]="'tab-' + option"
