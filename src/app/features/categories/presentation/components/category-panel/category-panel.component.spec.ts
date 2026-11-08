@@ -60,8 +60,56 @@ describe('CategoryPanelComponent', () => {
     submit(element);
     await harness.fixture.whenStable();
 
-    expect(fake.lastDraft).toEqual({ name: 'Viajes', description: 'Vuelos y hoteles' });
+    // Sin elegir, propone el tipo de la pestaña visible (gastos).
+    expect(fake.lastDraft).toEqual({ name: 'Viajes', description: 'Vuelos y hoteles', type: 'expense' });
     expect(TestBed.inject(Router).url).toBe('/categories');
+  });
+
+  it('creates the category with the chosen type and shows its tab', async () => {
+    const { harness, element } = await open('/categories/new');
+
+    element.querySelector<HTMLInputElement>('[data-testid="category-type-income"]')!.click();
+    type(element, 'category-name', 'Bonos');
+    type(element, 'category-description', 'Primas y bonificaciones');
+    submit(element);
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+
+    expect(fake.lastDraft).toEqual({ name: 'Bonos', description: 'Primas y bonificaciones', type: 'income' });
+    expect(element.querySelector('[data-testid="tab-income"]')?.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('proposes the type that comes in the link', async () => {
+    const { element } = await open('/categories/new?type=transfer');
+
+    expect(element.querySelector<HTMLInputElement>('[data-testid="category-type-transfer"]')?.checked).toBe(true);
+    expect(element.querySelector('[data-testid="tab-transfer"]')?.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('shows the type as read-only when editing and does not send it', async () => {
+    const { harness, element } = await open('/categories/9/edit');
+
+    expect(element.querySelector('[data-testid="category-type-readonly"]')?.textContent).toContain('Expense');
+    expect(element.querySelector('[data-testid="category-type-expense"]')).toBeNull();
+
+    type(element, 'category-name', 'Mascota');
+    submit(element);
+    await harness.fixture.whenStable();
+
+    expect(fake.lastDraft).toEqual({ name: 'Mascota', description: 'Comida y veterinario' });
+  });
+
+  it('shows a type error from the backend beside the type field', async () => {
+    const { harness, element } = await open('/categories/new');
+    fake.failWith = new CategoryError('Choose the transaction type.', CategoryErrorCode.TransactionTypeRequired);
+
+    type(element, 'category-name', 'Viajes');
+    type(element, 'category-description', 'Vuelos');
+    submit(element);
+    harness.detectChanges();
+
+    expect(element.querySelector('[data-testid="type-error"]')?.textContent).toContain('Choose the transaction type for the category.');
+    expect(element.querySelector('[data-testid="form-error"]')).toBeNull();
   });
 
   it('shows a taken name beside the name field until it changes', async () => {
@@ -102,7 +150,7 @@ describe('CategoryPanelComponent', () => {
   });
 
   it('switches to another category without closing', async () => {
-    fake.categories.push({ id: 10, name: 'Coworking', description: 'Escritorio', isGlobal: false, createdAt: '2026-10-02T00:00:00Z', updatedAt: null });
+    fake.categories.push({ id: 10, name: 'Coworking', description: 'Escritorio', type: 'expense', createdAt: '2026-10-02T00:00:00Z', updatedAt: null });
     const { harness, element } = await open('/categories/9/edit');
 
     await harness.navigateByUrl('/categories/10/edit');
@@ -139,13 +187,6 @@ describe('CategoryPanelComponent', () => {
     escape();
     await harness.fixture.whenStable();
     expect(TestBed.inject(Router).url).toBe('/categories');
-  });
-
-  it('refuses to edit a predefined category', async () => {
-    const { element } = await open('/categories/1/edit');
-
-    expect(element.querySelector('[data-testid="category-read-only"]')?.textContent).toContain('predefined category');
-    expect(element.querySelector('form')).toBeNull();
   });
 
   it('explains when the category does not exist', async () => {
