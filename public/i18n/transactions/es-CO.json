@@ -124,7 +124,7 @@
     "TRANSACTION_ACCOUNT_NOT_FOUND": "No encontramos esa cuenta. Elige otra de la lista.",
     "ACCOUNT_INACTIVE": "Esa cuenta está desactivada. Elige una cuenta activa.",
     "TRANSACTION_CATEGORY_NOT_FOUND": "Esa categoría ya no está disponible. Elige otra.",
-    "TRANSACTION_CATEGORY_KIND_MISMATCH": "Esa categoría no aplica a este tipo de movimiento.",
+    "TRANSACTION_CATEGORY_TYPE_MISMATCH": "Esa categoría es de otro tipo de movimiento. Elige una de este tipo.",
     "TRANSACTION_DESCRIPTION_MAX_LENGTH": "La descripción puede tener hasta {{descriptionMax}} caracteres.",
     "TRANSACTION_PAGE_INVALID": "Esa página no existe.",
     "TRANSACTION_DATE_RANGE_INVALID": "El rango de fechas no es válido.",
