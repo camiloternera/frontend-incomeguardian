@@ -27,17 +27,10 @@ export function isSelectableCurrency(value: unknown): value is SelectableCurrenc
   return typeof value === 'string' && (SELECTABLE_CURRENCIES as readonly string[]).includes(value);
 }
 
-/** Tipo de cuenta tal como lo ve el dominio de cuentas: solo lo necesario para elegirlo y mostrarlo. */
-export interface AccountTypeOption {
-  id: number;
-  name: string;
-}
-
 /** Cuenta del usuario, como una cuenta de ahorros o una tarjeta. */
 export interface Account {
   id: number;
   name: string;
-  accountType: AccountTypeOption;
   initialBalance: number;
   /** Saldo inicial más el neto de los movimientos. */
   currentBalance: number;
@@ -55,15 +48,14 @@ export function sortAccounts(accounts: readonly Account[]): Account[] {
   );
 }
 
-/** Indica si la cuenta coincide con la búsqueda por su nombre o el de su tipo. */
+/** Indica si la cuenta coincide con la búsqueda por su nombre o su moneda. */
 export function matchesAccount(account: Account, query: string): boolean {
-  return matchesSearch(query, account.name, account.accountType.name);
+  return matchesSearch(query, account.name, account.currency);
 }
 
 /** La parte editable de una cuenta, usada para crearla y para actualizarla. */
 export interface AccountDraft {
   name: string;
-  accountTypeId: number;
   initialBalance: number;
   currency: Currency;
 }

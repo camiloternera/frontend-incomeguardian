@@ -4,14 +4,13 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { environment } from '@env/environment';
 import { translocoTesting } from '@core/i18n/i18n.testing';
 import { AccountError, AccountErrorCode } from '../domain/account-error';
-import { AccountHttpRepository, AccountTypeOptionsHttpRepository } from './account-http.repository';
+import { AccountHttpRepository } from './account-http.repository';
 
 const URL = `${environment.apiUrl}/api/v1/accounts`;
 
 const DTO = {
   id: 5,
   name: 'Visa 4417',
-  accountType: { id: 3, name: 'Tarjeta de crédito' },
   initialBalance: -250000.5,
   currentBalance: null,
   currency: 'COP',
@@ -30,16 +29,14 @@ function failure(code: string, message = 'Backend message') {
 
 describe('AccountHttpRepository', () => {
   let repository: AccountHttpRepository;
-  let options: AccountTypeOptionsHttpRepository;
   let http: HttpTestingController;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
       imports: [translocoTesting()],
-      providers: [provideHttpClient(), provideHttpClientTesting(), AccountHttpRepository, AccountTypeOptionsHttpRepository],
+      providers: [provideHttpClient(), provideHttpClientTesting(), AccountHttpRepository],
     });
     repository = TestBed.inject(AccountHttpRepository);
-    options = TestBed.inject(AccountTypeOptionsHttpRepository);
     http = TestBed.inject(HttpTestingController);
   });
 
@@ -55,7 +52,6 @@ describe('AccountHttpRepository', () => {
       {
         id: 5,
         name: 'Visa 4417',
-        accountType: { id: 3, name: 'Tarjeta de crédito' },
         initialBalance: -250000.5,
         currentBalance: -250000.5,
         currency: 'COP',
@@ -67,17 +63,18 @@ describe('AccountHttpRepository', () => {
   });
 
   it('sends the draft with its currency on create and update', () => {
-    const draft = { name: 'Wise', accountTypeId: 1, initialBalance: 320.5, currency: 'USD' as const };
+    const draft = { name: 'Wise', initialBalance: 320.5, currency: 'USD' as const };
 
     repository.create(draft).subscribe();
     const create = http.expectOne(URL);
     expect(create.request.method).toBe('POST');
-    expect(create.request.body).toEqual({ name: 'Wise', accountTypeId: 1, initialBalance: 320.5, currency: 'USD' });
+    expect(create.request.body).toEqual({ name: 'Wise', initialBalance: 320.5, currency: 'USD' });
     create.flush(ok({ ...DTO, currency: 'USD' }), { status: 201, statusText: 'Created' });
 
     repository.update(5, draft).subscribe();
     const update = http.expectOne(`${URL}/5`);
     expect(update.request.method).toBe('PUT');
+    expect(update.request.body).toEqual({ name: 'Wise', initialBalance: 320.5, currency: 'USD' });
     update.flush(ok(DTO));
   });
 
@@ -94,7 +91,7 @@ describe('AccountHttpRepository', () => {
 
   it('keeps the backend code and translates it', () => {
     let error: unknown;
-    repository.update(5, { name: 'Wise', accountTypeId: 1, initialBalance: 0, currency: 'EUR' }).subscribe({
+    repository.update(5, { name: 'Wise', initialBalance: 0, currency: 'EUR' }).subscribe({
       error: (value) => (error = value),
     });
 
@@ -113,16 +110,5 @@ describe('AccountHttpRepository', () => {
 
     expect(error).toBeInstanceOf(AccountError);
     expect((error as AccountError).code).toBeNull();
-  });
-
-  it('reads only the id and name of the account types', () => {
-    let result: unknown;
-    options.list().subscribe((value) => (result = value));
-
-    http
-      .expectOne(`${environment.apiUrl}/api/v1/account-types`)
-      .flush(ok([{ id: 1, name: 'Ahorros', description: 'Banco', isActive: true, createdAt: 'x', updatedAt: null }]));
-
-    expect(result).toEqual([{ id: 1, name: 'Ahorros' }]);
   });
 });
