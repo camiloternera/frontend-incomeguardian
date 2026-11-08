@@ -108,21 +108,19 @@ export function isUsableAccount(account: TransactionAccountOption): boolean {
   return account.isActive && isTransactionCurrency(account.currency);
 }
 
-/** Clase de categoría según el tipo de movimiento al que aplica. */
-export type CategoryKind = 'income' | 'expense' | 'both';
-
 /** Categoría que se puede asignar a un movimiento. */
 export interface TransactionCategoryOption {
   id: number;
   name: string;
-  kind: CategoryKind;
+  /** Tipo de movimiento al que pertenece; null si el backend envía uno que la app no conoce. */
+  type: TransactionType | null;
   /** Las desactivadas no se ofrecen en movimientos nuevos, pero nombran los ya registrados. */
   isActive: boolean;
 }
 
-/** Indica si la categoría aplica al tipo de movimiento; las transferencias aceptan cualquiera. */
+/** Indica si la categoría se puede usar en el tipo de movimiento: deben ser del mismo tipo. */
 export function categoryAppliesTo(category: TransactionCategoryOption, type: TransactionType): boolean {
-  return type === 'transfer' || category.kind === 'both' || category.kind === type;
+  return category.type === type;
 }
 
 /** TRM oficial: pesos colombianos por un dólar, vigente entre `validFrom` y `validTo`. */

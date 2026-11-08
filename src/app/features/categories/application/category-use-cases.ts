@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
-import { Category, CategoryDraft, sortCategories } from '../domain/category';
+import { Category, CategoryDraft, NewCategoryDraft, sortCategories } from '../domain/category';
 import { CategoryRepository } from '../domain/category.repository';
 
 function trimmed(draft: CategoryDraft): CategoryDraft {
@@ -29,8 +29,8 @@ export class GetCategoryUseCase {
 export class CreateCategoryUseCase {
   private readonly repository = inject(CategoryRepository);
 
-  execute(draft: CategoryDraft): Observable<Category> {
-    return this.repository.create(trimmed(draft));
+  execute(draft: NewCategoryDraft): Observable<Category> {
+    return this.repository.create({ ...trimmed(draft), type: draft.type });
   }
 }
 

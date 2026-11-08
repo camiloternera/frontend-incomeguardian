@@ -3,7 +3,7 @@ import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { AbstractControl, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
-import { LucideLock, LucideTrash2, LucideX } from '@lucide/angular';
+import { LucideTrash2, LucideX } from '@lucide/angular';
 import { Observable, finalize } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { notBlank } from '@shared/forms/not-blank.validator';
@@ -12,17 +12,25 @@ import {
   GetCategoryUseCase,
   UpdateCategoryUseCase,
 } from '../../../application/category-use-cases';
-import { CATEGORY_DESCRIPTION_MAX_LENGTH, CATEGORY_NAME_MAX_LENGTH, Category } from '../../../domain/category';
+import {
+  CATEGORY_DESCRIPTION_MAX_LENGTH,
+  CATEGORY_NAME_MAX_LENGTH,
+  CATEGORY_TYPES,
+  Category,
+  CategoryType,
+  isCategoryType,
+} from '../../../domain/category';
 import {
   CategoryError,
   CategoryErrorCode,
   DESCRIPTION_ERROR_CODES,
   NAME_ERROR_CODES,
+  TYPE_ERROR_CODES,
 } from '../../../domain/category-error';
 import { CategoryWorkspace } from '../../category-workspace';
 
-/** Estado del panel: listo para editar, cargando, sin categoría o con una categoría predefinida. */
-type PanelStatus = 'ready' | 'loading' | 'notFound' | 'readOnly';
+/** Estado del panel: listo para editar, cargando o sin categoría. */
+type PanelStatus = 'ready' | 'loading' | 'notFound';
 
 /** Códigos de error que pinta cada campo, según la validación del navegador o la respuesta del backend. */
 interface FieldErrorCodes {
@@ -49,7 +57,7 @@ const LIST_URL = '/categories';
  */
 @Component({
   selector: 'app-category-panel',
-  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective, LucideLock, LucideTrash2, LucideX],
+  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective, LucideTrash2, LucideX],
   templateUrl: './category-panel.component.html',
 })
 export class CategoryPanelComponent {
@@ -59,6 +67,7 @@ export class CategoryPanelComponent {
   private readonly workspace = inject(CategoryWorkspace);
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly transloco = inject(TranslocoService);
   private readonly heading = viewChild<ElementRef<HTMLElement>>('heading');
 
@@ -68,6 +77,7 @@ export class CategoryPanelComponent {
   /** Parámetros que interpolan los mensajes de longitud máxima. */
   protected readonly limits = { nameMax: CATEGORY_NAME_MAX_LENGTH, descriptionMax: CATEGORY_DESCRIPTION_MAX_LENGTH };
   protected readonly notFoundCode = CategoryErrorCode.NotFound;
+  protected readonly types = CATEGORY_TYPES;
 
   /** Categoría en edición; `null` cuando se crea una nueva. Cambia si se pasa de una fila a otra. */
   protected readonly categoryId = signal<number | null>(null);
@@ -87,8 +97,11 @@ export class CategoryPanelComponent {
   /** Errores que devolvió el backend para cada campo; se limpian al volver a escribir. */
   protected readonly nameServerError = signal<CategoryErrorCode | null>(null);
   protected readonly descriptionServerError = signal<CategoryErrorCode | null>(null);
+  protected readonly typeServerError = signal<CategoryErrorCode | null>(null);
 
   protected readonly categoryForm = this.formBuilder.group({
+    /** Solo se elige al crear; en edición se muestra pero el backend no permite cambiarlo. */
+    type: this.formBuilder.control<CategoryType>('expense'),
     name: ['', [notBlank, Validators.maxLength(CATEGORY_NAME_MAX_LENGTH)]],
     description: ['', [notBlank, Validators.maxLength(CATEGORY_DESCRIPTION_MAX_LENGTH)]],
   });
@@ -101,10 +114,11 @@ export class CategoryPanelComponent {
   constructor() {
     this.categoryForm.controls.name.valueChanges.subscribe(() => this.nameServerError.set(null));
     this.categoryForm.controls.description.valueChanges.subscribe(() => this.descriptionServerError.set(null));
+    this.categoryForm.controls.type.valueChanges.subscribe(() => this.typeServerError.set(null));
 
     // Al pasar de editar una fila a otra, Angular reutiliza el panel: se reinicia con cada id.
-    inject(ActivatedRoute)
-      .paramMap.pipe(takeUntilDestroyed())
+    this.route.paramMap
+      .pipe(takeUntilDestroyed())
       .subscribe((params) => this.open(parseId(params.get('id'))));
 
     inject(DestroyRef).onDestroy(() => this.workspace.selectedId.set(null));
@@ -151,9 +165,11 @@ export class CategoryPanelComponent {
     }
 
     const id = this.categoryId();
-    const draft = this.categoryForm.getRawValue();
+    const { name, description, type } = this.categoryForm.getRawValue();
     const request: Observable<Category> =
-      id === null ? this.createCategory.execute(draft) : this.updateCategory.execute(id, draft);
+      id === null
+        ? this.createCategory.execute({ name, description, type })
+        : this.updateCategory.execute(id, { name, description });
 
     this.isSubmitting.set(true);
     request.pipe(finalize(() => this.isSubmitting.set(false))).subscribe({
@@ -207,12 +223,16 @@ export class CategoryPanelComponent {
     this.loaded.set(null);
     this.confirmingDelete.set(false);
     this.formError.set('');
-    this.categoryForm.reset({ name: '', description: '' });
+    this.typeServerError.set(null);
+    this.categoryForm.reset({ name: '', description: '', type: this.initialType() });
+    this.categoryForm.controls.type.enable({ emitEvent: false });
 
     if (id === null) {
       this.status.set('ready');
       return;
     }
+
+    this.categoryForm.controls.type.disable({ emitEvent: false });
 
     this.load(id);
   }
@@ -224,9 +244,8 @@ export class CategoryPanelComponent {
     this.getCategory.execute(id).subscribe({
       next: (category) => {
         this.loaded.set(category);
-        this.categoryForm.reset({ name: category.name, description: category.description });
-        // Las categorías predefinidas solo se pueden consultar; el backend rechaza su edición.
-        this.status.set(category.isGlobal ? 'readOnly' : 'ready');
+        this.categoryForm.reset({ name: category.name, description: category.description, type: category.type });
+        this.status.set('ready');
       },
       error: (error: unknown) => {
         if (error instanceof CategoryError && error.code === CategoryErrorCode.NotFound) {
@@ -247,11 +266,28 @@ export class CategoryPanelComponent {
       this.nameServerError.set(code);
     } else if (code && DESCRIPTION_ERROR_CODES.includes(code)) {
       this.descriptionServerError.set(code);
+    } else if (code && TYPE_ERROR_CODES.includes(code)) {
+      this.typeServerError.set(code);
     } else if (code === CategoryErrorCode.NotFound) {
       this.status.set('notFound');
     } else {
       this.formError.set(this.messageOf(error));
     }
+  }
+
+  /**
+   * Tipo que se propone al crear: el de `?type=` (por ejemplo, al venir desde un movimiento),
+   * que además muestra esa pestaña, o el de la pestaña visible.
+   */
+  private initialType(): CategoryType {
+    const requested = this.route.snapshot.queryParamMap.get('type');
+
+    if (isCategoryType(requested)) {
+      this.workspace.type.set(requested);
+      return requested;
+    }
+
+    return this.workspace.type();
   }
 
   private localError(control: AbstractControl, codes: FieldErrorCodes): CategoryErrorCode | null {

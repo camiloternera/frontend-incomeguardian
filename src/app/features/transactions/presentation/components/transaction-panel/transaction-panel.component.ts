@@ -445,18 +445,11 @@ export class TransactionPanelComponent {
   protected loadCategories(): void {
     const type = this.type();
     this.categoriesRequest?.unsubscribe();
-
-    if (type === 'transfer') {
-      this.categories.set([]);
-      this.categoriesStatus.set('ready');
-      return;
-    }
-
     this.categoriesStatus.set('loading');
     this.categoriesRequest = this.listCategories.execute(type).subscribe({
       next: (categories) => {
-        // El backend ya filtra por clase; se comprueba aquí también para no ofrecer una categoría
-        // que luego rechace con TRANSACTION_CATEGORY_KIND_MISMATCH. Las desactivadas no se ofrecen.
+        // El backend ya filtra por tipo; se comprueba aquí también para no ofrecer una categoría
+        // que luego rechace con TRANSACTION_CATEGORY_TYPE_MISMATCH. Las desactivadas no se ofrecen.
         this.categories.set(categories.filter((category) => category.isActive && categoryAppliesTo(category, type)));
         this.categoriesStatus.set('ready');
       },
@@ -522,7 +515,7 @@ export class TransactionPanelComponent {
         return {
           ...base,
           type: 'transfer',
-          categoryId: null,
+          categoryId: value.categoryId,
           fromAccountId: value.fromAccountId!,
           toAccountId: value.toAccountId!,
         };

@@ -129,7 +129,7 @@ describe('TransactionPanelComponent', () => {
       'Nequi · COP',
       'Wise · USD',
     ]);
-    expect(fakes.categories.lastKind).toBe('expense');
+    expect(fakes.categories.lastType).toBe('expense');
     // Desde el selector se puede ir a crear una cuenta, como con el tipo de cuenta.
     expect(footerHref(element, 'transaction-account', 'create-account', harness)).toBe('/accounts/new');
   });
@@ -161,7 +161,8 @@ describe('TransactionPanelComponent', () => {
     choose(element, 'transaction-account', 'Bancolombia', harness);
     expect(query(element, 'account-balance')?.textContent).toContain('1.250.000');
     expect(optionLabels(element, 'transaction-category', harness)[0]).toBe('Sin categoría');
-    expect(footerHref(element, 'transaction-category', 'create-category', harness)).toBe('/categories/new');
+    // Crear una categoría desde aquí propone el tipo del movimiento.
+    expect(footerHref(element, 'transaction-category', 'create-category', harness)).toBe('/categories/new?type=income');
     choose(element, 'transaction-category', 'Salario', harness);
     type(element, 'transaction-description', '  Salario noviembre ');
     pickDate(element, '2026-11-01', harness);
@@ -203,7 +204,10 @@ describe('TransactionPanelComponent', () => {
   it('transfers between accounts in the same currency without a conversion', async () => {
     const { harness, element } = await open('/transactions/new/transfer');
 
-    expect(query(element, 'transaction-category')).toBeNull();
+    // Las transferencias también llevan categoría, pero solo de su tipo.
+    expect(fakes.categories.lastType).toBe('transfer');
+    expect(optionLabels(element, 'transaction-category', harness)).toEqual(['No category', 'Ahorro']);
+    choose(element, 'transaction-category', 'Ahorro', harness);
     type(element, 'transaction-amount', '100000');
     choose(element, 'transaction-from', 'Bancolombia', harness);
     // El origen no se ofrece como destino.
@@ -221,7 +225,7 @@ describe('TransactionPanelComponent', () => {
     expect(fakes.transactions.lastDraft).toMatchObject({
       type: 'transfer',
       amount: 100000,
-      categoryId: null,
+      categoryId: 4,
       fromAccountId: 2,
       toAccountId: 3,
     });

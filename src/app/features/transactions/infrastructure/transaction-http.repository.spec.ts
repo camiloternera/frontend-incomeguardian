@@ -310,7 +310,7 @@ describe('TransactionCategoryOptionsHttpRepository', () => {
   let options: TransactionCategoryOptionsHttpRepository;
   let http: HttpTestingController;
 
-  const base = { description: null, isGlobal: false, createdAt: 'x', updatedAt: null };
+  const base = { description: 'x', transactionTypeName: 'x', createdAt: 'x', updatedAt: null };
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -323,15 +323,15 @@ describe('TransactionCategoryOptionsHttpRepository', () => {
 
   afterEach(() => http.verify());
 
-  it('sends the kind when given', () => {
-    options.list('income').subscribe();
+  it('sends the transaction type id when given', () => {
+    options.list('transfer').subscribe();
 
     const request = http.expectOne((req) => req.url === CATEGORIES_URL);
-    expect(request.request.params.get('kind')).toBe('income');
+    expect(request.request.params.get('transactionTypeId')).toBe('3');
     request.flush(ok([]));
   });
 
-  it('omits the kind when not given, drops inactive ones and defaults the kind to both', () => {
+  it('omits the filter when not given, keeps inactive ones and maps the type id', () => {
     let result: unknown;
     options.list().subscribe((value) => (result = value));
 
@@ -339,16 +339,18 @@ describe('TransactionCategoryOptionsHttpRepository', () => {
     expect(request.request.params.keys()).toEqual([]);
     request.flush(
       ok([
-        { ...base, id: 1, name: 'Salario', isActive: true, kind: 'income' },
-        { ...base, id: 2, name: 'Viejo', isActive: false, kind: 'expense' },
-        { ...base, id: 3, name: 'Otros', isActive: true },
+        { ...base, id: 1, name: 'Salario', isActive: true, transactionTypeId: 1 },
+        { ...base, id: 2, name: 'Viejo', isActive: false, transactionTypeId: 2 },
+        { ...base, id: 3, name: 'Ahorro', isActive: true, transactionTypeId: 3 },
+        { ...base, id: 4, name: 'Rara', isActive: true, transactionTypeId: 9 },
       ]),
     );
 
     expect(result).toEqual([
-      { id: 1, name: 'Salario', kind: 'income', isActive: true },
-      { id: 2, name: 'Viejo', kind: 'expense', isActive: false },
-      { id: 3, name: 'Otros', kind: 'both', isActive: true },
+      { id: 1, name: 'Salario', type: 'income', isActive: true },
+      { id: 2, name: 'Viejo', type: 'expense', isActive: false },
+      { id: 3, name: 'Ahorro', type: 'transfer', isActive: true },
+      { id: 4, name: 'Rara', type: null, isActive: true },
     ]);
   });
 });

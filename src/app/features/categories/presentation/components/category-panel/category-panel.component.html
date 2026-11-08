@@ -10,7 +10,6 @@
       <h2 #heading id="category-panel-title" tabindex="-1" class="m-0 text-[20px] font-bold tracking-[-0.02em] outline-none">
         @switch (status()) {
           @case ('notFound') { {{ t('categories.form.notFoundTitle') }} }
-          @case ('readOnly') { {{ categoryForm.controls.name.value }} }
           @default { {{ isEdit() ? t('categories.form.editTitle') : t('categories.form.createTitle') }} }
         }
       </h2>
@@ -60,18 +59,43 @@
       </div>
     }
 
-    @case ('readOnly') {
-      <div data-testid="category-read-only" class="flex flex-col items-start gap-4">
-        <p class="m-0 break-words text-[14px] leading-relaxed text-ig-muted">{{ categoryForm.controls.description.value }}</p>
-        <p class="m-0 flex items-start gap-2 text-[14px]">
-          <svg lucideLock [size]="16" class="mt-0.5 shrink-0" aria-hidden="true"></svg>
-          {{ t('categories.form.readOnly') }}
-        </p>
-      </div>
-    }
-
     @default {
       <form class="flex flex-col gap-6" [formGroup]="categoryForm" (ngSubmit)="submit()" novalidate>
+        @if (isEdit()) {
+          <div class="flex flex-col gap-2" data-testid="category-type-readonly">
+            <p class="m-0 text-[13px] font-bold">{{ t('categories.form.typeLabel') }}</p>
+            <p class="m-0 text-[15px]">{{ t('categories.types.' + categoryForm.controls.type.value) }}</p>
+            <p class="m-0 text-[12px] text-ig-muted">{{ t('categories.form.typeLocked') }}</p>
+          </div>
+        } @else {
+          <fieldset class="m-0 flex min-w-0 flex-col gap-2 border-0 p-0" [attr.aria-describedby]="typeServerError() ? 'category-type-error' : 'category-type-hint'">
+            <legend class="mb-2 p-0 text-[13px] font-bold">{{ t('categories.form.typeLabel') }}</legend>
+            <div class="grid grid-cols-3 gap-1 rounded-lg border p-1" [class]="typeServerError() ? 'border-ig-text' : 'border-ig-border'">
+              @for (option of types; track option) {
+                <label
+                  class="relative grid min-h-11 cursor-pointer place-items-center rounded-md px-2 text-center text-[14px] leading-tight has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ig-accent has-[:focus-visible]:outline-offset-2"
+                  [class]="categoryForm.controls.type.value === option ? 'bg-ig-surface-raised font-bold text-ig-text' : 'text-ig-muted hover:text-ig-text'"
+                >
+                  <input
+                    class="sr-only"
+                    type="radio"
+                    formControlName="type"
+                    name="type"
+                    [value]="option"
+                    [attr.data-testid]="'category-type-' + option"
+                  />
+                  {{ t('categories.types.' + option) }}
+                </label>
+              }
+            </div>
+            @if (typeServerError(); as code) {
+              <p id="category-type-error" data-testid="type-error" class="m-0 text-[13px] leading-snug text-ig-text" role="alert">{{ t('categories.errors.' + code) }}</p>
+            } @else {
+              <p id="category-type-hint" class="m-0 text-[12px] text-ig-muted">{{ t('categories.form.typeHint') }}</p>
+            }
+          </fieldset>
+        }
+
         <div class="flex flex-col gap-2">
           <div class="flex items-baseline justify-between gap-3">
             <label class="text-[13px] font-bold" for="category-name">{{ t('categories.form.nameLabel') }}</label>
