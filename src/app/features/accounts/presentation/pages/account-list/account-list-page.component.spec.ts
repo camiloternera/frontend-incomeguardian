@@ -36,7 +36,6 @@ describe('AccountListPageComponent', () => {
     const base = {
       id,
       name,
-      accountType: { id: 1, name: 'Ahorros' },
       initialBalance: 0,
       currency: 'COP' as const,
       isActive: true,
@@ -56,7 +55,7 @@ describe('AccountListPageComponent', () => {
     }).compileComponents();
   });
 
-  it('shows the active accounts alphabetically with their type, currency and balance', async () => {
+  it('shows the active accounts alphabetically with their currency and balance', async () => {
     const { element } = await open();
 
     expect(names(element)).toEqual(['Bancolombia', 'Visa 4417']);
@@ -64,7 +63,7 @@ describe('AccountListPageComponent', () => {
     expect(element.querySelector('[data-testid="tab-inactive"]')?.textContent).toContain('1');
 
     const visa = element.querySelector('[data-testid="account-5"]')!;
-    expect(visa.textContent).toContain('Tarjeta de crédito · COP');
+    expect(visa.textContent).toContain('Colombian peso (COP)');
     expect(visa.querySelector('[data-testid="row-balance"]')?.textContent).toContain('-COP');
     expect(visa.querySelector('a[href="/accounts/5/edit"]')).toBeTruthy();
     expect(element.querySelector('[data-testid="menu-5"]')).toBeTruthy();
@@ -112,10 +111,10 @@ describe('AccountListPageComponent', () => {
     expect(element.querySelector('[data-testid="menu-8"]')).toBeNull();
   });
 
-  it('searches by name or type ignoring accents, with the matches per tab', async () => {
+  it('searches by name or currency ignoring case, with the matches per tab', async () => {
     const { harness, element } = await open();
 
-    search(element, 'CREDITO');
+    search(element, 'VISA');
     harness.detectChanges();
     expect(names(element)).toEqual(['Visa 4417']);
     expect(element.querySelector('[data-testid="tab-inactive"]')?.textContent).toContain('0');
