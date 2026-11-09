@@ -15,6 +15,7 @@ const DTO = {
   currentBalance: null,
   currency: 'COP',
   isActive: true,
+  openingDate: '2026-01-15T14:30:00Z',
   createdAt: '2026-10-31T12:00:00+00:00',
   updatedAt: null,
 };
@@ -56,6 +57,7 @@ describe('AccountHttpRepository', () => {
         currentBalance: -250000.5,
         currency: 'COP',
         isActive: true,
+        openingDate: '2026-01-15T14:30:00Z',
         createdAt: '2026-10-31T12:00:00+00:00',
         updatedAt: null,
       },
@@ -63,18 +65,24 @@ describe('AccountHttpRepository', () => {
   });
 
   it('sends the draft with its currency on create and update', () => {
-    const draft = { name: 'Wise', initialBalance: 320.5, currency: 'USD' as const };
+    const draft = {
+      name: 'Wise',
+      initialBalance: 320.5,
+      currency: 'USD' as const,
+      openingDate: '2026-01-15T09:30:00-05:00',
+    };
+    const body = { name: 'Wise', initialBalance: 320.5, currency: 'USD', openingDate: '2026-01-15T09:30:00-05:00' };
 
     repository.create(draft).subscribe();
     const create = http.expectOne(URL);
     expect(create.request.method).toBe('POST');
-    expect(create.request.body).toEqual({ name: 'Wise', initialBalance: 320.5, currency: 'USD' });
+    expect(create.request.body).toEqual(body);
     create.flush(ok({ ...DTO, currency: 'USD' }), { status: 201, statusText: 'Created' });
 
     repository.update(5, draft).subscribe();
     const update = http.expectOne(`${URL}/5`);
     expect(update.request.method).toBe('PUT');
-    expect(update.request.body).toEqual({ name: 'Wise', initialBalance: 320.5, currency: 'USD' });
+    expect(update.request.body).toEqual(body);
     update.flush(ok(DTO));
   });
 
@@ -91,7 +99,7 @@ describe('AccountHttpRepository', () => {
 
   it('keeps the backend code and translates it', () => {
     let error: unknown;
-    repository.update(5, { name: 'Wise', initialBalance: 0, currency: 'EUR' }).subscribe({
+    repository.update(5, { name: 'Wise', initialBalance: 0, currency: 'EUR', openingDate: '2026-01-15T09:30:00-05:00' }).subscribe({
       error: (value) => (error = value),
     });
 

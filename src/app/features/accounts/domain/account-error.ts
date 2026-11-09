@@ -9,6 +9,8 @@ export const AccountErrorCode = {
   CurrencyRequired: 'ACCOUNT_CURRENCY_REQUIRED',
   CurrencyInvalid: 'ACCOUNT_CURRENCY_INVALID',
   CurrencyLocked: 'ACCOUNT_CURRENCY_LOCKED',
+  OpeningDateRequired: 'ACCOUNT_OPENING_DATE_REQUIRED',
+  OpeningDateFuture: 'ACCOUNT_OPENING_DATE_FUTURE',
 } as const;
 
 export type AccountErrorCode = (typeof AccountErrorCode)[keyof typeof AccountErrorCode];
@@ -27,6 +29,11 @@ export const CURRENCY_ERROR_CODES: readonly AccountErrorCode[] = [
   AccountErrorCode.CurrencyRequired,
   AccountErrorCode.CurrencyInvalid,
   AccountErrorCode.CurrencyLocked,
+];
+
+export const OPENING_DATE_ERROR_CODES: readonly AccountErrorCode[] = [
+  AccountErrorCode.OpeningDateRequired,
+  AccountErrorCode.OpeningDateFuture,
 ];
 
 /**

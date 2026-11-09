@@ -37,6 +37,9 @@ export interface Account {
   currency: Currency;
   /** Las cuentas desactivadas se pueden consultar, pero no editar ni usar en movimientos nuevos. */
   isActive: boolean;
+  /** Fecha y hora en que el usuario abrió la cuenta, en ISO 8601 UTC. */
+  openingDate: string;
+  /** Auditoría del servidor, distinta de la fecha de apertura. */
   createdAt: string;
   updatedAt: string | null;
 }
@@ -58,6 +61,8 @@ export interface AccountDraft {
   name: string;
   initialBalance: number;
   currency: Currency;
+  /** Fecha y hora de apertura en ISO 8601 con desfase; no puede ser futura. */
+  openingDate: string;
 }
 
 /** Suma de los saldos de las cuentas activas en una misma moneda. */

@@ -27,6 +27,7 @@ function toAccount(dto: AccountDto): Account {
     currentBalance: dto.currentBalance ?? dto.initialBalance,
     currency: dto.currency,
     isActive: dto.isActive,
+    openingDate: dto.openingDate,
     createdAt: dto.createdAt,
     updatedAt: dto.updatedAt,
   };
@@ -37,6 +38,7 @@ function toRequest(draft: AccountDraft): AccountRequestDto {
     name: draft.name,
     initialBalance: draft.initialBalance,
     currency: draft.currency,
+    openingDate: draft.openingDate,
   };
 }
 
