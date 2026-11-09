@@ -76,7 +76,11 @@
     "saveChanges": "Guardar cambios",
     "saving": "Guardando…",
     "backToList": "Volver a cuentas",
-    "notFoundTitle": "Cuenta no disponible"
+    "notFoundTitle": "Cuenta no disponible",
+    "openingLabel": "Fecha de apertura",
+    "openingDay": "Día de apertura",
+    "openingTime": "Hora de apertura",
+    "openingHint": "Desde cuándo existe la cuenta; no puede ser posterior a este momento."
   },
   "errors": {
     "ACCOUNT_NAME_REQUIRED": "Escribe un nombre para la cuenta.",
@@ -84,6 +88,8 @@
     "ACCOUNT_NOT_FOUND": "No encontramos esta cuenta.",
     "ACCOUNT_CURRENCY_REQUIRED": "Elige la moneda de la cuenta.",
     "ACCOUNT_CURRENCY_INVALID": "Esa moneda no está disponible. Elige una de la lista.",
-    "ACCOUNT_CURRENCY_LOCKED": "La cuenta ya tiene movimientos, así que su moneda no se puede cambiar."
+    "ACCOUNT_CURRENCY_LOCKED": "La cuenta ya tiene movimientos, así que su moneda no se puede cambiar.",
+    "ACCOUNT_OPENING_DATE_REQUIRED": "Indica el día y la hora en que abriste la cuenta.",
+    "ACCOUNT_OPENING_DATE_FUTURE": "La fecha de apertura no puede ser posterior a este momento."
   }
 }
