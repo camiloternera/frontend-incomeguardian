@@ -39,6 +39,7 @@ describe('AccountListPageComponent', () => {
       initialBalance: 0,
       currency: 'COP' as const,
       isActive: true,
+      openingDate: '2026-10-20T00:00:00Z',
       createdAt: '2026-10-20T00:00:00Z',
       updatedAt: null,
       ...overrides,

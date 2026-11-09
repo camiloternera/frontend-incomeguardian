@@ -76,7 +76,11 @@
     "saveChanges": "Save changes",
     "saving": "Saving…",
     "backToList": "Back to accounts",
-    "notFoundTitle": "Account unavailable"
+    "notFoundTitle": "Account unavailable",
+    "openingLabel": "Opening date",
+    "openingDay": "Opening day",
+    "openingTime": "Opening time",
+    "openingHint": "When the account started; it cannot be later than now."
   },
   "errors": {
     "ACCOUNT_NAME_REQUIRED": "Enter a name for the account.",
@@ -84,6 +88,8 @@
     "ACCOUNT_NOT_FOUND": "We could not find this account.",
     "ACCOUNT_CURRENCY_REQUIRED": "Pick the account's currency.",
     "ACCOUNT_CURRENCY_INVALID": "That currency is not available. Pick one from the list.",
-    "ACCOUNT_CURRENCY_LOCKED": "The account already has transactions, so its currency cannot change."
+    "ACCOUNT_CURRENCY_LOCKED": "The account already has transactions, so its currency cannot change.",
+    "ACCOUNT_OPENING_DATE_REQUIRED": "Enter the day and time you opened the account.",
+    "ACCOUNT_OPENING_DATE_FUTURE": "The opening date cannot be later than now."
   }
 }

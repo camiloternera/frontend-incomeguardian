@@ -13,6 +13,7 @@ function account(
     currentBalance: initialBalance,
     currency,
     isActive,
+    openingDate: '2026-10-01T00:00:00Z',
     createdAt: '2026-10-01T00:00:00Z',
     updatedAt: null,
   };
