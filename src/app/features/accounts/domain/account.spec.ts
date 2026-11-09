@@ -9,7 +9,6 @@ function account(
   return {
     id,
     name: `Cuenta ${id}`,
-    accountType: { id: 1, name: 'Ahorros' },
     initialBalance,
     currentBalance: initialBalance,
     currency,

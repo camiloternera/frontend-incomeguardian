@@ -79,10 +79,6 @@
           </p>
           <dl class="m-0 flex flex-col gap-4 border-t border-ig-border pt-6 text-[14px]">
             <div class="flex items-baseline justify-between gap-4">
-              <dt class="text-ig-muted">{{ t('accounts.form.typeLabel') }}</dt>
-              <dd class="m-0 break-words text-right">{{ current.accountType.name }}</dd>
-            </div>
-            <div class="flex items-baseline justify-between gap-4">
               <dt class="text-ig-muted">{{ t('accounts.form.currencyLabel') }}</dt>
               <dd class="m-0 text-right">{{ t('accounts.form.currency.' + current.currency) }}</dd>
             </div>
@@ -142,78 +138,6 @@
             <p
               id="account-name-error"
               data-testid="name-error"
-              class="m-0 text-[13px] leading-snug text-ig-text"
-              role="alert"
-            >
-              {{ t(message.key, message.params) }}
-            </p>
-          }
-        </div>
-
-        <div class="flex flex-col gap-2">
-          <label class="text-[13px] font-bold" for="account-type">{{
-            t('accounts.form.typeLabel')
-          }}</label>
-          @switch (typeOptionsStatus()) {
-            @case ('loading') {
-              <p class="m-0 flex min-h-11 items-center text-[14px] text-ig-muted" role="status">
-                {{ t('accounts.form.typesLoading') }}
-              </p>
-            }
-            @case ('error') {
-              <div class="flex min-h-11 flex-wrap items-center gap-3">
-                <p data-testid="types-error" class="m-0 text-[14px]" role="alert">
-                  {{ t('accounts.form.typesError') }}
-                </p>
-                <button
-                  class="min-h-11 rounded-lg border border-ig-border bg-transparent px-4 text-[14px] font-bold text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
-                  type="button"
-                  (click)="loadTypeOptions()"
-                >
-                  {{ t('accounts.list.retry') }}
-                </button>
-              </div>
-            }
-            @default {
-              @if (typeOptions().length) {
-                <app-select
-                  data-testid="account-type"
-                  inputId="account-type"
-                  formControlName="accountTypeId"
-                  [options]="typeSelectOptions()"
-                  [placeholder]="t('accounts.form.typePlaceholder')"
-                  [invalid]="typeError() !== null"
-                  [describedBy]="typeError() ? 'account-type-error' : null"
-                >
-                  <a
-                    selectFooter
-                    data-testid="create-type"
-                    class="flex min-h-11 items-center gap-3 rounded-md px-3 text-[14px] font-medium text-ig-accent-text no-underline hover:bg-ig-accent/10 focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:-outline-offset-2"
-                    routerLink="/account-types/new"
-                  >
-                    <svg lucidePlus [size]="16" aria-hidden="true"></svg>
-                    {{ t('accounts.form.createType') }}
-                  </a>
-                </app-select>
-              } @else {
-                <p data-testid="no-types" class="m-0 text-[14px] text-ig-muted">
-                  {{ t('accounts.form.noTypes') }}
-                </p>
-                <a
-                  data-testid="create-type"
-                  class="inline-flex min-h-11 items-center gap-2 self-start rounded text-[14px] font-medium text-ig-accent-text no-underline hover:underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
-                  routerLink="/account-types/new"
-                >
-                  <svg lucidePlus [size]="16" aria-hidden="true"></svg>
-                  {{ t('accounts.form.createType') }}
-                </a>
-              }
-            }
-          }
-          @if (typeError(); as message) {
-            <p
-              id="account-type-error"
-              data-testid="type-error"
               class="m-0 text-[13px] leading-snug text-ig-text"
               role="alert"
             >

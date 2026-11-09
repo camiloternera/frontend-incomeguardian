@@ -7,7 +7,6 @@ import {
   LucideChartPie,
   LucideDynamicIcon,
   LucideIcon,
-  LucideLayers,
   LucideLayoutDashboard,
   LucideLogOut,
   LucideMenu,
@@ -49,7 +48,6 @@ const GROUPS: ShellNavGroup[] = [
     items: [
       { key: 'accounts', icon: LucideWallet, route: '/accounts' },
       { key: 'categories', icon: LucideTag, route: '/categories' },
-      { key: 'accountTypes', icon: LucideLayers, route: '/account-types' },
     ],
   },
 ];

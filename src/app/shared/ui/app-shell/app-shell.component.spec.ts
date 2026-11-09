@@ -53,7 +53,7 @@ describe('AppShellComponent', () => {
   it('groups the sections and marks the ones that are not built yet', async () => {
     const { sidebar } = await render();
 
-    expect(sidebar.querySelectorAll('nav li').length).toBe(6);
+    expect(sidebar.querySelectorAll('nav li').length).toBe(5);
     // Solo presupuestos sigue pendiente.
     expect(sidebar.querySelectorAll('[data-testid="shell-soon"]').length).toBe(1);
     expect(sidebar.textContent).toContain('Money');
@@ -67,7 +67,7 @@ describe('AppShellComponent', () => {
     expect(sidebar.querySelector('a[href="/transactions"]')?.textContent).toContain('Transactions');
     expect(sidebar.querySelector('a[href="/accounts"]')?.textContent).toContain('Accounts');
     expect(sidebar.querySelector('a[href="/categories"]')?.textContent).toContain('Categories');
-    expect(sidebar.querySelector('a[href="/account-types"]')?.textContent).toContain('Account types');
+    expect(sidebar.querySelector('a[href="/account-types"]')).toBeNull();
     expect(sidebar.querySelector('a[href="/settings"]')?.textContent).toContain('Settings');
   });
 
@@ -125,7 +125,7 @@ describe('AppShellComponent', () => {
     harness.detectChanges();
 
     expect(sidebar.textContent).toContain('Resumen');
-    expect(sidebar.textContent).toContain('Tipos de cuenta');
+    expect(sidebar.textContent).not.toContain('Tipos de cuenta');
     expect(sidebar.textContent).toContain('Cerrar sesión');
   });
 });

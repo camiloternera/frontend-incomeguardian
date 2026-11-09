@@ -280,7 +280,7 @@ describe('TransactionAccountOptionsHttpRepository', () => {
     let result: unknown;
     options.list().subscribe((value) => (result = value));
 
-    const base = { accountType: { id: 1, name: 'Ahorros' }, createdAt: 'x', updatedAt: null };
+    const base = { createdAt: 'x', updatedAt: null };
     http.expectOne(ACCOUNTS_URL).flush(
       ok([
         { ...base, id: 1, name: 'Nequi', currency: 'COP', initialBalance: 1000, currentBalance: 2500, isActive: true },

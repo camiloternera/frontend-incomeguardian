@@ -1,5 +1,5 @@
 import { Observable } from 'rxjs';
-import { Account, AccountDraft, AccountTypeOption } from './account';
+import { Account, AccountDraft } from './account';
 
 /**
  * Puerto: cómo llega el dominio de cuentas al backend. Se implementa en infrastructure.
@@ -20,12 +20,4 @@ export abstract class AccountRepository {
 
   /** El backend desactiva la cuenta; sigue apareciendo en `list` con `isActive` en false. */
   abstract deactivate(id: number): Observable<void>;
-}
-
-/**
- * Puerto: los tipos de cuenta activos que se pueden asignar a una cuenta. Vive en este dominio
- * porque un dominio no importa de otro; su adaptador consulta el mismo backend que `account-types`.
- */
-export abstract class AccountTypeOptionsRepository {
-  abstract list(): Observable<AccountTypeOption[]>;
 }

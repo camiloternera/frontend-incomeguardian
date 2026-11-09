@@ -6,7 +6,6 @@ export const AccountErrorCode = {
   NameRequired: 'ACCOUNT_NAME_REQUIRED',
   NameMaxLength: 'ACCOUNT_NAME_MAX_LENGTH',
   NotFound: 'ACCOUNT_NOT_FOUND',
-  TypeInvalid: 'ACCOUNT_TYPE_INVALID',
   CurrencyRequired: 'ACCOUNT_CURRENCY_REQUIRED',
   CurrencyInvalid: 'ACCOUNT_CURRENCY_INVALID',
   CurrencyLocked: 'ACCOUNT_CURRENCY_LOCKED',
@@ -23,8 +22,6 @@ export function isAccountErrorCode(code: string | undefined): code is AccountErr
 
 /** Códigos que pertenecen a un campo del formulario, para mostrarlos junto a él. */
 export const NAME_ERROR_CODES: readonly AccountErrorCode[] = [AccountErrorCode.NameRequired, AccountErrorCode.NameMaxLength];
-
-export const TYPE_ERROR_CODES: readonly AccountErrorCode[] = [AccountErrorCode.TypeInvalid];
 
 export const CURRENCY_ERROR_CODES: readonly AccountErrorCode[] = [
   AccountErrorCode.CurrencyRequired,
