@@ -1,10 +1,12 @@
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
+import { By } from '@angular/platform-browser';
 import { translocoTesting } from '@core/i18n/i18n.testing';
 import { LanguageService } from '@core/i18n/language.service';
 import { AccountError, AccountErrorCode } from '../../../domain/account-error';
 import { FakeAccountRepository, fakeAccountsRoutes } from '../../account-repository.fake';
+import { AccountPanelComponent } from './account-panel.component';
 
 describe('AccountPanelComponent', () => {
   let fake: FakeAccountRepository;
@@ -39,7 +41,7 @@ describe('AccountPanelComponent', () => {
     element.querySelector('form')!.dispatchEvent(new Event('submit'));
   }
 
-  it('asks only for name, currency and balance', async () => {
+  it('asks for name, currency, balance and opening date', async () => {
     const { element } = await open('/accounts/new');
 
     expect(element.querySelector('[data-testid="account-type"]')).toBeNull();
@@ -49,6 +51,10 @@ describe('AccountPanelComponent', () => {
     expect(element.querySelector('[data-testid="currency-USD"]')).toBeTruthy();
     // EUR ya no se admite para cuentas nuevas.
     expect(element.querySelector('[data-testid="currency-EUR"]')).toBeNull();
+    // La apertura llega prellenada con la hora actual.
+    expect(
+      element.querySelector<HTMLInputElement>('[data-testid="account-opening-time"]')!.value,
+    ).toMatch(/^\d{2}:\d{2}$/);
   });
 
   it('validates the fields locally before calling the backend', async () => {
@@ -94,7 +100,9 @@ describe('AccountPanelComponent', () => {
       name: 'Visa 9000',
       currency: 'USD',
       initialBalance: -1250.5,
+      openingDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00[+-]\d{2}:\d{2}$/),
     });
+    expect(new Date(fake.lastDraft!.openingDate).getTime()).toBeLessThanOrEqual(Date.now());
     expect(TestBed.inject(Router).url).toBe('/accounts');
     expect(element.querySelector('[data-testid="account-99"]')).toBeTruthy();
     expect(element.querySelector('[data-testid="account-notice"]')?.textContent).toContain(
@@ -115,6 +123,40 @@ describe('AccountPanelComponent', () => {
 
     expect(element.querySelector('[data-testid="currency-error"]')?.textContent).toContain(
       'The account already has transactions, so its currency cannot change.',
+    );
+    expect(element.querySelector('[data-testid="form-error"]')).toBeNull();
+  });
+
+  it('rejects an opening date later than now without calling the backend', async () => {
+    const { harness, element } = await open('/accounts/new');
+    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const isoDay = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
+
+    type(element, 'account-name', 'Futura');
+    const panel = harness.fixture.debugElement.query(By.css('app-account-panel'));
+    const day = (panel.componentInstance as AccountPanelComponent)['accountForm'].controls.openingDay;
+    day.setValue(isoDay);
+    day.markAsTouched();
+    submit(element);
+    harness.detectChanges();
+
+    expect(element.querySelector('[data-testid="opening-error"]')?.textContent).toContain(
+      'The opening date cannot be later than now.',
+    );
+    expect(fake.lastDraft).toBeNull();
+  });
+
+  it('shows a backend opening date error beside the field', async () => {
+    const { harness, element } = await open('/accounts/new');
+    fake.failWith = new AccountError('Future', AccountErrorCode.OpeningDateFuture);
+
+    type(element, 'account-name', 'Wise');
+    submit(element);
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+
+    expect(element.querySelector('[data-testid="opening-error"]')?.textContent).toContain(
+      'The opening date cannot be later than now.',
     );
     expect(element.querySelector('[data-testid="form-error"]')).toBeNull();
   });
@@ -170,6 +212,7 @@ describe('AccountPanelComponent', () => {
     const summary = element.querySelector('[data-testid="account-read-only"]')?.textContent;
     expect(summary).toContain('This account is deactivated');
     expect(summary).toContain('$320.50');
+    expect(element.querySelector('[data-testid="account-opening"]')?.textContent).toContain('2026');
     expect(element.querySelector('h2')?.textContent).toContain('Wise');
     expect(element.querySelector('form')).toBeNull();
   });

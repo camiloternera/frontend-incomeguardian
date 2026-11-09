@@ -1,4 +1,4 @@
-import { CurrencyPipe, getCurrencySymbol } from '@angular/common';
+import { CurrencyPipe, DatePipe, getCurrencySymbol } from '@angular/common';
 import {
   Component,
   DestroyRef,
@@ -18,6 +18,7 @@ import { Observable, finalize } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { LanguageService } from '@core/i18n/language.service';
 import { notBlank } from '@shared/forms/not-blank.validator';
+import { DatePickerComponent } from '@shared/ui/date-picker/date-picker.component';
 import {
   CreateAccountUseCase,
   GetAccountUseCase,
@@ -37,10 +38,17 @@ import {
   AccountErrorCode,
   CURRENCY_ERROR_CODES,
   NAME_ERROR_CODES,
+  OPENING_DATE_ERROR_CODES,
 } from '../../../domain/account-error';
 import { AccountWorkspace } from '../../account-workspace';
 import { moneyDigits as balanceDigits } from '@shared/money/money-format';
 import { balanceValidator, parseBalance } from '../../validators/balance.validator';
+import {
+  openingInstant,
+  openingNotInFuture,
+  toOffsetIso,
+  toOpeningParts,
+} from '../../validators/opening-date';
 
 /** Estado del panel: listo para editar, cargando, sin cuenta o con una cuenta desactivada. */
 type PanelStatus = 'ready' | 'loading' | 'notFound' | 'readOnly';
@@ -62,6 +70,8 @@ const LIST_URL = '/accounts';
   selector: 'app-account-panel',
   imports: [
     CurrencyPipe,
+    DatePipe,
+    DatePickerComponent,
     ReactiveFormsModule,
     RouterLink,
     TranslocoDirective,
@@ -109,12 +119,21 @@ export class AccountPanelComponent {
   /** Errores que devolvió el backend para cada campo; se limpian al cambiar el campo. */
   protected readonly nameServerError = signal<AccountErrorCode | null>(null);
   protected readonly currencyServerError = signal<AccountErrorCode | null>(null);
+  protected readonly openingServerError = signal<AccountErrorCode | null>(null);
 
-  protected readonly accountForm = this.formBuilder.group({
-    name: ['', [notBlank, Validators.maxLength(ACCOUNT_NAME_MAX_LENGTH)]],
-    currency: this.formBuilder.control<Currency>('COP', Validators.required),
-    initialBalance: ['0', balanceValidator],
-  });
+  /** Hoy en el navegador: tope del selector de fecha de apertura. Se renueva al abrir el panel. */
+  protected readonly today = signal(toOpeningParts(new Date()).day);
+
+  protected readonly accountForm = this.formBuilder.group(
+    {
+      name: ['', [notBlank, Validators.maxLength(ACCOUNT_NAME_MAX_LENGTH)]],
+      currency: this.formBuilder.control<Currency>('COP', Validators.required),
+      initialBalance: ['0', balanceValidator],
+      openingDay: ['', Validators.required],
+      openingTime: ['', Validators.required],
+    },
+    { validators: openingNotInFuture },
+  );
 
   private readonly formValue = toSignal(this.accountForm.valueChanges, {
     initialValue: this.accountForm.getRawValue(),
@@ -132,6 +151,8 @@ export class AccountPanelComponent {
     const controls = this.accountForm.controls;
     controls.name.valueChanges.subscribe(() => this.nameServerError.set(null));
     controls.currency.valueChanges.subscribe(() => this.currencyServerError.set(null));
+    controls.openingDay.valueChanges.subscribe(() => this.openingServerError.set(null));
+    controls.openingTime.valueChanges.subscribe(() => this.openingServerError.set(null));
 
     // Al pasar de editar una fila a otra, Angular reutiliza el panel: se reinicia con cada id.
     inject(ActivatedRoute)
@@ -162,6 +183,23 @@ export class AccountPanelComponent {
       (this.showsError(this.accountForm.controls.currency)
         ? AccountErrorCode.CurrencyRequired
         : null);
+
+    return code ? this.codeMessage(code) : null;
+  }
+
+  /** Error de la fecha de apertura: falta el día o la hora, es futura o lo rechazó el backend. */
+  protected openingError(): FieldMessage | null {
+    const { openingDay, openingTime } = this.accountForm.controls;
+    const touched = openingDay.touched || openingTime.touched;
+    let local: AccountErrorCode | null = null;
+
+    if (touched && (openingDay.invalid || openingTime.invalid)) {
+      local = AccountErrorCode.OpeningDateRequired;
+    } else if (touched && this.accountForm.hasError('openingFuture')) {
+      local = AccountErrorCode.OpeningDateFuture;
+    }
+
+    const code = this.openingServerError() ?? local;
 
     return code ? this.codeMessage(code) : null;
   }
@@ -215,6 +253,8 @@ export class AccountPanelComponent {
       name: value.name,
       currency: value.currency,
       initialBalance: parseBalance(value.initialBalance),
+      // El formulario es válido, así que el día y la hora forman un instante.
+      openingDate: toOffsetIso(openingInstant(value.openingDay, value.openingTime)!),
     };
     const request: Observable<Account> =
       id === null ? this.createAccount.execute(draft) : this.updateAccount.execute(id, draft);
@@ -273,7 +313,18 @@ export class AccountPanelComponent {
     this.formError.set('');
     this.nameServerError.set(null);
     this.currencyServerError.set(null);
-    this.accountForm.reset({ name: '', currency: 'COP', initialBalance: '0' });
+    this.openingServerError.set(null);
+
+    // Una cuenta nueva abre por defecto ahora mismo.
+    const now = toOpeningParts(new Date());
+    this.today.set(now.day);
+    this.accountForm.reset({
+      name: '',
+      currency: 'COP',
+      initialBalance: '0',
+      openingDay: now.day,
+      openingTime: now.time,
+    });
 
     if (id === null) {
       this.status.set('ready');
@@ -290,10 +341,13 @@ export class AccountPanelComponent {
     this.getAccount.execute(id).subscribe({
       next: (account) => {
         this.account.set(account);
+        const opening = toOpeningParts(new Date(account.openingDate));
         this.accountForm.reset({
           name: account.name,
           currency: account.currency,
           initialBalance: String(account.initialBalance),
+          openingDay: opening.day,
+          openingTime: opening.time,
         });
         // Una cuenta desactivada o en una moneda que ya no se admite (EUR) solo se consulta.
         this.status.set(account.isActive && isSelectableCurrency(account.currency) ? 'ready' : 'readOnly');
@@ -317,6 +371,8 @@ export class AccountPanelComponent {
       this.nameServerError.set(code);
     } else if (code && CURRENCY_ERROR_CODES.includes(code)) {
       this.currencyServerError.set(code);
+    } else if (code && OPENING_DATE_ERROR_CODES.includes(code)) {
+      this.openingServerError.set(code);
     } else if (code === AccountErrorCode.NotFound) {
       this.status.set('notFound');
     } else {
