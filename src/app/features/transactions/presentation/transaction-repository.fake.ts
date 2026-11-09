@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { FakePeriodRepository, provideFakePeriods } from '@features/periods/testing';
 import { Observable, of, throwError } from 'rxjs';
 import {
+  CurrencySummary,
   ExchangeRate,
   Transaction,
   TransactionAccountOption,
@@ -10,6 +11,8 @@ import {
   TransactionDraft,
   TransactionPage,
   TransactionQuery,
+  TransactionRange,
+  TransactionSummary,
   TransactionType,
   previewDestinationAmount,
 } from '../domain/transaction';
@@ -109,6 +112,10 @@ export class FakeTransactionRepository extends TransactionRepository {
   ];
   failWith: unknown = null;
   lastQuery: TransactionQuery | null = null;
+  /** Rangos pedidos al resumen, en orden. */
+  summaryRanges: TransactionRange[] = [];
+  /** Error que devolverá la próxima consulta del resumen; el listado usa `failWith`. */
+  summaryFailWith: unknown = null;
   lastDraft: TransactionDraft | null = null;
   /** TRM con la que el falso calcula el monto destino de una transferencia entre monedas. */
   rate = 3950;
@@ -123,10 +130,8 @@ export class FakeTransactionRepository extends TransactionRepository {
     return respond(this, () => {
       const matching = this.transactions.filter(
         (item) =>
-          (query.type === undefined || item.type === query.type) &&
-          (query.accountId === undefined ||
-            item.fromAccountId === query.accountId ||
-            item.toAccountId === query.accountId),
+          (query.fromDate === undefined || item.date >= query.fromDate) &&
+          (query.toDate === undefined || item.date <= query.toDate),
       );
       const start = (query.page - 1) * query.pageSize;
 
@@ -136,6 +141,50 @@ export class FakeTransactionRepository extends TransactionRepository {
         pageSize: query.pageSize,
         totalItems: matching.length,
       };
+    });
+  }
+
+  /** Suma como el backend: cada moneda aparte, ingresos en la destino y gastos en la origen. */
+  summary(range: TransactionRange): Observable<TransactionSummary> {
+    this.summaryRanges.push(range);
+    const owner = { failWith: this.summaryFailWith };
+    this.summaryFailWith = null;
+
+    return respond(owner, () => {
+      const matching = this.transactions.filter((item) => item.date >= range.fromDate && item.date <= range.toDate);
+      const byCurrency = new Map<string, CurrencySummary>();
+      const entry = (currency: string) => {
+        const current = byCurrency.get(currency) ?? {
+          currency,
+          income: 0,
+          expense: 0,
+          transfersIn: 0,
+          transfersOut: 0,
+          net: 0,
+        };
+        byCurrency.set(currency, current);
+        return current;
+      };
+
+      for (const item of matching) {
+        const from = item.fromCurrency ?? this.currencyOf(item.fromAccountId) ?? 'COP';
+        const to = item.toCurrency ?? this.currencyOf(item.toAccountId) ?? 'COP';
+
+        if (item.type === 'income') {
+          entry(to).income += item.amount;
+        } else if (item.type === 'expense') {
+          entry(from).expense += item.amount;
+        } else {
+          entry(from).transfersOut += item.amount;
+          entry(to).transfersIn += item.destinationAmount ?? item.amount;
+        }
+      }
+
+      const currencies = [...byCurrency.values()]
+        .map((item) => ({ ...item, net: item.income + item.transfersIn - item.expense - item.transfersOut }))
+        .sort((a, b) => a.currency.localeCompare(b.currency));
+
+      return { totalItems: matching.length, currencies };
     });
   }
 

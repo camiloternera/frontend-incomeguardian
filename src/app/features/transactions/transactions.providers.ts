@@ -2,6 +2,7 @@ import { Provider } from '@angular/core';
 import {
   CreateTransactionUseCase,
   GetExchangeRateUseCase,
+  SummarizeTransactionsUseCase,
   ListTransactionAccountOptionsUseCase,
   ListTransactionCategoryOptionsUseCase,
   ListTransactionsUseCase,
@@ -22,6 +23,7 @@ import {
 /** Casos de uso del dominio; los tests los registran junto con puertos falsos. */
 export const TRANSACTION_USE_CASES: Provider[] = [
   ListTransactionsUseCase,
+  SummarizeTransactionsUseCase,
   CreateTransactionUseCase,
   GetExchangeRateUseCase,
   ListTransactionAccountOptionsUseCase,

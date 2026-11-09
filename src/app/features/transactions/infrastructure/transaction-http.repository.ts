@@ -13,6 +13,8 @@ import {
   TransactionDraft,
   TransactionPage,
   TransactionQuery,
+  TransactionRange,
+  TransactionSummary,
   TransactionType,
   isTransactionType,
 } from '../domain/transaction';
@@ -31,6 +33,7 @@ import {
   TransactionDto,
   TransactionPageDto,
   TransactionRequestDto,
+  TransactionSummaryDto,
 } from './transaction.dto';
 
 /** Respuesta con un valor que la app no conoce: se trata como inválida en vez de inventar uno. */
@@ -75,6 +78,20 @@ function toPage(dto: TransactionPageDto): TransactionPage {
   };
 }
 
+function toSummary(dto: TransactionSummaryDto): TransactionSummary {
+  return {
+    totalItems: dto.totalItems,
+    currencies: (dto.currencies ?? []).map((item) => ({
+      currency: item.currency,
+      income: item.income,
+      expense: item.expense,
+      transfersIn: item.transfersIn,
+      transfersOut: item.transfersOut,
+      net: item.net,
+    })),
+  };
+}
+
 /** Arma el cuerpo de creación con solo las cuentas que aplican al tipo y sin campos vacíos. */
 function toRequest(draft: TransactionDraft): TransactionRequestDto {
   const body: TransactionRequestDto = { type: draft.type, amount: draft.amount, date: draft.date };
@@ -99,11 +116,12 @@ function toRequest(draft: TransactionDraft): TransactionRequestDto {
 function toListParams(query: TransactionQuery): HttpParams {
   let params = new HttpParams().set('page', query.page).set('pageSize', query.pageSize);
 
-  if (query.type !== undefined) {
-    params = params.set('type', query.type);
+  // El backend interpreta las fechas como DateTime: se envían instantes UTC con `Z`.
+  if (query.fromDate !== undefined) {
+    params = params.set('fromDate', query.fromDate);
   }
-  if (query.accountId !== undefined) {
-    params = params.set('accountId', query.accountId);
+  if (query.toDate !== undefined) {
+    params = params.set('toDate', query.toDate);
   }
 
   return params;
@@ -186,6 +204,14 @@ export class TransactionHttpRepository extends TransactionRepository {
     return this.http
       .get<ApiResponse<TransactionPageDto>>(this.baseUrl, { params: toListParams(query) })
       .pipe(unwrap(), map(toPage), toErrors(this.transloco));
+  }
+
+  summary(range: TransactionRange): Observable<TransactionSummary> {
+    const params = new HttpParams().set('fromDate', range.fromDate).set('toDate', range.toDate);
+
+    return this.http
+      .get<ApiResponse<TransactionSummaryDto>>(`${this.baseUrl}/summary`, { params })
+      .pipe(unwrap(), map(toSummary), toErrors(this.transloco));
   }
 
   create(draft: TransactionDraft): Observable<Transaction> {

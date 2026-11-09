@@ -6,33 +6,34 @@
   },
   "list": {
     "title": "Transactions",
-    "subtitle": "What comes in, what goes out and what you move between accounts.",
+    "subtitle": "What comes in, what goes out and what you move between accounts, day by day.",
     "create": "Add transaction",
     "loading": "Loading your transactions…",
     "retry": "Try again",
     "route": "{{from}} → {{to}}",
     "unknownAccount": "Unavailable account",
     "arrived": "arrived",
-    "filter": {
-      "label": "Filter by account",
-      "allAccounts": "All accounts"
+    "month": {
+      "label": "Month",
+      "previous": "Previous month",
+      "next": "Next month",
+      "current": "Go to this month"
     },
-    "tabs": {
-      "label": "Transaction type",
-      "all": "All",
-      "income": "Income",
-      "expense": "Expenses",
-      "transfer": "Transfers"
+    "summary": {
+      "label": "Month summary",
+      "income": "In",
+      "expense": "Out",
+      "count": "Transactions"
+    },
+    "day": {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "countOne": "1 transaction",
+      "countOther": "{{count}} transactions"
     },
     "empty": {
-      "allTitle": "No transactions yet",
-      "allBody": "Add an income, an expense or a transfer to see it here.",
-      "incomeTitle": "No income",
-      "incomeBody": "The income you add will show up in this tab.",
-      "expenseTitle": "No expenses",
-      "expenseBody": "The expenses you add will show up in this tab.",
-      "transferTitle": "No transfers",
-      "transferBody": "When you move money between your accounts you will see it here."
+      "title": "No transactions in {{month}}",
+      "body": "You did not add any income, expenses or transfers dated this month."
     },
     "notice": {
       "income": "Income saved: {{amount}}",
@@ -82,6 +83,33 @@
     "fromRequired": "Pick the source account.",
     "toRequired": "Pick the destination account.",
     "categoryLabel": "Category",
+    "categoryPlaceholder": "Pick a category",
+    "categoryHelp": "This is how you will know where your money goes each month.",
+    "categoryRequired": {
+      "income": "Pick a category to save the income.",
+      "expense": "Pick a category to save the expense.",
+      "transfer": "Pick a category to save the transfer."
+    },
+    "noCategories": {
+      "income": "You have no income categories yet. Create one to save this transaction.",
+      "expense": "You have no expense categories yet. Create one to save this transaction.",
+      "transfer": "You have no transfer categories yet. Create one to save this transaction."
+    },
+    "noCategoriesRequired": {
+      "income": "Create an income category first.",
+      "expense": "Create an expense category first.",
+      "transfer": "Create a transfer category first."
+    },
+    "createCategory": {
+      "income": "Create an income category",
+      "expense": "Create an expense category",
+      "transfer": "Create a transfer category"
+    },
+    "createCategoryButton": {
+      "income": "Create income category",
+      "expense": "Create expense category",
+      "transfer": "Create transfer category"
+    },
     "optional": "(optional)",
     "categoriesLoading": "Loading categories…",
     "categoriesError": "We could not load the categories.",
@@ -112,9 +140,7 @@
       "formulaMultiply": "{{amount}} × {{rate}}",
       "help": "Calculated with the official TRM. To have a different amount arrive, adjust the amount you send.",
       "needsDate": "Pick today or an earlier date to calculate with the official rate."
-    },
-    "noCategory": "No category",
-    "createCategory": "Create a category"
+    }
   },
   "errors": {
     "TRANSACTION_AMOUNT_INVALID": "The amount must be greater than zero with up to 2 decimals.",
@@ -123,6 +149,7 @@
     "TRANSACTION_ACCOUNTS_MUST_DIFFER": "The destination account must differ from the source.",
     "TRANSACTION_ACCOUNT_NOT_FOUND": "We could not find that account. Pick another one from the list.",
     "ACCOUNT_INACTIVE": "That account is deactivated. Pick an active account.",
+    "TRANSACTION_CATEGORY_REQUIRED": "Pick a category to save the transaction.",
     "TRANSACTION_CATEGORY_NOT_FOUND": "That category is no longer available. Pick another one.",
     "TRANSACTION_CATEGORY_TYPE_MISMATCH": "That category belongs to another transaction type. Pick one of this type.",
     "TRANSACTION_DESCRIPTION_MAX_LENGTH": "The description can be up to {{descriptionMax}} characters.",
