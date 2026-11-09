@@ -150,7 +150,7 @@ describe('CategoryPanelComponent', () => {
   });
 
   it('switches to another category without closing', async () => {
-    fake.categories.push({ id: 10, name: 'Coworking', description: 'Escritorio', type: 'expense', createdAt: '2026-10-02T00:00:00Z', updatedAt: null });
+    fake.categories.push({ id: 10, name: 'Coworking', description: 'Escritorio', type: 'expense', isActive: true, createdAt: '2026-10-02T00:00:00Z', updatedAt: null });
     const { harness, element } = await open('/categories/9/edit');
 
     await harness.navigateByUrl('/categories/10/edit');
@@ -158,20 +158,37 @@ describe('CategoryPanelComponent', () => {
     expect(element.querySelector<HTMLInputElement>('[data-testid="category-name"]')?.value).toBe('Coworking');
   });
 
-  it('deletes from the panel after confirming', async () => {
+  it('deactivates from the panel after confirming', async () => {
     const { harness, element } = await open('/categories/9/edit');
 
-    element.querySelector<HTMLButtonElement>('[data-testid="panel-delete"]')!.click();
+    element.querySelector<HTMLButtonElement>('[data-testid="panel-deactivate"]')!.click();
     harness.detectChanges();
-    expect(element.querySelector('[data-testid="panel-delete-confirmation"]')?.textContent).toContain('Delete “Mascotas”?');
+    expect(element.querySelector('[data-testid="panel-deactivate-confirmation"]')?.textContent).toContain('Deactivate “Mascotas”?');
 
-    element.querySelector<HTMLButtonElement>('[data-testid="panel-confirm-delete"]')!.click();
+    element.querySelector<HTMLButtonElement>('[data-testid="panel-confirm-deactivate"]')!.click();
     await harness.fixture.whenStable();
     harness.detectChanges();
 
     expect(TestBed.inject(Router).url).toBe('/categories');
+    expect(fake.categories.find((category) => category.id === 9)?.isActive).toBe(false);
     expect(element.querySelector('[data-testid="category-9"]')).toBeNull();
-    expect(element.querySelector('[data-testid="category-notice"]')?.textContent).toContain('You deleted the “Mascotas” category.');
+    expect(element.querySelector('[data-testid="category-notice"]')?.textContent).toContain('You deactivated the “Mascotas” category.');
+  });
+
+  it('opens a deactivated category read-only and reactivates it', async () => {
+    const { harness, element } = await open('/categories/6/edit');
+
+    expect(panel(element).querySelector('h2')?.textContent).toContain('Gimnasio');
+    expect(element.querySelector('[data-testid="category-read-only"]')?.textContent).toContain('This category is deactivated');
+    expect(panel(element).querySelector('form')).toBeNull();
+
+    element.querySelector<HTMLButtonElement>('[data-testid="panel-activate"]')!.click();
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+
+    expect(TestBed.inject(Router).url).toBe('/categories');
+    expect(fake.categories.find((category) => category.id === 6)?.isActive).toBe(true);
+    expect(element.querySelector('[data-testid="category-notice"]')?.textContent).toContain('You reactivated the “Gimnasio” category.');
   });
 
   it('closes with Escape only while nothing has changed', async () => {
