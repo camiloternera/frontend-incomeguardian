@@ -47,8 +47,11 @@ function share(part: number, total: number): number {
   return total > 0 ? part / total : 0;
 }
 
+/** Cifras del mes que bastan para calcular lo disponible. */
+export type MonthFigures = Pick<DashboardOverview, 'month' | 'asOf' | 'income' | 'expenses' | 'committed'>;
+
 /** Calcula lo disponible del mes, su reparto y cuánto toca por día. */
-export function monthOutlook(overview: DashboardOverview): MonthOutlook {
+export function monthOutlook(overview: MonthFigures): MonthOutlook {
   const { income, expenses, committed } = overview;
   const available = income - expenses - committed;
   const overspent = available < 0;

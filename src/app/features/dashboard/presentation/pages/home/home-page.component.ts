@@ -1,8 +1,10 @@
 import { formatCurrency, formatDate, formatNumber, formatPercent } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { RouterLink } from '@angular/router';
-import { TranslocoDirective } from '@jsverse/transloco';
+import { Component, computed, effect, inject, signal } from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
+import { SelectComponent, SelectOption } from '@shared/ui/select/select.component';
 import { LucideArrowDownLeft, LucideArrowUpRight, LucideEye, LucideEyeOff, LucidePlus, LucideShield } from '@lucide/angular';
 import { LanguageService } from '@core/i18n/language.service';
 import {
@@ -12,7 +14,9 @@ import {
   PeriodSelectorComponent,
 } from '@features/periods';
 import { ThemeService } from '@core/theme/theme.service';
+import { GetMonthSummaryUseCase } from '../../../application/get-month-summary.use-case';
 import { GetOverviewUseCase } from '../../../application/get-overview.use-case';
+import { MonthSummary, monthKey, monthOfDay, todayInDashboardZone } from '../../../domain/month-summary';
 import { cushionMonths, groupByDay, monthOutlook, previousAverages, projectedSavingsRate } from '../../../domain/overview-insights';
 import { CashFlowBar, CashFlowChartComponent } from '../../components/cash-flow-chart.component';
 
@@ -25,10 +29,18 @@ interface MeterSegment {
   fill: number;
 }
 
+/** Estado de las cifras reales del mes que alimentan el bloque principal. */
+type SummaryState =
+  | { status: 'loading' }
+  | { status: 'error'; message: string }
+  | { status: 'ready'; summary: MonthSummary };
+
 @Component({
   selector: 'app-home-page',
   imports: [
+    ReactiveFormsModule,
     RouterLink,
+    SelectComponent,
     TranslocoDirective,
     CashFlowChartComponent,
     ClosedMonthBadgeComponent,
@@ -49,6 +61,10 @@ export class HomePageComponent {
   private readonly getOverview = inject(GetOverviewUseCase);
   private readonly languageService = inject(LanguageService);
   private readonly themeService = inject(ThemeService);
+  private readonly getMonthSummary = inject(GetMonthSummaryUseCase);
+  private readonly transloco = inject(TranslocoService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   protected readonly theme = this.themeService.theme;
   protected readonly locale = this.languageService.language;
@@ -58,11 +74,105 @@ export class HomePageComponent {
   /** Si los montos se muestran enmascarados (por ejemplo, en un lugar público). */
   protected readonly amountsHidden = signal(false);
 
+  /** Hoy en la hora de Colombia: define el mes del bloque principal y los días que quedan. */
+  protected readonly today = todayInDashboardZone();
+
+  /** Cifras reales del mes en curso, por moneda. */
+  protected readonly summaryState = signal<SummaryState>({ status: 'loading' });
+
+  /** Moneda pedida en `?currency=`; `null` muestra la primera disponible. */
+  private readonly currency = signal<string | null>(null);
+
+  /** Desplegable de moneda junto al monto disponible. */
+  protected readonly currencyFilter = new FormControl<string | null>(null);
+
+  private readonly currencies = computed(() => {
+    const state = this.summaryState();
+
+    // Los pesos van primero: son la moneda por defecto del Resumen.
+    return state.status === 'ready'
+      ? [...state.summary.currencies].sort((a, b) => Number(b.currency === 'COP') - Number(a.currency === 'COP'))
+      : [];
+  });
+
+  /** La moneda pedida si el mes la tiene; si no, la primera (COP primero cuando existe). */
+  protected readonly activeCurrency = computed(() => {
+    const currencies = this.currencies();
+    const chosen = this.currency();
+
+    return currencies.some((item) => item.currency === chosen) ? chosen : (currencies[0]?.currency ?? null);
+  });
+
+  /** Cifras del mes en la moneda activa; `null` si el mes no tiene movimientos ni topes. */
+  protected readonly activeFigures = computed(() => this.currencies().find((item) => item.currency === this.activeCurrency()) ?? null);
+
+  protected readonly currencyOptions = computed<SelectOption<string>[]>(() => {
+    this.locale();
+
+    return this.currencies().map((item) => ({
+      value: item.currency,
+      label: `${this.transloco.translate(`dashboard.home.hero.currency.${item.currency}`)} · ${item.currency}`,
+    }));
+  });
+
+  /** Disponible del mes en la moneda activa, su reparto y el monto por día. */
   protected readonly outlook = computed(() => {
+    const figures = this.activeFigures();
+
+    return figures
+      ? monthOutlook({
+          month: monthKey(monthOfDay(this.today)),
+          asOf: this.today,
+          income: figures.income,
+          expenses: figures.spent,
+          committed: figures.committed,
+        })
+      : null;
+  });
+
+  /** Reparto del mes de ejemplo; lo usan los indicadores, que aún no leen del backend. */
+  protected readonly sampleOutlook = computed(() => {
     const overview = this.overview();
 
     return overview ? monthOutlook(overview) : null;
   });
+
+  /** Si el mes en la moneda activa no tiene nada que mostrar todavía. */
+  protected readonly isEmpty = computed(() => {
+    const figures = this.activeFigures();
+
+    return !figures || (figures.income === 0 && figures.spent === 0 && figures.committed === 0);
+  });
+
+  /** Último día del mes en curso, para el título «Disponible hasta el …». */
+  protected readonly monthEnd = computed(() => {
+    const { year, month } = monthOfDay(this.today);
+    const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+
+    return `${monthKey({ year, month })}-${String(lastDay).padStart(2, '0')}`;
+  });
+
+  /** Frase del resumen según haya uno o varios pagos y algo comprometido en los topes. */
+  protected readonly summaryKey = computed(() => {
+    const figures = this.activeFigures();
+    const base = figures?.incomePayments === 1 ? 'summaryOnePayment' : 'summary';
+    const suffix = figures && figures.committed > 0 ? '' : 'NoCommitted';
+
+    return `dashboard.home.hero.${base}${suffix}`;
+  });
+
+  /**
+   * Por qué el mes se pasa: `overspent` si lo gastado ya supera lo recibido; `overplanned` si aún
+   * no, pero lo que falta de los topes lo haría (por ejemplo, un tope en dólares sin gastar ni ingresos).
+   */
+  protected readonly overKind = computed<'overspent' | 'overplanned'>(() => {
+    const figures = this.activeFigures();
+
+    return figures && figures.spent > figures.income ? 'overspent' : 'overplanned';
+  });
+
+  /** El desplegable solo aparece cuando el mes tiene más de una moneda. */
+  protected readonly hasManyCurrencies = computed(() => this.currencies().length > 1);
 
   protected readonly averages = computed(() => {
     const overview = this.overview();
@@ -116,20 +226,62 @@ export class HomePageComponent {
     return (value: number): string => (hidden ? '' : format.format(value));
   });
 
+  constructor() {
+    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => this.currency.set(params.get('currency')));
+
+    effect(() => this.currencyFilter.setValue(this.activeCurrency(), { emitEvent: false }));
+
+    this.currencyFilter.valueChanges.pipe(takeUntilDestroyed()).subscribe((currency) => this.chooseCurrency(currency));
+
+    this.loadSummary();
+  }
+
+  /** Pide las cifras del mes en curso; también sirve de reintento tras un error. */
+  protected loadSummary(): void {
+    this.summaryState.set({ status: 'loading' });
+    this.getMonthSummary.execute(monthOfDay(this.today)).subscribe({
+      next: (summary) => this.summaryState.set({ status: 'ready', summary }),
+      error: (error: unknown) =>
+        this.summaryState.set({
+          status: 'error',
+          message: error instanceof Error ? error.message : this.transloco.translate('errors.generic'),
+        }),
+    });
+  }
+
+  /** Lleva la moneda a la URL; la primera disponible no se escribe, como el mes actual. */
+  private chooseCurrency(currency: string | null): void {
+    const first = this.currencies()[0]?.currency ?? null;
+    const value = currency === null || currency === first ? null : currency;
+
+    void this.router.navigate([], { queryParams: { currency: value }, queryParamsHandling: 'merge' });
+  }
+
+  /** Formatea un monto en la moneda activa del bloque principal, o lo enmascara. */
+  protected heroMoney(value: number): string {
+    const formatted = this.money(value, false, this.activeCurrency() ?? 'COP');
+
+    // Signo menos tipográfico (−) en lugar del guion, que en el número grande se ve corto.
+    return formatted.replace(/^-/, '−');
+  }
+
   /** Formatea un monto en la moneda del resumen, o lo enmascara si están ocultos. */
-  protected money(value: number, compact = false): string {
+  protected money(value: number, compact = false, currencyCode?: string): string {
     if (this.amountsHidden()) {
       return MASK;
     }
 
-    const currency = this.overview()?.currency ?? 'COP';
+    const currency = currencyCode ?? this.overview()?.currency ?? 'COP';
 
     if (compact) {
       const format = new Intl.NumberFormat(this.locale(), { style: 'currency', currency, notation: 'compact', maximumFractionDigits: 1 });
       return format.format(value);
     }
 
-    return formatCurrency(value, this.locale(), '$', currency, '1.0-0');
+    // Los pesos no usan centavos; en otras monedas, si los hay, se muestran completos (899,50, no 899,5).
+    const hasCents = currency !== 'COP' && !Number.isInteger(value);
+
+    return formatCurrency(value, this.locale(), '$', currency, hasCents ? '1.2-2' : '1.0-0');
   }
 
   /** Porcentaje con hasta un decimal en el idioma activo. */
