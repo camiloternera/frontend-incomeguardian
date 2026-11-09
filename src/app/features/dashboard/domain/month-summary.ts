@@ -1,3 +1,23 @@
+/** Ingreso y gasto de un mes del historial. */
+export interface MonthFlow {
+  year: number;
+  /** Mes de 1 a 12. */
+  month: number;
+  income: number;
+  spent: number;
+}
+
+/** Tipo de categoría que suma al gasto del mes. */
+export type SpendingCategoryType = 'expense' | 'transfer';
+
+/** Lo gastado en una categoría durante el mes. */
+export interface CategorySpent {
+  categoryId: number;
+  name: string;
+  type: SpendingCategoryType;
+  spent: number;
+}
+
 /** Cifras de un mes en una moneda, como las calcula el backend para el Resumen. */
 export interface CurrencyMonth {
   /** Código ISO de la moneda de las cuentas, por ejemplo `COP`. */
@@ -10,6 +30,10 @@ export interface CurrencyMonth {
   spent: number;
   /** Lo que aún falta gastar de los topes del Presupuesto del mes. */
   committed: number;
+  /** Hasta 6 meses, incluido el pedido, del más antiguo al más reciente. */
+  history: MonthFlow[];
+  /** Gasto por categoría del mes, de mayor a menor. */
+  categories: CategorySpent[];
 }
 
 /** Resumen del mes: una entrada por moneda con movimientos o topes. */
