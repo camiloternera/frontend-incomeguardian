@@ -19,6 +19,8 @@ export const TransactionErrorCode = {
   AccountCurrencyUnsupported: 'TRANSACTION_ACCOUNT_CURRENCY_UNSUPPORTED',
   ExchangeRateUnavailable: 'EXCHANGE_RATE_UNAVAILABLE',
   ExchangeRateDateInvalid: 'EXCHANGE_RATE_DATE_INVALID',
+  /** La fecha cae en un mes cerrado; el formulario muestra la nota de fecha cerrada. */
+  PeriodClosed: 'PERIOD_CLOSED',
 } as const;
 
 export type TransactionErrorCode = (typeof TransactionErrorCode)[keyof typeof TransactionErrorCode];

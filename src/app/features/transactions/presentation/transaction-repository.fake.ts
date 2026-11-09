@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { FakePeriodRepository, provideFakePeriods } from '@features/periods/testing';
 import { Observable, of, throwError } from 'rxjs';
 import {
   ExchangeRate,
@@ -209,6 +210,8 @@ export class TransactionFakes {
   readonly categories = new FakeTransactionCategoryOptionsRepository();
   readonly rates = new FakeExchangeRateRepository();
   readonly transactions = new FakeTransactionRepository(this.accounts);
+  /** El cierre de períodos que usa la nota de fecha cerrada del formulario. */
+  readonly periods = new FakePeriodRepository();
 }
 
 /** Las rutas reales del dominio montadas en `/transactions`, con los puertos falsos en lugar de los HTTP. */
@@ -227,6 +230,7 @@ export function fakeTransactionsRoutes(fakes = new TransactionFakes()): Routes {
             { provide: TransactionAccountOptionsRepository, useValue: fakes.accounts },
             { provide: TransactionCategoryOptionsRepository, useValue: fakes.categories },
             { provide: ExchangeRateRepository, useValue: fakes.rates },
+            ...provideFakePeriods(fakes.periods),
           ],
         },
       ],
