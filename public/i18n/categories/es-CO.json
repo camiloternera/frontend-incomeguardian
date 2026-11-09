@@ -1,7 +1,7 @@
 {
   "list": {
     "title": "Categorías",
-    "subtitle": "Con qué nombres agrupas tus ingresos y gastos. Crea las tuyas cuando las predefinidas se queden cortas.",
+    "subtitle": "Con qué nombres agrupas tus ingresos, gastos y transferencias.",
     "create": "Nueva categoría",
     "loading": "Cargando tus categorías…",
     "retry": "Intentar de nuevo",
@@ -27,25 +27,28 @@
     "search": {
       "label": "Buscar categorías",
       "placeholder": "Buscar por nombre o descripción",
-      "noPersonal": "Ninguna de tus categorías coincide con «{{query}}».",
-      "noPredefined": "Ninguna predefinida coincide con «{{query}}»."
-    },
-    "personal": {
-      "emptyTitle": "Aún no tienes categorías propias",
-      "emptyBody": "Las predefinidas cubren lo básico. Crea una propia cuando necesites algo más específico."
-    },
-    "predefined": {
-      "empty": "Cuando haya categorías predefinidas aparecerán aquí."
+      "noMatches": {
+        "income": "Ninguna categoría de ingresos coincide con «{{query}}».",
+        "expense": "Ninguna categoría de gastos coincide con «{{query}}».",
+        "transfer": "Ninguna categoría de transferencias coincide con «{{query}}»."
+      }
     },
     "tabs": {
-      "label": "Tipo de categoría",
-      "personal": "Tus categorías",
-      "predefined": "Predefinidas"
+      "label": "Tipo de movimiento",
+      "income": "Ingresos",
+      "expense": "Gastos",
+      "transfer": "Transferencias"
+    },
+    "empty": {
+      "income": "Aún no tienes categorías de ingresos",
+      "expense": "Aún no tienes categorías de gastos",
+      "transfer": "Aún no tienes categorías de transferencias",
+      "body": "Crea una para agrupar tus movimientos de este tipo."
     }
   },
   "form": {
     "createTitle": "Nueva categoría",
-    "createSubtitle": "Dale un nombre corto y una descripción que te recuerde qué movimientos van aquí.",
+    "createSubtitle": "Elige en qué movimientos la usarás y dale un nombre corto.",
     "editTitle": "Editar categoría",
     "editSubtitle": "El cambio se refleja en todos los movimientos que la usan.",
     "loading": "Cargando la categoría…",
@@ -59,10 +62,12 @@
     "saving": "Guardando…",
     "backToList": "Volver a categorías",
     "notFoundTitle": "Categoría no disponible",
-    "readOnly": "Esta categoría es predefinida: puedes usarla, pero no editarla ni eliminarla.",
     "close": "Cerrar panel",
     "nameHint": "Corto y único: se lee en listas y reportes.",
-    "descriptionHint": "Para recordar qué movimientos van aquí."
+    "descriptionHint": "Para recordar qué movimientos van aquí.",
+    "typeLabel": "Tipo de movimiento",
+    "typeHint": "Solo podrás usarla en movimientos de este tipo; no se puede cambiar después.",
+    "typeLocked": "El tipo no se puede cambiar."
   },
   "errors": {
     "CATEGORY_NAME_REQUIRED": "Escribe un nombre para la categoría.",
@@ -70,6 +75,13 @@
     "CATEGORY_NAME_ALREADY_EXISTS": "Ya existe una categoría con ese nombre.",
     "CATEGORY_DESCRIPTION_REQUIRED": "Escribe una descripción para la categoría.",
     "CATEGORY_DESCRIPTION_MAX_LENGTH": "La descripción puede tener hasta {{descriptionMax}} caracteres.",
-    "CATEGORY_NOT_FOUND": "No encontramos esta categoría. Puede que ya se haya eliminado."
+    "CATEGORY_NOT_FOUND": "No encontramos esta categoría. Puede que ya se haya eliminado.",
+    "CATEGORY_TRANSACTION_TYPE_REQUIRED": "Elige el tipo de movimiento de la categoría.",
+    "CATEGORY_TRANSACTION_TYPE_INVALID": "Ese tipo de movimiento no es válido. Elige otro."
+  },
+  "types": {
+    "income": "Ingreso",
+    "expense": "Gasto",
+    "transfer": "Transferencia"
   }
 }

@@ -1,26 +1,22 @@
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
+import { By } from '@angular/platform-browser';
 import { translocoTesting } from '@core/i18n/i18n.testing';
 import { LanguageService } from '@core/i18n/language.service';
 import { AccountError, AccountErrorCode } from '../../../domain/account-error';
-import {
-  FakeAccountRepository,
-  FakeAccountTypeOptionsRepository,
-  fakeAccountsRoutes,
-} from '../../account-repository.fake';
+import { FakeAccountRepository, fakeAccountsRoutes } from '../../account-repository.fake';
+import { AccountPanelComponent } from './account-panel.component';
 
 describe('AccountPanelComponent', () => {
   let fake: FakeAccountRepository;
-  let options: FakeAccountTypeOptionsRepository;
 
   beforeEach(async () => {
     localStorage.clear();
     fake = new FakeAccountRepository();
-    options = new FakeAccountTypeOptionsRepository();
     await TestBed.configureTestingModule({
       imports: [translocoTesting()],
-      providers: [provideRouter(fakeAccountsRoutes(fake, options))],
+      providers: [provideRouter(fakeAccountsRoutes(fake))],
     }).compileComponents();
   });
 
@@ -37,23 +33,6 @@ describe('AccountPanelComponent', () => {
     field.dispatchEvent(new Event('blur'));
   }
 
-  /** Abre el selector compartido y elige la opción con ese texto. */
-  function choose(
-    element: HTMLElement,
-    testId: string,
-    label: string,
-    harness: RouterTestingHarness,
-  ): void {
-    element
-      .querySelector<HTMLButtonElement>(`[data-testid="${testId}"] [data-testid="select-trigger"]`)!
-      .click();
-    harness.detectChanges();
-    [...element.querySelectorAll<HTMLElement>(`[data-testid="${testId}"] [role="option"]`)]
-      .find((option) => option.textContent?.includes(label))!
-      .click();
-    harness.detectChanges();
-  }
-
   function click(element: HTMLElement, testId: string): void {
     element.querySelector<HTMLElement>(`[data-testid="${testId}"]`)!.click();
   }
@@ -62,36 +41,20 @@ describe('AccountPanelComponent', () => {
     element.querySelector('form')!.dispatchEvent(new Event('submit'));
   }
 
-  /** Abre el selector de tipos y devuelve los textos de sus opciones. */
-  function optionLabels(element: HTMLElement, harness: RouterTestingHarness): string[] {
-    element
-      .querySelector<HTMLButtonElement>(
-        '[data-testid="account-type"] [data-testid="select-trigger"]',
-      )!
-      .click();
-    harness.detectChanges();
+  it('asks for name, currency, balance and opening date', async () => {
+    const { element } = await open('/accounts/new');
 
-    return [...element.querySelectorAll('[data-testid="account-type"] [role="option"]')].map(
-      (option) => option.textContent!.trim(),
-    );
-  }
-
-  it('offers the active account types by name, the three currencies and a way to create a type', async () => {
-    const { harness, element } = await open('/accounts/new');
-
-    expect(element.querySelector('[data-testid="select-trigger"]')?.textContent).toContain(
-      'Pick a type',
-    );
-    expect(optionLabels(element, harness)).toEqual(['Ahorros', 'Tarjeta de crédito']);
+    expect(element.querySelector('[data-testid="account-type"]')).toBeNull();
     expect(element.querySelector<HTMLInputElement>('[data-testid="currency-COP"]')!.checked).toBe(
       true,
     );
     expect(element.querySelector('[data-testid="currency-USD"]')).toBeTruthy();
     // EUR ya no se admite para cuentas nuevas.
     expect(element.querySelector('[data-testid="currency-EUR"]')).toBeNull();
-    expect(element.querySelector('[data-testid="create-type"]')?.getAttribute('href')).toBe(
-      '/account-types/new',
-    );
+    // La apertura llega prellenada con la hora actual.
+    expect(
+      element.querySelector<HTMLInputElement>('[data-testid="account-opening-time"]')!.value,
+    ).toMatch(/^\d{2}:\d{2}$/);
   });
 
   it('validates the fields locally before calling the backend', async () => {
@@ -104,9 +67,6 @@ describe('AccountPanelComponent', () => {
 
     expect(element.querySelector('[data-testid="name-error"]')?.textContent).toContain(
       'The name can be up to 50 characters.',
-    );
-    expect(element.querySelector('[data-testid="type-error"]')?.textContent).toContain(
-      'Pick the account type.',
     );
     expect(element.querySelector('[data-testid="balance-error"]')?.textContent).toContain(
       'up to 3 decimals',
@@ -130,7 +90,6 @@ describe('AccountPanelComponent', () => {
     const { harness, element } = await open('/accounts/new');
 
     type(element, 'account-name', '  Visa 9000 ');
-    choose(element, 'account-type', 'Tarjeta de crédito', harness);
     click(element, 'currency-USD');
     type(element, 'account-balance', '-1250,5');
     submit(element);
@@ -139,10 +98,11 @@ describe('AccountPanelComponent', () => {
 
     expect(fake.lastDraft).toEqual({
       name: 'Visa 9000',
-      accountTypeId: 3,
       currency: 'USD',
       initialBalance: -1250.5,
+      openingDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00[+-]\d{2}:\d{2}$/),
     });
+    expect(new Date(fake.lastDraft!.openingDate).getTime()).toBeLessThanOrEqual(Date.now());
     expect(TestBed.inject(Router).url).toBe('/accounts');
     expect(element.querySelector('[data-testid="account-99"]')).toBeTruthy();
     expect(element.querySelector('[data-testid="account-notice"]')?.textContent).toContain(
@@ -167,28 +127,38 @@ describe('AccountPanelComponent', () => {
     expect(element.querySelector('[data-testid="form-error"]')).toBeNull();
   });
 
-  it('keeps a type that is no longer active selectable and explains the backend rejection', async () => {
-    options.options = [{ id: 1, name: 'Ahorros' }];
-    const { harness, element } = await open('/accounts/5/edit');
-    fake.failWith = new AccountError('x', AccountErrorCode.TypeInvalid);
+  it('rejects an opening date later than now without calling the backend', async () => {
+    const { harness, element } = await open('/accounts/new');
+    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const isoDay = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
 
-    expect(optionLabels(element, harness)).toContain('Tarjeta de crédito');
-
+    type(element, 'account-name', 'Futura');
+    const panel = harness.fixture.debugElement.query(By.css('app-account-panel'));
+    const day = (panel.componentInstance as AccountPanelComponent)['accountForm'].controls.openingDay;
+    day.setValue(isoDay);
+    day.markAsTouched();
     submit(element);
     harness.detectChanges();
 
-    expect(element.querySelector('[data-testid="type-error"]')?.textContent).toContain(
-      'That account type is no longer available.',
+    expect(element.querySelector('[data-testid="opening-error"]')?.textContent).toContain(
+      'The opening date cannot be later than now.',
     );
+    expect(fake.lastDraft).toBeNull();
   });
 
-  it('explains when there are no account types', async () => {
-    options.options = [];
-    const { element } = await open('/accounts/new');
+  it('shows a backend opening date error beside the field', async () => {
+    const { harness, element } = await open('/accounts/new');
+    fake.failWith = new AccountError('Future', AccountErrorCode.OpeningDateFuture);
 
-    expect(element.querySelector('[data-testid="no-types"]')?.textContent).toContain(
-      'You have no active account types yet.',
+    type(element, 'account-name', 'Wise');
+    submit(element);
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+
+    expect(element.querySelector('[data-testid="opening-error"]')?.textContent).toContain(
+      'The opening date cannot be later than now.',
     );
+    expect(element.querySelector('[data-testid="form-error"]')).toBeNull();
   });
 
   it('loads the account to edit and focuses the panel title', async () => {
@@ -242,6 +212,7 @@ describe('AccountPanelComponent', () => {
     const summary = element.querySelector('[data-testid="account-read-only"]')?.textContent;
     expect(summary).toContain('This account is deactivated');
     expect(summary).toContain('$320.50');
+    expect(element.querySelector('[data-testid="account-opening"]')?.textContent).toContain('2026');
     expect(element.querySelector('h2')?.textContent).toContain('Wise');
     expect(element.querySelector('form')).toBeNull();
   });

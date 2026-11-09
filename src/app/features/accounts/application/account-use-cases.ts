@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
-import { Account, AccountDraft, AccountTypeOption, sortAccounts } from '../domain/account';
-import { AccountRepository, AccountTypeOptionsRepository } from '../domain/account.repository';
+import { Account, AccountDraft, sortAccounts } from '../domain/account';
+import { AccountRepository } from '../domain/account.repository';
 
 function trimmed(draft: AccountDraft): AccountDraft {
   return { ...draft, name: draft.name.trim() };
@@ -49,17 +49,5 @@ export class DeactivateAccountUseCase {
 
   execute(id: number): Observable<void> {
     return this.repository.deactivate(id);
-  }
-}
-
-@Injectable()
-export class ListAccountTypeOptionsUseCase {
-  private readonly repository = inject(AccountTypeOptionsRepository);
-
-  /** Tipos activos ordenados por nombre, para el selector del formulario. */
-  execute(): Observable<AccountTypeOption[]> {
-    return this.repository
-      .list()
-      .pipe(map((options) => [...options].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))));
   }
 }

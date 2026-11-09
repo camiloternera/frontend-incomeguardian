@@ -5,11 +5,11 @@ import { Observable, OperatorFunction, catchError, map, pipe, throwError } from 
 import { environment } from '@env/environment';
 import { ApiResponse } from '@core/http/api-response';
 import { GENERIC_ERROR_KEY, apiErrorCode, resolveApiError } from '@core/http/api-error';
-import { Account, AccountDraft, AccountTypeOption, isCurrency } from '../domain/account';
+import { Account, AccountDraft, isCurrency } from '../domain/account';
 import { AccountError, isAccountErrorCode } from '../domain/account-error';
-import { AccountRepository, AccountTypeOptionsRepository } from '../domain/account.repository';
+import { AccountRepository } from '../domain/account.repository';
 import { ACCOUNT_ERROR_KEYS, ACCOUNT_ERROR_PARAMS } from './account-error-messages';
-import { AccountDto, AccountRequestDto, AccountTypeOptionDto } from './account.dto';
+import { AccountDto, AccountRequestDto } from './account.dto';
 
 /** Moneda que la app no conoce: se trata como respuesta inválida en vez de inventar una. */
 class UnknownCurrencyError extends Error {}
@@ -22,12 +22,12 @@ function toAccount(dto: AccountDto): Account {
   return {
     id: dto.id,
     name: dto.name,
-    accountType: { id: dto.accountType.id, name: dto.accountType.name },
     initialBalance: dto.initialBalance,
     // Mientras el backend no lo informe, el saldo actual es el inicial.
     currentBalance: dto.currentBalance ?? dto.initialBalance,
     currency: dto.currency,
     isActive: dto.isActive,
+    openingDate: dto.openingDate,
     createdAt: dto.createdAt,
     updatedAt: dto.updatedAt,
   };
@@ -36,9 +36,9 @@ function toAccount(dto: AccountDto): Account {
 function toRequest(draft: AccountDraft): AccountRequestDto {
   return {
     name: draft.name,
-    accountTypeId: draft.accountTypeId,
     initialBalance: draft.initialBalance,
     currency: draft.currency,
+    openingDate: draft.openingDate,
   };
 }
 
@@ -110,21 +110,5 @@ export class AccountHttpRepository extends AccountRepository {
 
   private toErrors<T>(): OperatorFunction<T, T> {
     return pipe(catchError((error: unknown) => throwError(() => toAccountError(error, this.transloco))));
-  }
-}
-
-/** Lee los tipos de cuenta activos del usuario para el selector del formulario. */
-@Injectable()
-export class AccountTypeOptionsHttpRepository extends AccountTypeOptionsRepository {
-  private readonly http = inject(HttpClient);
-  private readonly transloco = inject(TranslocoService);
-  private readonly url = `${environment.apiUrl}/api/v1/account-types`;
-
-  list(): Observable<AccountTypeOption[]> {
-    return this.http.get<ApiResponse<AccountTypeOptionDto[]>>(this.url).pipe(
-      unwrap(),
-      map((dtos) => dtos.map((dto) => ({ id: dto.id, name: dto.name }))),
-      catchError((error: unknown) => throwError(() => toAccountError(error, this.transloco))),
-    );
   }
 }

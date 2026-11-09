@@ -10,7 +10,7 @@ export const TransactionErrorCode = {
   AccountNotFound: 'TRANSACTION_ACCOUNT_NOT_FOUND',
   AccountInactive: 'ACCOUNT_INACTIVE',
   CategoryNotFound: 'TRANSACTION_CATEGORY_NOT_FOUND',
-  CategoryKindMismatch: 'TRANSACTION_CATEGORY_KIND_MISMATCH',
+  CategoryTypeMismatch: 'TRANSACTION_CATEGORY_TYPE_MISMATCH',
   DescriptionMaxLength: 'TRANSACTION_DESCRIPTION_MAX_LENGTH',
   PageInvalid: 'TRANSACTION_PAGE_INVALID',
   DateRangeInvalid: 'TRANSACTION_DATE_RANGE_INVALID',
@@ -43,7 +43,7 @@ export const ACCOUNT_ERROR_CODES: readonly TransactionErrorCode[] = [
 
 export const CATEGORY_ERROR_CODES: readonly TransactionErrorCode[] = [
   TransactionErrorCode.CategoryNotFound,
-  TransactionErrorCode.CategoryKindMismatch,
+  TransactionErrorCode.CategoryTypeMismatch,
 ];
 
 export const DESCRIPTION_ERROR_CODES: readonly TransactionErrorCode[] = [TransactionErrorCode.DescriptionMaxLength];

@@ -20,7 +20,7 @@ describe('CategoryListPageComponent', () => {
     element.querySelector<HTMLElement>(`[data-testid="${testId}"]`)!.click();
   }
 
-  function names(element: HTMLElement, section: 'category-rows' | 'predefined-rows'): string[] {
+  function names(element: HTMLElement, section: 'category-rows'): string[] {
     return [...element.querySelectorAll(`[data-testid="${section}"] > li`)].map(
       (item) => item.querySelector('a span, p')?.textContent?.trim() ?? '',
     );
@@ -30,8 +30,8 @@ describe('CategoryListPageComponent', () => {
     localStorage.clear();
     fake = new FakeCategoryRepository();
     fake.categories.push(
-      { id: 2, name: 'Alimentación', description: 'Mercado y comidas fuera', isGlobal: true, createdAt: '2026-10-01T00:00:00Z', updatedAt: null },
-      { id: 10, name: 'Coworking', description: 'Escritorio y café', isGlobal: false, createdAt: '2026-10-02T00:00:00Z', updatedAt: '2026-10-14T00:00:00Z' },
+      { id: 2, name: 'Alimentación', description: 'Mercado y comidas fuera', type: 'expense', createdAt: '2026-10-01T00:00:00Z', updatedAt: null },
+      { id: 10, name: 'Coworking', description: 'Escritorio y café', type: 'transfer', createdAt: '2026-10-02T00:00:00Z', updatedAt: '2026-10-14T00:00:00Z' },
     );
     await TestBed.configureTestingModule({
       imports: [translocoTesting()],
@@ -41,29 +41,33 @@ describe('CategoryListPageComponent', () => {
     }).compileComponents();
   });
 
-  it('shows your categories first and the predefined ones in their own tab', async () => {
+  it('groups the categories in one tab per transaction type, starting with expenses', async () => {
     const { harness, element } = await open();
 
-    expect(names(element, 'category-rows')).toEqual(['Coworking', 'Mascotas']);
-    expect(element.querySelector('[data-testid="tab-personal"]')?.getAttribute('aria-pressed')).toBe('true');
-    expect(element.querySelector('[data-testid="tab-predefined"]')?.textContent).toContain('2');
+    expect(names(element, 'category-rows')).toEqual(['Alimentación', 'Mascotas', 'Vivienda']);
+    expect(element.querySelector('[data-testid="tab-expense"]')?.getAttribute('aria-pressed')).toBe('true');
+    expect(element.querySelector('[data-testid="tab-income"]')?.textContent).toContain('1');
+    expect(element.querySelector('[data-testid="tab-transfer"]')?.textContent).toContain('1');
 
-    click(element, 'tab-predefined');
+    click(element, 'tab-income');
     harness.detectChanges();
+    expect(names(element, 'category-rows')).toEqual(['Salario']);
 
-    expect(names(element, 'predefined-rows')).toEqual(['Alimentación', 'Vivienda']);
-    expect(element.querySelector('[data-testid="category-rows"]')).toBeNull();
+    click(element, 'tab-transfer');
+    harness.detectChanges();
+    expect(names(element, 'category-rows')).toEqual(['Coworking']);
   });
 
-  it('offers actions only on your own categories', async () => {
+  it('offers edit and delete on every category', async () => {
     const { harness, element } = await open();
 
     expect(element.querySelector('[data-testid="category-9"] a[href="/categories/9/edit"]')).toBeTruthy();
     expect(element.querySelector('[data-testid="menu-9"]')).toBeTruthy();
 
-    click(element, 'tab-predefined');
+    click(element, 'tab-income');
     harness.detectChanges();
-    expect(element.querySelector('[data-testid="category-1"] a, [data-testid="category-1"] button')).toBeNull();
+    expect(element.querySelector('[data-testid="category-4"] a[href="/categories/4/edit"]')).toBeTruthy();
+    expect(element.querySelector('[data-testid="menu-4"]')).toBeTruthy();
   });
 
   it('puts the create action at the top of the page', async () => {
@@ -78,7 +82,7 @@ describe('CategoryListPageComponent', () => {
         id: 100 + index,
         name: `Propia ${index + 1}`,
         description: 'Generada para el test',
-        isGlobal: false,
+        type: 'expense' as const,
         createdAt: '2026-10-20T00:00:00Z',
         updatedAt: null,
       })),
@@ -86,15 +90,15 @@ describe('CategoryListPageComponent', () => {
     const { harness, element } = await open();
 
     expect(names(element, 'category-rows')).toHaveLength(5);
-    expect(element.querySelector('[data-testid="pagination"]')?.textContent).toContain('Showing 1–5 of 8');
+    expect(element.querySelector('[data-testid="pagination"]')?.textContent).toContain('Showing 1–5 of 9');
 
     click(element, 'pagination-next');
     harness.detectChanges();
-    expect(names(element, 'category-rows')).toHaveLength(3);
+    expect(names(element, 'category-rows')).toHaveLength(4);
 
-    click(element, 'tab-predefined');
+    click(element, 'tab-income');
     harness.detectChanges();
-    click(element, 'tab-personal');
+    click(element, 'tab-expense');
     harness.detectChanges();
     expect(element.querySelector('[data-testid="pagination-page-1"]')?.getAttribute('aria-current')).toBe('page');
   });
@@ -103,16 +107,17 @@ describe('CategoryListPageComponent', () => {
     const { harness, element } = await open();
     const search = element.querySelector<HTMLInputElement>('[data-testid="category-search"]')!;
 
-    search.value = 'ALIMENTACION';
+    search.value = 'SALARIO';
     search.dispatchEvent(new Event('input'));
     harness.detectChanges();
 
-    expect(element.querySelector('[data-testid="no-matches"]')?.textContent).toContain('None of your categories match “ALIMENTACION”.');
-    expect(element.querySelector('[data-testid="tab-predefined"]')?.textContent).toContain('1');
+    expect(element.querySelector('[data-testid="no-matches"]')?.textContent).toContain('No expense category matches “SALARIO”.');
+    expect(element.querySelector('[data-testid="tab-income"]')?.textContent).toContain('1');
 
-    click(element, 'tab-predefined');
+    search.value = 'ALIMENTACION';
+    search.dispatchEvent(new Event('input'));
     harness.detectChanges();
-    expect(names(element, 'predefined-rows')).toEqual(['Alimentación']);
+    expect(names(element, 'category-rows')).toEqual(['Alimentación']);
   });
 
   it('opens the actions menu and closes it with Escape, back on its button', async () => {
@@ -161,11 +166,11 @@ describe('CategoryListPageComponent', () => {
     expect(element.querySelector('[data-testid="delete-error"]')?.textContent).toContain('The category was not found.');
   });
 
-  it('shows an empty state when you have none of your own', async () => {
-    fake.categories = fake.categories.filter((category) => category.isGlobal);
+  it('shows an empty state for a type without categories', async () => {
+    fake.categories = fake.categories.filter((category) => category.type !== 'expense');
     const { element } = await open();
 
-    expect(element.querySelector('[data-testid="category-empty"]')?.textContent).toContain('no categories of your own');
+    expect(element.querySelector('[data-testid="category-empty"]')?.textContent).toContain('no expense categories yet');
   });
 
   it('shows the load error with a retry', async () => {
@@ -177,7 +182,7 @@ describe('CategoryListPageComponent', () => {
     click(element, 'retry');
     harness.detectChanges();
 
-    expect(names(element, 'category-rows')).toHaveLength(2);
+    expect(names(element, 'category-rows')).toHaveLength(3);
   });
 
   it('keeps the list beside the panel and marks the row being edited', async () => {
@@ -203,7 +208,7 @@ describe('CategoryListPageComponent', () => {
     harness.detectChanges();
 
     expect(element.querySelector('[data-testid="category-panel"]')).toBeNull();
-    expect(names(element, 'category-rows')).toEqual(['Coworking', 'Mascotas', 'Viajes']);
+    expect(names(element, 'category-rows')).toEqual(['Alimentación', 'Mascotas', 'Viajes', 'Vivienda']);
     expect(element.querySelector('[data-testid="category-notice"]')?.textContent).toContain('You created the “Viajes” category.');
     expect(list).not.toHaveBeenCalled();
   });
@@ -213,8 +218,9 @@ describe('CategoryListPageComponent', () => {
     const { element } = await open();
 
     expect(element.querySelector('h1')?.textContent).toContain('Categorías');
-    expect(element.textContent).toContain('Tus categorías');
-    expect(element.textContent).toContain('Predefinidas');
+    expect(element.textContent).toContain('Ingresos');
+    expect(element.textContent).toContain('Gastos');
+    expect(element.textContent).toContain('Transferencias');
     expect(element.textContent).toContain('Nueva categoría');
   });
 });

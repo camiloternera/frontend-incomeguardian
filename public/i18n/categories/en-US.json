@@ -1,7 +1,7 @@
 {
   "list": {
     "title": "Categories",
-    "subtitle": "The names you group your income and expenses under. Create your own when the predefined ones fall short.",
+    "subtitle": "The names you group your income, expenses and transfers under.",
     "create": "New category",
     "loading": "Loading your categories…",
     "retry": "Try again",
@@ -27,25 +27,28 @@
     "search": {
       "label": "Search categories",
       "placeholder": "Search by name or description",
-      "noPersonal": "None of your categories match “{{query}}”.",
-      "noPredefined": "No predefined category matches “{{query}}”."
-    },
-    "personal": {
-      "emptyTitle": "You have no categories of your own yet",
-      "emptyBody": "The predefined ones cover the basics. Create your own when you need something more specific."
-    },
-    "predefined": {
-      "empty": "Predefined categories will show up here once there are any."
+      "noMatches": {
+        "income": "No income category matches “{{query}}”.",
+        "expense": "No expense category matches “{{query}}”.",
+        "transfer": "No transfer category matches “{{query}}”."
+      }
     },
     "tabs": {
-      "label": "Category type",
-      "personal": "Your categories",
-      "predefined": "Predefined"
+      "label": "Transaction type",
+      "income": "Income",
+      "expense": "Expenses",
+      "transfer": "Transfers"
+    },
+    "empty": {
+      "income": "You have no income categories yet",
+      "expense": "You have no expense categories yet",
+      "transfer": "You have no transfer categories yet",
+      "body": "Create one to group your transactions of this type."
     }
   },
   "form": {
     "createTitle": "New category",
-    "createSubtitle": "Give it a short name and a description that reminds you which transactions belong here.",
+    "createSubtitle": "Choose which transactions it is for and give it a short name.",
     "editTitle": "Edit category",
     "editSubtitle": "Changes apply to every transaction that uses this category.",
     "loading": "Loading the category…",
@@ -59,10 +62,12 @@
     "saving": "Saving…",
     "backToList": "Back to categories",
     "notFoundTitle": "Category unavailable",
-    "readOnly": "This is a predefined category: you can use it, but you cannot edit or delete it.",
     "close": "Close panel",
     "nameHint": "Short and unique: it shows up in lists and reports.",
-    "descriptionHint": "To remember which transactions belong here."
+    "descriptionHint": "To remember which transactions belong here.",
+    "typeLabel": "Transaction type",
+    "typeHint": "You can only use it on transactions of this type; it cannot be changed later.",
+    "typeLocked": "The type cannot be changed."
   },
   "errors": {
     "CATEGORY_NAME_REQUIRED": "Enter a name for the category.",
@@ -70,6 +75,13 @@
     "CATEGORY_NAME_ALREADY_EXISTS": "A category with that name already exists.",
     "CATEGORY_DESCRIPTION_REQUIRED": "Enter a description for the category.",
     "CATEGORY_DESCRIPTION_MAX_LENGTH": "The description can be up to {{descriptionMax}} characters.",
-    "CATEGORY_NOT_FOUND": "We could not find this category. It may have been deleted already."
+    "CATEGORY_NOT_FOUND": "We could not find this category. It may have been deleted already.",
+    "CATEGORY_TRANSACTION_TYPE_REQUIRED": "Choose the transaction type for the category.",
+    "CATEGORY_TRANSACTION_TYPE_INVALID": "That transaction type is not valid. Choose another one."
+  },
+  "types": {
+    "income": "Income",
+    "expense": "Expense",
+    "transfer": "Transfer"
   }
 }

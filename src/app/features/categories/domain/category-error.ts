@@ -8,6 +8,8 @@ export const CategoryErrorCode = {
   NameAlreadyExists: 'CATEGORY_NAME_ALREADY_EXISTS',
   DescriptionRequired: 'CATEGORY_DESCRIPTION_REQUIRED',
   DescriptionMaxLength: 'CATEGORY_DESCRIPTION_MAX_LENGTH',
+  TransactionTypeRequired: 'CATEGORY_TRANSACTION_TYPE_REQUIRED',
+  TransactionTypeInvalid: 'CATEGORY_TRANSACTION_TYPE_INVALID',
   NotFound: 'CATEGORY_NOT_FOUND',
 } as const;
 
@@ -30,6 +32,11 @@ export const NAME_ERROR_CODES: readonly CategoryErrorCode[] = [
 export const DESCRIPTION_ERROR_CODES: readonly CategoryErrorCode[] = [
   CategoryErrorCode.DescriptionRequired,
   CategoryErrorCode.DescriptionMaxLength,
+];
+
+export const TYPE_ERROR_CODES: readonly CategoryErrorCode[] = [
+  CategoryErrorCode.TransactionTypeRequired,
+  CategoryErrorCode.TransactionTypeInvalid,
 ];
 
 /**

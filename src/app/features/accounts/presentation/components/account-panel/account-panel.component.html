@@ -79,10 +79,6 @@
           </p>
           <dl class="m-0 flex flex-col gap-4 border-t border-ig-border pt-6 text-[14px]">
             <div class="flex items-baseline justify-between gap-4">
-              <dt class="text-ig-muted">{{ t('accounts.form.typeLabel') }}</dt>
-              <dd class="m-0 break-words text-right">{{ current.accountType.name }}</dd>
-            </div>
-            <div class="flex items-baseline justify-between gap-4">
               <dt class="text-ig-muted">{{ t('accounts.form.currencyLabel') }}</dt>
               <dd class="m-0 text-right">{{ t('accounts.form.currency.' + current.currency) }}</dd>
             </div>
@@ -97,6 +93,12 @@
                       : balanceDigits(current.currency, current.initialBalance)
                       : locale()
                 }}
+              </dd>
+            </div>
+            <div class="flex items-baseline justify-between gap-4">
+              <dt class="text-ig-muted">{{ t('accounts.form.openingLabel') }}</dt>
+              <dd data-testid="account-opening" class="m-0 text-right">
+                {{ current.openingDate | date: 'medium' : undefined : locale() }}
               </dd>
             </div>
           </dl>
@@ -142,78 +144,6 @@
             <p
               id="account-name-error"
               data-testid="name-error"
-              class="m-0 text-[13px] leading-snug text-ig-text"
-              role="alert"
-            >
-              {{ t(message.key, message.params) }}
-            </p>
-          }
-        </div>
-
-        <div class="flex flex-col gap-2">
-          <label class="text-[13px] font-bold" for="account-type">{{
-            t('accounts.form.typeLabel')
-          }}</label>
-          @switch (typeOptionsStatus()) {
-            @case ('loading') {
-              <p class="m-0 flex min-h-11 items-center text-[14px] text-ig-muted" role="status">
-                {{ t('accounts.form.typesLoading') }}
-              </p>
-            }
-            @case ('error') {
-              <div class="flex min-h-11 flex-wrap items-center gap-3">
-                <p data-testid="types-error" class="m-0 text-[14px]" role="alert">
-                  {{ t('accounts.form.typesError') }}
-                </p>
-                <button
-                  class="min-h-11 rounded-lg border border-ig-border bg-transparent px-4 text-[14px] font-bold text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
-                  type="button"
-                  (click)="loadTypeOptions()"
-                >
-                  {{ t('accounts.list.retry') }}
-                </button>
-              </div>
-            }
-            @default {
-              @if (typeOptions().length) {
-                <app-select
-                  data-testid="account-type"
-                  inputId="account-type"
-                  formControlName="accountTypeId"
-                  [options]="typeSelectOptions()"
-                  [placeholder]="t('accounts.form.typePlaceholder')"
-                  [invalid]="typeError() !== null"
-                  [describedBy]="typeError() ? 'account-type-error' : null"
-                >
-                  <a
-                    selectFooter
-                    data-testid="create-type"
-                    class="flex min-h-11 items-center gap-3 rounded-md px-3 text-[14px] font-medium text-ig-accent-text no-underline hover:bg-ig-accent/10 focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:-outline-offset-2"
-                    routerLink="/account-types/new"
-                  >
-                    <svg lucidePlus [size]="16" aria-hidden="true"></svg>
-                    {{ t('accounts.form.createType') }}
-                  </a>
-                </app-select>
-              } @else {
-                <p data-testid="no-types" class="m-0 text-[14px] text-ig-muted">
-                  {{ t('accounts.form.noTypes') }}
-                </p>
-                <a
-                  data-testid="create-type"
-                  class="inline-flex min-h-11 items-center gap-2 self-start rounded text-[14px] font-medium text-ig-accent-text no-underline hover:underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
-                  routerLink="/account-types/new"
-                >
-                  <svg lucidePlus [size]="16" aria-hidden="true"></svg>
-                  {{ t('accounts.form.createType') }}
-                </a>
-              }
-            }
-          }
-          @if (typeError(); as message) {
-            <p
-              id="account-type-error"
-              data-testid="type-error"
               class="m-0 text-[13px] leading-snug text-ig-text"
               role="alert"
             >
@@ -310,6 +240,53 @@
             {{ t('accounts.form.balanceHint', balanceParams) }}
           </p>
         </div>
+
+        <fieldset
+          class="m-0 flex min-w-0 flex-col gap-2 border-0 p-0"
+          [attr.aria-describedby]="
+            openingError() ? 'account-opening-error account-opening-hint' : 'account-opening-hint'
+          "
+        >
+          <legend class="mb-2 p-0 text-[13px] font-bold">
+            {{ t('accounts.form.openingLabel') }}
+          </legend>
+          <div class="flex flex-col gap-2 sm:flex-row">
+            <label class="sr-only" for="account-opening-day">{{ t('accounts.form.openingDay') }}</label>
+            <app-date-picker
+              class="sm:flex-1"
+              data-testid="account-opening-day"
+              inputId="account-opening-day"
+              formControlName="openingDay"
+              [today]="today()"
+              [max]="today()"
+              [invalid]="openingError() !== null"
+              [describedBy]="openingError() ? 'account-opening-error' : null"
+            />
+            <label class="sr-only" for="account-opening-time">{{ t('accounts.form.openingTime') }}</label>
+            <input
+              class="min-h-12 w-full rounded-lg border bg-ig-surface px-3 text-[16px] tabular-nums text-ig-text outline-none focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 sm:w-[140px] lg:min-h-11 lg:text-[14px]"
+              [class]="openingError() ? 'border-ig-text' : 'border-ig-border'"
+              id="account-opening-time"
+              data-testid="account-opening-time"
+              formControlName="openingTime"
+              type="time"
+              [attr.aria-invalid]="openingError() !== null"
+            />
+          </div>
+          @if (openingError(); as message) {
+            <p
+              id="account-opening-error"
+              data-testid="opening-error"
+              class="m-0 text-[13px] leading-snug text-ig-text"
+              role="alert"
+            >
+              {{ t(message.key, message.params) }}
+            </p>
+          }
+          <p id="account-opening-hint" class="m-0 text-[12px] text-ig-muted">
+            {{ t('accounts.form.openingHint') }}
+          </p>
+        </fieldset>
 
         @if (formError()) {
           <p

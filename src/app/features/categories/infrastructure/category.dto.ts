@@ -3,13 +3,23 @@ export interface CategoryDto {
   id: number;
   name: string;
   description: string;
-  isGlobal: boolean;
+  /** 1 Ingreso, 2 Gasto, 3 Transferencia. */
+  transactionTypeId: number;
+  transactionTypeName: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string | null;
 }
 
-export interface CategoryRequestDto {
+/** Cuerpo de `POST /api/v1/categories`. */
+export interface CreateCategoryRequestDto {
+  name: string;
+  description: string;
+  transactionTypeId: number;
+}
+
+/** Cuerpo de `PUT /api/v1/categories/{id}`: el tipo no es editable. */
+export interface UpdateCategoryRequestDto {
   name: string;
   description: string;
 }

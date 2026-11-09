@@ -1,9 +1,9 @@
 import { Routes } from '@angular/router';
 import { Observable, of, throwError } from 'rxjs';
 import { accountsRoutes } from '../accounts.routes';
-import { Account, AccountDraft, AccountTypeOption } from '../domain/account';
+import { Account, AccountDraft } from '../domain/account';
 import { AccountError, AccountErrorCode } from '../domain/account-error';
-import { AccountRepository, AccountTypeOptionsRepository } from '../domain/account.repository';
+import { AccountRepository } from '../domain/account.repository';
 
 /** Repositorio en memoria para los tests de presentation; `failWith` fuerza el siguiente error. */
 export class FakeAccountRepository extends AccountRepository {
@@ -11,33 +11,33 @@ export class FakeAccountRepository extends AccountRepository {
     {
       id: 5,
       name: 'Visa 4417',
-      accountType: { id: 3, name: 'Tarjeta de crédito' },
       initialBalance: -250000,
       currentBalance: -250000,
       currency: 'COP',
       isActive: true,
+      openingDate: '2026-10-20T00:00:00Z',
       createdAt: '2026-10-20T00:00:00Z',
       updatedAt: null,
     },
     {
       id: 2,
       name: 'Bancolombia',
-      accountType: { id: 1, name: 'Ahorros' },
       initialBalance: 1250000,
       currentBalance: 1250000,
       currency: 'COP',
       isActive: true,
+      openingDate: '2026-10-01T00:00:00Z',
       createdAt: '2026-10-01T00:00:00Z',
       updatedAt: null,
     },
     {
       id: 8,
       name: 'Wise',
-      accountType: { id: 1, name: 'Ahorros' },
       initialBalance: 320.5,
       currentBalance: 320.5,
       currency: 'USD',
       isActive: false,
+      openingDate: '2026-09-01T00:00:00Z',
       createdAt: '2026-09-01T00:00:00Z',
       updatedAt: '2026-10-02T00:00:00Z',
     },
@@ -82,13 +82,10 @@ export class FakeAccountRepository extends AccountRepository {
     draft: AccountDraft,
     rest: Pick<Account, 'isActive' | 'createdAt' | 'updatedAt'>,
   ): Account {
-    const { accountTypeId, ...fields } = draft;
-
     return {
       id,
-      ...fields,
-      currentBalance: fields.initialBalance,
-      accountType: { id: accountTypeId, name: `Tipo ${accountTypeId}` },
+      ...draft,
+      currentBalance: draft.initialBalance,
       ...rest,
     };
   }
@@ -119,23 +116,8 @@ export class FakeAccountRepository extends AccountRepository {
   }
 }
 
-/** Tipos de cuenta en memoria para el selector del formulario. */
-export class FakeAccountTypeOptionsRepository extends AccountTypeOptionsRepository {
-  options: AccountTypeOption[] = [
-    { id: 3, name: 'Tarjeta de crédito' },
-    { id: 1, name: 'Ahorros' },
-  ];
-
-  list(): Observable<AccountTypeOption[]> {
-    return of([...this.options]);
-  }
-}
-
-/** Las rutas reales del dominio montadas en `/accounts`, con los repositorios falsos en lugar de los HTTP. */
-export function fakeAccountsRoutes(
-  fake: FakeAccountRepository,
-  options = new FakeAccountTypeOptionsRepository(),
-): Routes {
+/** Las rutas reales del dominio montadas en `/accounts`, con el repositorio falso en lugar del HTTP. */
+export function fakeAccountsRoutes(fake: FakeAccountRepository): Routes {
   const [root] = accountsRoutes;
 
   return [
@@ -147,7 +129,6 @@ export function fakeAccountsRoutes(
           providers: [
             ...(root.providers ?? []),
             { provide: AccountRepository, useValue: fake },
-            { provide: AccountTypeOptionsRepository, useValue: options },
           ],
         },
       ],

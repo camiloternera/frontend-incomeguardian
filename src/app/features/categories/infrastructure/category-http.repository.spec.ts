@@ -13,7 +13,8 @@ const DTO = {
   id: 7,
   name: 'Mascotas',
   description: 'Comida y veterinario',
-  isGlobal: false,
+  transactionTypeId: 2,
+  transactionTypeName: 'Gasto',
   isActive: true,
   createdAt: '2026-10-29T12:00:00+00:00',
   updatedAt: null,
@@ -49,29 +50,39 @@ describe('CategoryHttpRepository', () => {
         id: 7,
         name: 'Mascotas',
         description: 'Comida y veterinario',
-        isGlobal: false,
+        type: 'expense',
         createdAt: '2026-10-29T12:00:00+00:00',
         updatedAt: null,
       },
     ]);
   });
 
-  it('sends the draft on create and update', () => {
-    repository.create({ name: 'Mascotas', description: 'Comida' }).subscribe();
+  it('skips categories of an unknown type', () => {
+    let result: unknown;
+    repository.list().subscribe((value) => (result = value));
+
+    http.expectOne(URL).flush({ data: [{ ...DTO, transactionTypeId: 9 }], isSuccess: true, message: 'ok', errors: [] });
+
+    expect(result).toEqual([]);
+  });
+
+  it('sends the type id on create and only name and description on update', () => {
+    repository.create({ name: 'Mascotas', description: 'Comida', type: 'transfer' }).subscribe();
     const create = http.expectOne(URL);
     expect(create.request.method).toBe('POST');
-    expect(create.request.body).toEqual({ name: 'Mascotas', description: 'Comida' });
+    expect(create.request.body).toEqual({ name: 'Mascotas', description: 'Comida', transactionTypeId: 3 });
     create.flush({ data: DTO, isSuccess: true, message: 'ok', errors: [] }, { status: 201, statusText: 'Created' });
 
     repository.update(7, { name: 'Mascotas', description: 'Otra' }).subscribe();
     const update = http.expectOne(`${URL}/7`);
     expect(update.request.method).toBe('PUT');
+    expect(update.request.body).toEqual({ name: 'Mascotas', description: 'Otra' });
     update.flush({ data: DTO, isSuccess: true, message: 'ok', errors: [] });
   });
 
   it('keeps the backend code and translates it', () => {
     let error: unknown;
-    repository.create({ name: 'Comida', description: 'x' }).subscribe({ error: (value) => (error = value) });
+    repository.create({ name: 'Comida', description: 'x', type: 'expense' }).subscribe({ error: (value) => (error = value) });
 
     http
       .expectOne(URL)

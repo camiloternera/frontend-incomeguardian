@@ -44,12 +44,13 @@ export interface TransactionAccountOptionDto {
   isActive: boolean;
 }
 
-/** Lo que este dominio lee de `GET /api/v1/categories`; `kind` puede faltar en backends antiguos. */
+/** Lo que este dominio lee de `GET /api/v1/categories`; ignora el resto de campos. */
 export interface TransactionCategoryOptionDto {
   id: number;
   name: string;
   isActive: boolean;
-  kind?: string | null;
+  /** 1 Ingreso, 2 Gasto, 3 Transferencia. */
+  transactionTypeId: number;
 }
 
 /** Respuesta de `GET /api/v1/exchange-rates/trm`. */

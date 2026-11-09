@@ -1,18 +1,19 @@
 import { Routes } from '@angular/router';
 import { categoriesRoutes } from '../categories.routes';
 import { Observable, of, throwError } from 'rxjs';
-import { Category, CategoryDraft } from '../domain/category';
+import { Category, CategoryDraft, NewCategoryDraft } from '../domain/category';
 import { CategoryError, CategoryErrorCode } from '../domain/category-error';
 import { CategoryRepository } from '../domain/category.repository';
 
 /** Repositorio en memoria para los tests de presentation; `failWith` fuerza el siguiente error. */
 export class FakeCategoryRepository extends CategoryRepository {
   categories: Category[] = [
-    { id: 1, name: 'Vivienda', description: 'Arriendo y servicios', isGlobal: true, createdAt: '2026-10-01T00:00:00Z', updatedAt: null },
-    { id: 9, name: 'Mascotas', description: 'Comida y veterinario', isGlobal: false, createdAt: '2026-10-20T00:00:00Z', updatedAt: null },
+    { id: 1, name: 'Vivienda', description: 'Arriendo y servicios', type: 'expense', createdAt: '2026-10-01T00:00:00Z', updatedAt: null },
+    { id: 9, name: 'Mascotas', description: 'Comida y veterinario', type: 'expense', createdAt: '2026-10-20T00:00:00Z', updatedAt: null },
+    { id: 4, name: 'Salario', description: 'Pago mensual', type: 'income', createdAt: '2026-10-02T00:00:00Z', updatedAt: null },
   ];
   failWith: CategoryError | null = null;
-  lastDraft: CategoryDraft | null = null;
+  lastDraft: CategoryDraft | NewCategoryDraft | null = null;
 
   list(): Observable<Category[]> {
     return this.respond(() => [...this.categories]);
@@ -22,9 +23,9 @@ export class FakeCategoryRepository extends CategoryRepository {
     return this.respond(() => this.find(id));
   }
 
-  create(draft: CategoryDraft): Observable<Category> {
+  create(draft: NewCategoryDraft): Observable<Category> {
     this.lastDraft = draft;
-    return this.respond(() => ({ id: 99, ...draft, isGlobal: false, createdAt: '2026-10-30T00:00:00Z', updatedAt: null }));
+    return this.respond(() => ({ id: 99, ...draft, createdAt: '2026-10-30T00:00:00Z', updatedAt: null }));
   }
 
   update(id: number, draft: CategoryDraft): Observable<Category> {

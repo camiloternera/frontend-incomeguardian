@@ -26,7 +26,7 @@
     },
     "search": {
       "label": "Buscar cuentas",
-      "placeholder": "Buscar por nombre o tipo"
+      "placeholder": "Buscar por nombre o moneda"
     },
     "empty": {
       "activeTitle": "Todavía no tienes cuentas activas",
@@ -52,7 +52,7 @@
   "form": {
     "close": "Cerrar panel",
     "createTitle": "Nueva cuenta",
-    "createSubtitle": "Ponle un nombre que reconozcas, elige su tipo y su moneda, e indica con cuánto dinero empieza.",
+    "createSubtitle": "Ponle un nombre que reconozcas, elige su moneda e indica con cuánto dinero empieza.",
     "editTitle": "Editar cuenta",
     "editSubtitle": "La moneda solo se puede cambiar mientras la cuenta no tenga movimientos.",
     "readOnly": "Esta cuenta está desactivada: puedes consultarla, pero no editarla ni registrar movimientos nuevos en ella.",
@@ -60,13 +60,6 @@
     "loading": "Cargando la cuenta…",
     "nameLabel": "Nombre",
     "namePlaceholder": "Por ejemplo, Bancolombia ahorros",
-    "typeLabel": "Tipo de cuenta",
-    "typePlaceholder": "Elige un tipo",
-    "typeRequired": "Elige el tipo de cuenta.",
-    "typesLoading": "Cargando tipos…",
-    "typesError": "No pudimos cargar tus tipos de cuenta.",
-    "noTypes": "Aún no tienes tipos de cuenta activos.",
-    "createType": "Crear un tipo de cuenta",
     "currencyLabel": "Moneda",
     "currency": {
       "COP": "Peso colombiano (COP)",
@@ -83,15 +76,20 @@
     "saveChanges": "Guardar cambios",
     "saving": "Guardando…",
     "backToList": "Volver a cuentas",
-    "notFoundTitle": "Cuenta no disponible"
+    "notFoundTitle": "Cuenta no disponible",
+    "openingLabel": "Fecha de apertura",
+    "openingDay": "Día de apertura",
+    "openingTime": "Hora de apertura",
+    "openingHint": "Desde cuándo existe la cuenta; no puede ser posterior a este momento."
   },
   "errors": {
     "ACCOUNT_NAME_REQUIRED": "Escribe un nombre para la cuenta.",
     "ACCOUNT_NAME_MAX_LENGTH": "El nombre puede tener hasta {{nameMax}} caracteres.",
     "ACCOUNT_NOT_FOUND": "No encontramos esta cuenta.",
-    "ACCOUNT_TYPE_INVALID": "Ese tipo de cuenta ya no está disponible. Elige otro de la lista.",
     "ACCOUNT_CURRENCY_REQUIRED": "Elige la moneda de la cuenta.",
     "ACCOUNT_CURRENCY_INVALID": "Esa moneda no está disponible. Elige una de la lista.",
-    "ACCOUNT_CURRENCY_LOCKED": "La cuenta ya tiene movimientos, así que su moneda no se puede cambiar."
+    "ACCOUNT_CURRENCY_LOCKED": "La cuenta ya tiene movimientos, así que su moneda no se puede cambiar.",
+    "ACCOUNT_OPENING_DATE_REQUIRED": "Indica el día y la hora en que abriste la cuenta.",
+    "ACCOUNT_OPENING_DATE_FUTURE": "La fecha de apertura no puede ser posterior a este momento."
   }
 }

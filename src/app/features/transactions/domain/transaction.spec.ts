@@ -49,10 +49,12 @@ describe('isUsableAccount', () => {
 });
 
 describe('categoryAppliesTo', () => {
-  it('filtra por la clase de la categoría', () => {
-    const salary = { id: 1, name: 'Salario', kind: 'income' as const, isActive: true };
+  it('exige que la categoría sea del mismo tipo que el movimiento', () => {
+    const salary = { id: 1, name: 'Salario', type: 'income' as const, isActive: true };
     expect(categoryAppliesTo(salary, 'income')).toBe(true);
     expect(categoryAppliesTo(salary, 'expense')).toBe(false);
-    expect(categoryAppliesTo({ ...salary, kind: 'both' }, 'expense')).toBe(true);
+    expect(categoryAppliesTo(salary, 'transfer')).toBe(false);
+    expect(categoryAppliesTo({ ...salary, type: 'transfer' }, 'transfer')).toBe(true);
+    expect(categoryAppliesTo({ ...salary, type: null }, 'income')).toBe(false);
   });
 });

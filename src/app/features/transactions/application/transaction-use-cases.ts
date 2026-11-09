@@ -1,7 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import {
-  CategoryKind,
   ExchangeRate,
   Transaction,
   TransactionAccountOption,
@@ -9,6 +8,7 @@ import {
   TransactionDraft,
   TransactionPage,
   TransactionQuery,
+  TransactionType,
 } from '../domain/transaction';
 import {
   ExchangeRateRepository,
@@ -70,8 +70,8 @@ export class ListTransactionAccountOptionsUseCase {
 export class ListTransactionCategoryOptionsUseCase {
   private readonly repository = inject(TransactionCategoryOptionsRepository);
 
-  /** Categorías activas de la clase pedida (o todas), ordenadas por nombre. */
-  execute(kind?: CategoryKind): Observable<TransactionCategoryOption[]> {
-    return this.repository.list(kind).pipe(map(byName));
+  /** Categorías del tipo de movimiento pedido (o todas), ordenadas por nombre. */
+  execute(type?: TransactionType): Observable<TransactionCategoryOption[]> {
+    return this.repository.list(type).pipe(map(byName));
   }
 }

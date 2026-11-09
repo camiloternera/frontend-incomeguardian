@@ -26,7 +26,7 @@
     },
     "search": {
       "label": "Search accounts",
-      "placeholder": "Search by name or type"
+      "placeholder": "Search by name or currency"
     },
     "empty": {
       "activeTitle": "No active accounts yet",
@@ -52,7 +52,7 @@
   "form": {
     "close": "Close panel",
     "createTitle": "New account",
-    "createSubtitle": "Give it a name you recognize, pick its type and currency, and say how much money it starts with.",
+    "createSubtitle": "Give it a name you recognize, pick its currency, and say how much money it starts with.",
     "editTitle": "Edit account",
     "editSubtitle": "The currency can only change while the account has no transactions.",
     "readOnly": "This account is deactivated: you can look it up, but you cannot edit it or record new transactions in it.",
@@ -60,13 +60,6 @@
     "loading": "Loading the account…",
     "nameLabel": "Name",
     "namePlaceholder": "For example, Chase savings",
-    "typeLabel": "Account type",
-    "typePlaceholder": "Pick a type",
-    "typeRequired": "Pick the account type.",
-    "typesLoading": "Loading types…",
-    "typesError": "We could not load your account types.",
-    "noTypes": "You have no active account types yet.",
-    "createType": "Create an account type",
     "currencyLabel": "Currency",
     "currency": {
       "COP": "Colombian peso (COP)",
@@ -83,15 +76,20 @@
     "saveChanges": "Save changes",
     "saving": "Saving…",
     "backToList": "Back to accounts",
-    "notFoundTitle": "Account unavailable"
+    "notFoundTitle": "Account unavailable",
+    "openingLabel": "Opening date",
+    "openingDay": "Opening day",
+    "openingTime": "Opening time",
+    "openingHint": "When the account started; it cannot be later than now."
   },
   "errors": {
     "ACCOUNT_NAME_REQUIRED": "Enter a name for the account.",
     "ACCOUNT_NAME_MAX_LENGTH": "The name can be up to {{nameMax}} characters.",
     "ACCOUNT_NOT_FOUND": "We could not find this account.",
-    "ACCOUNT_TYPE_INVALID": "That account type is no longer available. Pick another one from the list.",
     "ACCOUNT_CURRENCY_REQUIRED": "Pick the account's currency.",
     "ACCOUNT_CURRENCY_INVALID": "That currency is not available. Pick one from the list.",
-    "ACCOUNT_CURRENCY_LOCKED": "The account already has transactions, so its currency cannot change."
+    "ACCOUNT_CURRENCY_LOCKED": "The account already has transactions, so its currency cannot change.",
+    "ACCOUNT_OPENING_DATE_REQUIRED": "Enter the day and time you opened the account.",
+    "ACCOUNT_OPENING_DATE_FUTURE": "The opening date cannot be later than now."
   }
 }
