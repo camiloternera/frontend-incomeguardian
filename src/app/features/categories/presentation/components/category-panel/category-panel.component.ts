@@ -3,7 +3,7 @@ import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { AbstractControl, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
-import { LucideTrash2, LucideX } from '@lucide/angular';
+import { LucideBan, LucideRotateCcw, LucideX } from '@lucide/angular';
 import { Observable, finalize } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { notBlank } from '@shared/forms/not-blank.validator';
@@ -29,8 +29,8 @@ import {
 } from '../../../domain/category-error';
 import { CategoryWorkspace } from '../../category-workspace';
 
-/** Estado del panel: listo para editar, cargando o sin categoría. */
-type PanelStatus = 'ready' | 'loading' | 'notFound';
+/** Estado del panel: listo para editar, cargando, sin categoría o con una categoría desactivada. */
+type PanelStatus = 'ready' | 'loading' | 'notFound' | 'readOnly';
 
 /** Códigos de error que pinta cada campo, según la validación del navegador o la respuesta del backend. */
 interface FieldErrorCodes {
@@ -57,7 +57,7 @@ const LIST_URL = '/categories';
  */
 @Component({
   selector: 'app-category-panel',
-  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective, LucideTrash2, LucideX],
+  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective, LucideBan, LucideRotateCcw, LucideX],
   templateUrl: './category-panel.component.html',
 })
 export class CategoryPanelComponent {
@@ -82,17 +82,18 @@ export class CategoryPanelComponent {
   /** Categoría en edición; `null` cuando se crea una nueva. Cambia si se pasa de una fila a otra. */
   protected readonly categoryId = signal<number | null>(null);
   protected readonly isEdit = computed(() => this.categoryId() !== null);
-  /** La categoría tal como llegó del backend, para eliminarla con su nombre. */
-  private readonly loaded = signal<Category | null>(null);
+  /** La categoría tal como llegó del backend, para desactivarla o reactivarla y para el resumen de solo lectura. */
+  protected readonly loaded = signal<Category | null>(null);
 
   protected readonly status = signal<PanelStatus>('ready');
   protected readonly loadError = signal('');
   protected readonly isSubmitting = signal(false);
   protected readonly formError = signal('');
 
-  /** Si el pie del panel pide confirmar la eliminación. */
-  protected readonly confirmingDelete = signal(false);
-  protected readonly isDeleting = signal(false);
+  /** Si el pie del panel pide confirmar la desactivación. */
+  protected readonly confirmingDeactivate = signal(false);
+  /** Mientras se desactiva o se reactiva la categoría. */
+  protected readonly isChangingStatus = signal(false);
 
   /** Errores que devolvió el backend para cada campo; se limpian al volver a escribir. */
   protected readonly nameServerError = signal<CategoryErrorCode | null>(null);
@@ -181,39 +182,48 @@ export class CategoryPanelComponent {
     });
   }
 
-  protected askDelete(): void {
+  protected askDeactivate(): void {
     this.formError.set('');
-    this.confirmingDelete.set(true);
+    this.confirmingDeactivate.set(true);
   }
 
-  protected cancelDelete(): void {
-    this.confirmingDelete.set(false);
+  protected cancelDeactivate(): void {
+    this.confirmingDeactivate.set(false);
   }
 
-  protected confirmDelete(): void {
+  protected confirmDeactivate(): void {
     const category = this.loaded();
 
-    if (!category) {
-      return;
+    if (category) {
+      this.changeStatus(this.workspace.deactivate(category));
     }
+  }
 
-    this.isDeleting.set(true);
-    this.workspace
-      .remove(category)
-      .pipe(finalize(() => this.isDeleting.set(false)))
-      .subscribe({
-        next: () => this.close(),
-        error: (error: unknown) => {
-          this.confirmingDelete.set(false);
+  protected activate(): void {
+    const category = this.loaded();
 
-          if (error instanceof CategoryError && error.code === CategoryErrorCode.NotFound) {
-            this.status.set('notFound');
-            return;
-          }
+    if (category) {
+      this.formError.set('');
+      this.changeStatus(this.workspace.activate(category));
+    }
+  }
 
-          this.formError.set(this.messageOf(error));
-        },
-      });
+  /** Desactiva o reactiva y vuelve al listado, donde la categoría ya aparece en su nueva pestaña. */
+  private changeStatus(request: Observable<Category>): void {
+    this.isChangingStatus.set(true);
+    request.pipe(finalize(() => this.isChangingStatus.set(false))).subscribe({
+      next: () => this.close(),
+      error: (error: unknown) => {
+        this.confirmingDeactivate.set(false);
+
+        if (error instanceof CategoryError && error.code === CategoryErrorCode.NotFound) {
+          this.status.set('notFound');
+          return;
+        }
+
+        this.formError.set(this.messageOf(error));
+      },
+    });
   }
 
   /** Prepara el panel para crear (`null`) o para editar la categoría indicada. */
@@ -221,7 +231,7 @@ export class CategoryPanelComponent {
     this.categoryId.set(id);
     this.workspace.selectedId.set(id);
     this.loaded.set(null);
-    this.confirmingDelete.set(false);
+    this.confirmingDeactivate.set(false);
     this.formError.set('');
     this.typeServerError.set(null);
     this.categoryForm.reset({ name: '', description: '', type: this.initialType() });
@@ -245,7 +255,8 @@ export class CategoryPanelComponent {
       next: (category) => {
         this.loaded.set(category);
         this.categoryForm.reset({ name: category.name, description: category.description, type: category.type });
-        this.status.set('ready');
+        // El backend solo edita categorías activas: una desactivada se consulta y se puede reactivar.
+        this.status.set(category.isActive ? 'ready' : 'readOnly');
       },
       error: (error: unknown) => {
         if (error instanceof CategoryError && error.code === CategoryErrorCode.NotFound) {
@@ -283,11 +294,11 @@ export class CategoryPanelComponent {
     const requested = this.route.snapshot.queryParamMap.get('type');
 
     if (isCategoryType(requested)) {
-      this.workspace.type.set(requested);
+      this.workspace.tab.set(requested);
       return requested;
     }
 
-    return this.workspace.type();
+    return this.workspace.proposedType();
   }
 
   private localError(control: AbstractControl, codes: FieldErrorCodes): CategoryErrorCode | null {

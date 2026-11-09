@@ -5,10 +5,8 @@
   [attr.data-theme]="theme()"
 >
   <header class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
-    <div class="flex flex-col gap-2">
-      @if (monthLabel()) {
-        <p class="m-0 text-[14px] font-medium capitalize text-ig-accent-text">{{ monthLabel() }}</p>
-      }
+    <div class="flex flex-col gap-4">
+      <app-period-selector />
       <h1 class="m-0 text-[28px] font-bold leading-[1.05] tracking-[-0.03em] sm:text-[34px]">{{ t('dashboard.home.title') }}</h1>
     </div>
 
@@ -39,64 +37,133 @@
     </div>
   </header>
 
+  <app-period-banner />
+  <app-period-overlays />
+
   @if (overview(); as data) {
-    @if (outlook(); as month) {
-      <section
-        data-testid="hero"
-        class="flex flex-col gap-10 border-b border-ig-border pb-10 lg:flex-row"
-        [attr.aria-label]="t('dashboard.home.hero.label')"
-      >
-        <div class="flex min-w-0 flex-[3] flex-col gap-4">
-          @if (month.overspent) {
-            <h2 class="m-0 text-[14px] font-medium text-ig-muted">{{ t('dashboard.home.hero.overspentTitle') }}</h2>
-          } @else {
-            <h2 class="m-0 text-[14px] font-medium text-ig-muted">{{ t('dashboard.home.hero.availableUntil', { date: shortDate(month.monthEnd) }) }}</h2>
-          }
-
-          <p class="m-0 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <span data-testid="available" class="break-all text-[44px] font-bold leading-none tracking-[-0.045em] tabular-nums sm:text-[64px]">{{ money(month.available) }}</span>
-            <span class="text-[18px] font-medium text-ig-muted">{{ data.currency }}</span>
-          </p>
-
-          <p class="m-0 max-w-[560px] text-[16px] leading-relaxed text-ig-muted">
-            @if (month.overspent) {
-              {{ t('dashboard.home.hero.overspentBody', { amount: money(-month.available) }) }}
-            } @else if (data.incomePayments === 1) {
-              {{ t('dashboard.home.hero.summaryOnePayment', { income: money(data.income), expenses: money(data.expenses), committed: money(data.committed) }) }}
-            } @else {
-              {{ t('dashboard.home.hero.summary', { income: money(data.income), payments: data.incomePayments, expenses: money(data.expenses), committed: money(data.committed) }) }}
-            }
-          </p>
-
-          @if (data.income > 0 || month.overspent) {
-            <div class="flex max-w-[640px] flex-col gap-2 pt-2">
-              <div
-                class="flex h-3 gap-0.5 overflow-hidden rounded-full"
-                role="img"
-                [attr.aria-label]="t('dashboard.home.hero.split', { spent: percent(month.spentShare), committed: percent(month.committedShare), available: percent(month.availableShare) })"
-              >
-                <span class="bg-ig-muted" [style.flex-grow]="month.spentShare"></span>
-                <span class="bg-ig-border" [style.flex-grow]="month.committedShare"></span>
-                <span class="bg-ig-accent" [style.flex-grow]="month.availableShare"></span>
-              </div>
-              <ul class="m-0 flex list-none flex-wrap gap-x-6 gap-y-2 p-0 text-[13px] text-ig-muted" aria-hidden="true">
-                <li class="inline-flex items-center gap-2"><span class="size-2 rounded-sm bg-ig-muted"></span>{{ t('dashboard.home.hero.spent') }} {{ percent(month.spentShare) }}</li>
-                <li class="inline-flex items-center gap-2"><span class="size-2 rounded-sm bg-ig-border"></span>{{ t('dashboard.home.hero.committed') }} {{ percent(month.committedShare) }}</li>
-                <li class="inline-flex items-center gap-2"><span class="size-2 rounded-sm bg-ig-accent"></span>{{ t('dashboard.home.hero.available') }} {{ percent(month.availableShare) }}</li>
-              </ul>
+    <section
+      data-testid="hero"
+      class="flex flex-col gap-10 border-b border-ig-border pb-10 lg:flex-row"
+      [attr.aria-label]="t('dashboard.home.hero.label')"
+    >
+      <div class="flex min-w-0 flex-[3] flex-col gap-4">
+        @let state = summaryState();
+        @switch (state.status) {
+          @case ('loading') {
+            <!-- El esqueleto ocupa lo mismo que el bloque listo para que nada salte al llegar los datos. -->
+            <div data-testid="hero-loading" class="flex flex-col gap-4" role="status">
+              <span class="sr-only">{{ t('dashboard.home.hero.loading') }}</span>
+              <span class="block h-[18px] w-64 max-w-full rounded bg-ig-surface motion-safe:animate-pulse" aria-hidden="true"></span>
+              <span class="block h-11 w-80 max-w-full rounded-lg bg-ig-surface motion-safe:animate-pulse sm:h-16" aria-hidden="true"></span>
+              <span class="block h-[52px] w-full max-w-[560px] rounded bg-ig-surface motion-safe:animate-pulse" aria-hidden="true"></span>
+              <span class="mt-2 block h-3 w-full max-w-[640px] rounded-full bg-ig-surface motion-safe:animate-pulse" aria-hidden="true"></span>
             </div>
           }
-
-          @if (month.perDay !== null) {
-            <p data-testid="per-day" class="m-0 self-start rounded-full bg-ig-accent/15 px-4 py-2 text-[13px] font-medium text-ig-accent-text">
-              @if (month.daysLeft === 1) {
-                {{ t('dashboard.home.hero.perDayLast', { amount: money(month.perDay) }) }}
-              } @else {
-                {{ t('dashboard.home.hero.perDay', { amount: money(month.perDay), days: month.daysLeft }) }}
+          @case ('error') {
+            <div data-testid="hero-error" class="flex flex-col items-start gap-4" role="alert">
+              <p class="m-0 text-[16px] text-ig-text">{{ t('dashboard.home.hero.loadError') }}</p>
+              @if (state.status === 'error') {
+                <p class="m-0 text-[13px] text-ig-muted">{{ state.message }}</p>
               }
-            </p>
+              <button
+                data-testid="hero-retry"
+                type="button"
+                class="inline-flex min-h-11 items-center rounded-lg border border-ig-border bg-transparent px-4 text-[14px] font-bold text-ig-text hover:bg-ig-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ig-accent"
+                (click)="loadSummary()"
+              >
+                {{ t('dashboard.home.hero.retry') }}
+              </button>
+            </div>
           }
-        </div>
+          @default {
+            @let month = outlook();
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              @if (month?.overspent) {
+                <h2 class="m-0 text-[14px] font-medium text-ig-muted">{{ t('dashboard.home.hero.' + overKind() + 'Title') }}</h2>
+              } @else {
+                <h2 class="m-0 text-[14px] font-medium text-ig-muted">{{ t('dashboard.home.hero.availableUntil', { date: shortDate(monthEnd()) }) }}</h2>
+              }
+              @if (hasManyCurrencies()) {
+                <div data-testid="summary-currency" class="w-full sm:w-[240px]">
+                  <label class="sr-only" for="summary-currency">{{ t('dashboard.home.hero.currencyLabel') }}</label>
+                  <app-select inputId="summary-currency" [options]="currencyOptions()" [formControl]="currencyFilter" />
+                </div>
+              }
+            </div>
+
+            @let figures = activeFigures();
+            @if (isEmpty() || !month || !figures) {
+              <div data-testid="hero-empty" class="flex flex-col items-start gap-4">
+                <p class="m-0 max-w-[560px] text-[16px] leading-relaxed text-ig-muted">{{ t('dashboard.home.hero.empty') }}</p>
+                <a
+                  data-testid="hero-add-income"
+                  class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-ig-accent bg-ig-accent px-5 text-[14px] font-bold text-ig-on-accent no-underline hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ig-accent"
+                  routerLink="/transactions/new/income"
+                >
+                  <svg lucidePlus [size]="18"></svg>
+                  {{ t('dashboard.home.hero.emptyAction') }}
+                </a>
+              </div>
+            } @else {
+              <p class="m-0 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <span data-testid="available" class="break-all text-[44px] font-bold leading-none tracking-[-0.045em] tabular-nums sm:text-[64px]">{{ heroMoney(month.available) }}</span>
+                <span data-testid="available-currency" class="text-[18px] font-medium text-ig-muted">{{ figures.currency }}</span>
+              </p>
+
+              <p data-testid="hero-summary" class="m-0 max-w-[560px] text-[16px] leading-relaxed text-ig-muted">
+                @if (month.overspent) {
+                  {{ t('dashboard.home.hero.' + overKind() + 'Body', { amount: heroMoney(-month.available) }) }}
+                } @else {
+                  {{ t(summaryKey(), { income: heroMoney(figures.income), payments: figures.incomePayments, expenses: heroMoney(figures.spent), committed: heroMoney(figures.committed) }) }}
+                }
+              </p>
+
+              <!-- La barra reparte el ingreso: sin ingreso no hay nada que repartir. Los tramos en 0 no se dibujan. -->
+              @if (figures.income > 0) {
+                <div class="flex max-w-[640px] flex-col gap-2 pt-2">
+                  <div
+                    data-testid="hero-split"
+                    class="flex h-3 gap-0.5 overflow-hidden rounded-full"
+                    role="img"
+                    [attr.aria-label]="t(figures.committed > 0 ? 'dashboard.home.hero.split' : 'dashboard.home.hero.splitNoCommitted', { spent: percent(month.spentShare), committed: percent(month.committedShare), available: percent(month.availableShare) })"
+                  >
+                    @if (month.spentShare > 0) {
+                      <span class="bg-ig-muted" [style.flex-grow]="month.spentShare"></span>
+                    }
+                    @if (month.committedShare > 0) {
+                      <span class="bg-ig-border" [style.flex-grow]="month.committedShare"></span>
+                    }
+                    @if (month.availableShare > 0) {
+                      <span class="bg-ig-accent" [style.flex-grow]="month.availableShare"></span>
+                    }
+                  </div>
+                  <ul class="m-0 flex list-none flex-wrap gap-x-6 gap-y-2 p-0 text-[13px] text-ig-muted tabular-nums" aria-hidden="true">
+                    @if (month.spentShare > 0) {
+                      <li class="inline-flex items-center gap-2"><span class="size-2 rounded-sm bg-ig-muted"></span>{{ t('dashboard.home.hero.spent') }} {{ percent(month.spentShare) }}</li>
+                    }
+                    @if (month.committedShare > 0) {
+                      <li class="inline-flex items-center gap-2"><span class="size-2 rounded-sm bg-ig-border"></span>{{ t('dashboard.home.hero.committed') }} {{ percent(month.committedShare) }}</li>
+                    }
+                    @if (month.availableShare > 0) {
+                      <li class="inline-flex items-center gap-2"><span class="size-2 rounded-sm bg-ig-accent"></span>{{ t('dashboard.home.hero.available') }} {{ percent(month.availableShare) }}</li>
+                    }
+                  </ul>
+                </div>
+              }
+
+              @if (month.perDay !== null) {
+                <p data-testid="per-day" class="m-0 self-start rounded-full bg-ig-accent/15 px-4 py-2 text-[13px] font-medium text-ig-accent-text">
+                  @if (month.daysLeft === 1) {
+                    {{ t('dashboard.home.hero.perDayLast', { amount: heroMoney(month.perDay) }) }}
+                  } @else {
+                    {{ t('dashboard.home.hero.perDay', { amount: heroMoney(month.perDay), days: month.daysLeft }) }}
+                  }
+                </p>
+              }
+            }
+          }
+        }
+      </div>
 
         <div data-testid="cushion" class="flex min-w-0 flex-1 flex-col gap-4 rounded-lg border border-ig-border bg-ig-surface p-6 lg:max-w-[340px]">
           <h2 class="m-0 flex items-center gap-2 text-[14px] font-medium text-ig-muted">
@@ -128,6 +195,7 @@
         </div>
       </section>
 
+    @if (sampleOutlook(); as month) {
       <section class="grid gap-6 sm:grid-cols-3" [attr.aria-label]="t('dashboard.home.stats.label')">
         <div data-testid="stat-income" class="flex flex-col gap-2 border-l border-ig-border pl-6">
           <h2 class="m-0 text-[14px] font-normal text-ig-muted">{{ t('dashboard.home.stats.income') }}</h2>
@@ -233,12 +301,15 @@
 
       @for (day of days(); track day.date) {
         <div data-testid="movement-day">
-          <h3 class="m-0 border-b border-ig-border py-2 text-[13px] font-medium text-ig-muted">
-            @switch (day.relative) {
-              @case ('today') { {{ t('dashboard.home.recent.today') }} · {{ longDate(day.date) }} }
-              @case ('yesterday') { {{ t('dashboard.home.recent.yesterday') }} }
-              @default { {{ capitalized(longDate(day.date)) }} }
-            }
+          <h3 class="m-0 flex flex-wrap items-center gap-2 border-b border-ig-border py-2 text-[13px] font-medium text-ig-muted">
+            <span>
+              @switch (day.relative) {
+                @case ('today') { {{ t('dashboard.home.recent.today') }} · {{ longDate(day.date) }} }
+                @case ('yesterday') { {{ t('dashboard.home.recent.yesterday') }} }
+                @default { {{ capitalized(longDate(day.date)) }} }
+              }
+            </span>
+            <app-closed-month-badge [date]="day.date" />
           </h3>
           <ul class="m-0 list-none p-0">
             @for (movement of day.movements; track movement.id) {

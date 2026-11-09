@@ -9,6 +9,8 @@ export const TransactionErrorCode = {
   AccountsMustDiffer: 'TRANSACTION_ACCOUNTS_MUST_DIFFER',
   AccountNotFound: 'TRANSACTION_ACCOUNT_NOT_FOUND',
   AccountInactive: 'ACCOUNT_INACTIVE',
+  /** Falta la categoría del movimiento. */
+  CategoryRequired: 'TRANSACTION_CATEGORY_REQUIRED',
   CategoryNotFound: 'TRANSACTION_CATEGORY_NOT_FOUND',
   CategoryTypeMismatch: 'TRANSACTION_CATEGORY_TYPE_MISMATCH',
   DescriptionMaxLength: 'TRANSACTION_DESCRIPTION_MAX_LENGTH',
@@ -19,6 +21,8 @@ export const TransactionErrorCode = {
   AccountCurrencyUnsupported: 'TRANSACTION_ACCOUNT_CURRENCY_UNSUPPORTED',
   ExchangeRateUnavailable: 'EXCHANGE_RATE_UNAVAILABLE',
   ExchangeRateDateInvalid: 'EXCHANGE_RATE_DATE_INVALID',
+  /** La fecha cae en un mes cerrado; el formulario muestra la nota de fecha cerrada. */
+  PeriodClosed: 'PERIOD_CLOSED',
 } as const;
 
 export type TransactionErrorCode = (typeof TransactionErrorCode)[keyof typeof TransactionErrorCode];
@@ -42,6 +46,7 @@ export const ACCOUNT_ERROR_CODES: readonly TransactionErrorCode[] = [
 ];
 
 export const CATEGORY_ERROR_CODES: readonly TransactionErrorCode[] = [
+  TransactionErrorCode.CategoryRequired,
   TransactionErrorCode.CategoryNotFound,
   TransactionErrorCode.CategoryTypeMismatch,
 ];

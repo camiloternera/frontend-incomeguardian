@@ -44,10 +44,19 @@ export class UpdateCategoryUseCase {
 }
 
 @Injectable()
-export class DeleteCategoryUseCase {
+export class DeactivateCategoryUseCase {
   private readonly repository = inject(CategoryRepository);
 
-  execute(id: number): Observable<void> {
-    return this.repository.remove(id);
+  execute(id: number): Observable<Category> {
+    return this.repository.deactivate(id);
+  }
+}
+
+@Injectable()
+export class ActivateCategoryUseCase {
+  private readonly repository = inject(CategoryRepository);
+
+  execute(id: number): Observable<Category> {
+    return this.repository.activate(id);
   }
 }

@@ -30,8 +30,8 @@ describe('CategoryListPageComponent', () => {
     localStorage.clear();
     fake = new FakeCategoryRepository();
     fake.categories.push(
-      { id: 2, name: 'Alimentación', description: 'Mercado y comidas fuera', type: 'expense', createdAt: '2026-10-01T00:00:00Z', updatedAt: null },
-      { id: 10, name: 'Coworking', description: 'Escritorio y café', type: 'transfer', createdAt: '2026-10-02T00:00:00Z', updatedAt: '2026-10-14T00:00:00Z' },
+      { id: 2, name: 'Alimentación', description: 'Mercado y comidas fuera', type: 'expense', isActive: true, createdAt: '2026-10-01T00:00:00Z', updatedAt: null },
+      { id: 10, name: 'Coworking', description: 'Escritorio y café', type: 'transfer', isActive: true, createdAt: '2026-10-02T00:00:00Z', updatedAt: '2026-10-14T00:00:00Z' },
     );
     await TestBed.configureTestingModule({
       imports: [translocoTesting()],
@@ -58,7 +58,36 @@ describe('CategoryListPageComponent', () => {
     expect(names(element, 'category-rows')).toEqual(['Coworking']);
   });
 
-  it('offers edit and delete on every category', async () => {
+  it('lists the deactivated categories in their own tab, ordered by type, and reactivates them', async () => {
+    fake.categories.push(
+      { id: 11, name: 'Bonos', description: 'Extras', type: 'income', isActive: false, createdAt: '2026-09-01T00:00:00Z', updatedAt: null },
+    );
+    const { harness, element } = await open();
+
+    expect(names(element, 'category-rows')).not.toContain('Gimnasio');
+    expect(element.querySelector('[data-testid="tab-inactive"]')?.textContent).toContain('2');
+
+    click(element, 'tab-inactive');
+    harness.detectChanges();
+    expect(names(element, 'category-rows')).toEqual(['Bonos', 'Gimnasio']);
+    expect(element.querySelector('[data-testid="type-6"]')?.textContent).toContain('Expense');
+    expect(element.querySelector('[data-testid="category-6"] a')?.getAttribute('aria-label')).toBe('View the Gimnasio category');
+
+    click(element, 'menu-6');
+    harness.detectChanges();
+    expect(element.querySelector('#category-menu-6')?.textContent).not.toContain('Edit');
+    click(element, 'activate-6');
+    harness.detectChanges();
+
+    expect(names(element, 'category-rows')).toEqual(['Bonos']);
+    expect(element.querySelector('[data-testid="category-notice"]')?.textContent).toContain('You reactivated the “Gimnasio” category.');
+
+    click(element, 'tab-expense');
+    harness.detectChanges();
+    expect(names(element, 'category-rows')).toContain('Gimnasio');
+  });
+
+  it('offers edit and deactivate on every active category', async () => {
     const { harness, element } = await open();
 
     expect(element.querySelector('[data-testid="category-9"] a[href="/categories/9/edit"]')).toBeTruthy();
@@ -83,6 +112,7 @@ describe('CategoryListPageComponent', () => {
         name: `Propia ${index + 1}`,
         description: 'Generada para el test',
         type: 'expense' as const,
+        isActive: true,
         createdAt: '2026-10-20T00:00:00Z',
         updatedAt: null,
       })),
@@ -135,20 +165,39 @@ describe('CategoryListPageComponent', () => {
     expect(document.activeElement).toBe(button);
   });
 
-  it('asks before deleting from the menu and confirms afterwards', async () => {
+  it('asks before deactivating from the menu and moves the category to the deactivated tab', async () => {
     const { harness, element } = await open();
 
     click(element, 'menu-9');
     harness.detectChanges();
-    click(element, 'delete-9');
+    click(element, 'deactivate-9');
     harness.detectChanges();
-    expect(element.querySelector('[data-testid="delete-confirmation"]')?.textContent).toContain('Delete “Mascotas”?');
+    expect(element.querySelector('[data-testid="deactivate-confirmation"]')?.textContent).toContain('Deactivate “Mascotas”?');
 
-    click(element, 'confirm-delete');
+    click(element, 'confirm-deactivate');
     harness.detectChanges();
 
     expect(element.querySelector('[data-testid="category-9"]')).toBeNull();
-    expect(element.querySelector('[data-testid="category-notice"]')?.textContent).toContain('You deleted the “Mascotas” category.');
+    expect(element.querySelector('[data-testid="category-notice"]')?.textContent).toContain('You deactivated the “Mascotas” category.');
+
+    click(element, 'tab-inactive');
+    harness.detectChanges();
+    expect(names(element, 'category-rows')).toEqual(['Gimnasio', 'Mascotas']);
+  });
+
+  it('syncs a category the backend had already deactivated and says so', async () => {
+    const { harness, element } = await open();
+    fake.failWith = new CategoryError('This category was already deactivated.', CategoryErrorCode.AlreadyInactive);
+
+    click(element, 'menu-9');
+    harness.detectChanges();
+    click(element, 'deactivate-9');
+    harness.detectChanges();
+    click(element, 'confirm-deactivate');
+    harness.detectChanges();
+
+    expect(element.querySelector('[data-testid="category-9"]')).toBeNull();
+    expect(element.querySelector('[data-testid="action-error"]')?.textContent).toContain('already deactivated');
   });
 
   it('drops a category the backend no longer has', async () => {
@@ -157,13 +206,13 @@ describe('CategoryListPageComponent', () => {
 
     click(element, 'menu-9');
     harness.detectChanges();
-    click(element, 'delete-9');
+    click(element, 'deactivate-9');
     harness.detectChanges();
-    click(element, 'confirm-delete');
+    click(element, 'confirm-deactivate');
     harness.detectChanges();
 
     expect(element.querySelector('[data-testid="category-9"]')).toBeNull();
-    expect(element.querySelector('[data-testid="delete-error"]')?.textContent).toContain('The category was not found.');
+    expect(element.querySelector('[data-testid="action-error"]')?.textContent).toContain('The category was not found.');
   });
 
   it('shows an empty state for a type without categories', async () => {
@@ -171,6 +220,16 @@ describe('CategoryListPageComponent', () => {
     const { element } = await open();
 
     expect(element.querySelector('[data-testid="category-empty"]')?.textContent).toContain('no expense categories yet');
+  });
+
+  it('shows an empty state for the deactivated tab', async () => {
+    fake.categories = fake.categories.filter((category) => category.isActive);
+    const { harness, element } = await open();
+
+    click(element, 'tab-inactive');
+    harness.detectChanges();
+
+    expect(element.querySelector('[data-testid="category-empty"]')?.textContent).toContain('no deactivated categories');
   });
 
   it('shows the load error with a retry', async () => {
@@ -221,6 +280,7 @@ describe('CategoryListPageComponent', () => {
     expect(element.textContent).toContain('Ingresos');
     expect(element.textContent).toContain('Gastos');
     expect(element.textContent).toContain('Transferencias');
+    expect(element.textContent).toContain('Desactivadas');
     expect(element.textContent).toContain('Nueva categoría');
   });
 });

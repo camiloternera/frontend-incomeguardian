@@ -11,10 +11,11 @@ import {
 } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
-import { LucideLock, LucidePlus, LucideX } from '@lucide/angular';
+import { LucideCircleAlert, LucideLock, LucidePlus, LucideX } from '@lucide/angular';
 import { Observable, Subject, Subscription, catchError, finalize, map, merge, of, startWith, switchMap } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { LanguageService } from '@core/i18n/language.service';
+import { LockedDateNoteComponent, PeriodOverlaysComponent } from '@features/periods';
 import { DatePickerComponent } from '@shared/ui/date-picker/date-picker.component';
 import { SelectComponent, SelectOption } from '@shared/ui/select/select.component';
 import {
@@ -84,7 +85,19 @@ const TYPE_ORDER: readonly TransactionType[] = ['expense', 'income', 'transfer']
  */
 @Component({
   selector: 'app-transaction-panel',
-  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective, LucideLock, LucidePlus, LucideX, SelectComponent, DatePickerComponent],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    TranslocoDirective,
+    LucideCircleAlert,
+    LucideLock,
+    LucidePlus,
+    LucideX,
+    SelectComponent,
+    DatePickerComponent,
+    LockedDateNoteComponent,
+    PeriodOverlaysComponent,
+  ],
   templateUrl: './transaction-panel.component.html',
 })
 export class TransactionPanelComponent {
@@ -97,6 +110,7 @@ export class TransactionPanelComponent {
   private readonly router = inject(Router);
   private readonly transloco = inject(TranslocoService);
   private readonly heading = viewChild<ElementRef<HTMLElement>>('heading');
+  private readonly lockedNote = viewChild(LockedDateNoteComponent);
 
   protected readonly listUrl = LIST_URL;
   protected readonly typeOrder = TYPE_ORDER;
@@ -132,7 +146,8 @@ export class TransactionPanelComponent {
   protected readonly form = this.formBuilder.group({
     amount: ['', amountValidator],
     description: ['', Validators.maxLength(TRANSACTION_DESCRIPTION_MAX_LENGTH)],
-    categoryId: this.formBuilder.control<number | null>(null),
+    /** Todo movimiento lleva categoría de su mismo tipo. */
+    categoryId: this.formBuilder.control<number | null>(null, Validators.required),
     /** Cuenta de un ingreso (a la que entra) o de un gasto (de la que sale). */
     accountId: this.formBuilder.control<number | null>(null),
     fromAccountId: this.formBuilder.control<number | null>(null),
@@ -140,7 +155,7 @@ export class TransactionPanelComponent {
     date: [todayInputDate(), [Validators.required, notInFuture]],
   });
 
-  private readonly formValue = toSignal(this.form.valueChanges.pipe(map(() => this.form.getRawValue())), {
+  protected readonly formValue = toSignal(this.form.valueChanges.pipe(map(() => this.form.getRawValue())), {
     initialValue: this.form.getRawValue(),
   });
 
@@ -173,30 +188,15 @@ export class TransactionPanelComponent {
   /** Saldo actual de la cuenta destino de la transferencia. */
   protected readonly destinationBalanceText = computed(() => this.balanceOf(this.destination()));
 
-  /**
-   * Opciones del selector de categoría. La primera, sin valor, permite dejar el movimiento sin
-   * categoría; su texto llega traducido desde la plantilla.
-   */
-  private categoryOptionsCache: { noneLabel: string; source: TransactionCategoryOption[]; options: SelectOption<number | null>[] } | null =
-    null;
+  /** No hay categorías activas del tipo: no se puede guardar hasta crear una. */
+  protected readonly missingCategories = computed(
+    () => this.categoriesStatus() === 'ready' && this.categories().length === 0,
+  );
 
-  protected categoryOptions(noneLabel: string): SelectOption<number | null>[] {
-    const source = this.categories();
-    const cache = this.categoryOptionsCache;
-
-    // Se reutiliza el mismo arreglo mientras no cambien las categorías ni el idioma.
-    if (cache?.noneLabel === noneLabel && cache.source === source) {
-      return cache.options;
-    }
-
-    const options = [
-      { value: null, label: noneLabel },
-      ...source.map((category) => ({ value: category.id, label: category.name })),
-    ];
-    this.categoryOptionsCache = { noneLabel, source, options };
-
-    return options;
-  }
+  /** Opciones del selector de categoría: solo las activas del tipo, sin opción vacía. */
+  protected readonly categoryOptions = computed<SelectOption<number>[]>(() =>
+    this.categories().map((category) => ({ value: category.id, label: category.name })),
+  );
 
   /** Mensaje del fallo de la TRM, si lo hay. */
   protected readonly rateMessage = computed(() => {
@@ -297,9 +297,18 @@ export class TransactionPanelComponent {
     };
   });
 
-  /** Sin TRM no se puede calcular ni crear una transferencia entre monedas. */
+  /** Si la fecha elegida cae en un mes cerrado: no se puede guardar hasta reabrirlo o cambiarla. */
+  protected readonly dateLocked = computed(() => this.lockedNote()?.locked() ?? false);
+
+  /**
+   * Sin TRM no se puede calcular ni crear una transferencia entre monedas, y no se guarda un
+   * movimiento con fecha en un mes cerrado.
+   */
   protected readonly canSubmit = computed(
-    () => !this.isSubmitting() && (!this.crossCurrency() || this.rateState().status === 'ready'),
+    () =>
+      !this.isSubmitting() &&
+      !this.dateLocked() &&
+      (!this.crossCurrency() || this.rateState().status === 'ready'),
   );
 
   private categoriesRequest: Subscription | null = null;
@@ -407,7 +416,17 @@ export class TransactionPanelComponent {
   protected categoryError(): FieldMessage | null {
     const code = this.categoryServerError();
 
-    return code ? this.codeMessage(code) : null;
+    if (code) {
+      return this.codeMessage(code);
+    }
+
+    if (!this.showsError(this.form.controls.categoryId)) {
+      return null;
+    }
+
+    return this.missingCategories()
+      ? { key: `transactions.form.noCategoriesRequired.${this.type()}` }
+      : { key: `transactions.form.categoryRequired.${this.type()}` };
   }
 
   protected dateError(): FieldMessage | null {
@@ -455,6 +474,12 @@ export class TransactionPanelComponent {
       },
       error: () => this.categoriesStatus.set('error'),
     });
+  }
+
+  /** «Usar hoy» de la nota de fecha cerrada. */
+  protected useToday(date: string): void {
+    this.form.controls.date.setValue(date);
+    this.form.controls.date.markAsDirty();
   }
 
   protected retryRate(): void {
@@ -547,6 +572,8 @@ export class TransactionPanelComponent {
     setRequired(controls.accountId, !transfer);
     setRequired(controls.fromAccountId, transfer);
     setRequired(controls.toAccountId, transfer);
+    // Al cambiar de tipo la categoría vuelve a estar vacía: no se acusa el error hasta volver a enviar.
+    controls.categoryId.markAsUntouched();
 
     this.loadCategories();
   }
@@ -563,7 +590,10 @@ export class TransactionPanelComponent {
   private handleSubmitError(error: unknown): void {
     const code = error instanceof TransactionError ? error.code : null;
 
-    if (code && AMOUNT_ERROR_CODES.includes(code)) {
+    if (code === TransactionErrorCode.PeriodClosed) {
+      // Otro dispositivo pudo cerrar el mes: la nota de la fecha lo explica y ofrece reabrirlo.
+      this.lockedNote()?.markLocked(this.form.controls.date.value);
+    } else if (code && AMOUNT_ERROR_CODES.includes(code)) {
       this.amountServerError.set(code);
     } else if (code && ACCOUNT_ERROR_CODES.includes(code)) {
       this.accountServerError.set(code);

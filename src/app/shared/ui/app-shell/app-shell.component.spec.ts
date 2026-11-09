@@ -54,8 +54,9 @@ describe('AppShellComponent', () => {
     const { sidebar } = await render();
 
     expect(sidebar.querySelectorAll('nav li').length).toBe(5);
-    // Solo presupuestos sigue pendiente.
-    expect(sidebar.querySelectorAll('[data-testid="shell-soon"]').length).toBe(1);
+    // Todas las secciones ya existen, incluido el presupuesto.
+    expect(sidebar.querySelectorAll('[data-testid="shell-soon"]').length).toBe(0);
+    expect(sidebar.querySelector('a[href="/budgets"]')).toBeTruthy();
     expect(sidebar.textContent).toContain('Money');
     expect(sidebar.textContent).toContain('Setup');
   });

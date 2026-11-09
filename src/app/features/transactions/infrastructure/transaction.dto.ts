@@ -23,6 +23,22 @@ export interface TransactionPageDto {
   totalItems: number;
 }
 
+/** Una moneda de `GET /api/v1/transactions/summary`. */
+export interface TransactionCurrencySummaryDto {
+  currency: string;
+  income: number;
+  expense: number;
+  transfersIn: number;
+  transfersOut: number;
+  net: number;
+}
+
+/** Respuesta de `GET /api/v1/transactions/summary`. */
+export interface TransactionSummaryDto {
+  totalItems: number;
+  currencies: TransactionCurrencySummaryDto[];
+}
+
 /** Cuerpo de `POST /api/v1/transactions`: los campos ausentes no se envían. */
 export interface TransactionRequestDto {
   type: string;

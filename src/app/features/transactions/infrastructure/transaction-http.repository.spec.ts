@@ -85,13 +85,31 @@ describe('TransactionHttpRepository', () => {
     request.flush(ok({ items: [], page: 1, pageSize: 5, totalItems: 0 }));
   });
 
-  it('sends the type and account filters when given', () => {
-    repository.list({ page: 2, pageSize: 5, type: 'income', accountId: 7 }).subscribe();
+  it('sends the date range as UTC instants when given', () => {
+    repository
+      .list({ page: 2, pageSize: 5, fromDate: '2026-11-01T05:00:00.000Z', toDate: '2026-12-01T04:59:59.999Z' })
+      .subscribe();
 
     const request = http.expectOne((req) => req.url === URL);
-    expect(request.request.params.get('type')).toBe('income');
-    expect(request.request.params.get('accountId')).toBe('7');
+    expect(request.request.params.get('fromDate')).toBe('2026-11-01T05:00:00.000Z');
+    expect(request.request.params.get('toDate')).toBe('2026-12-01T04:59:59.999Z');
     request.flush(ok({ items: [], page: 2, pageSize: 5, totalItems: 0 }));
+  });
+
+  it('asks the summary of a range and keeps each currency apart', () => {
+    let result: unknown;
+    repository
+      .summary({ fromDate: '2026-11-01T05:00:00.000Z', toDate: '2026-12-01T04:59:59.999Z' })
+      .subscribe((value) => (result = value));
+
+    const request = http.expectOne((req) => req.url === `${URL}/summary`);
+    expect(request.request.params.get('fromDate')).toBe('2026-11-01T05:00:00.000Z');
+    expect(request.request.params.get('toDate')).toBe('2026-12-01T04:59:59.999Z');
+    const cop = { currency: 'COP', income: 3200000, expense: 1146300, transfersIn: 0, transfersOut: 400000, net: 1653700 };
+    const usd = { currency: 'USD', income: 0, expense: 0, transfersIn: 101.27, transfersOut: 0, net: 101.27 };
+    request.flush(ok({ totalItems: 14, currencies: [cop, usd] }));
+
+    expect(result).toEqual({ totalItems: 14, currencies: [cop, usd] });
   });
 
   it('maps the page and fills the missing currency fields with null', () => {

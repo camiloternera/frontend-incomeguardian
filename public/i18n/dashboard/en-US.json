@@ -9,15 +9,30 @@
       "label": "Your month at a glance",
       "availableUntil": "Available to spend until {{date}}",
       "overspentTitle": "This month you've used more than you received",
-      "summary": "You received {{income}} in {{payments}} payments this month. You've spent {{expenses}} and have {{committed}} committed to fixed costs.",
-      "summaryOnePayment": "You received {{income}} in one payment this month. You've spent {{expenses}} and have {{committed}} committed to fixed costs.",
-      "overspentBody": "What you've spent and committed is {{amount}} more than what came in. See which fixed costs can move to next month.",
+      "summary": "You received {{income}} in {{payments}} payments this month. You've spent {{expenses}} and have {{committed}} committed to your budget limits.",
+      "summaryOnePayment": "You received {{income}} in one payment this month. You've spent {{expenses}} and have {{committed}} committed to your budget limits.",
+      "overspentBody": "What you've spent plus what's committed to your limits is {{amount}} more than what came in. Check which budget limits you can adjust.",
       "split": "This month's income: {{spent}} spent, {{committed}} committed and {{available}} available",
       "spent": "Spent",
       "committed": "Committed",
       "available": "Available",
       "perDay": "≈ {{amount}} a day for the next {{days}} days",
-      "perDayLast": "≈ {{amount}} for the last day of the month"
+      "perDayLast": "≈ {{amount}} for the last day of the month",
+      "summaryNoCommitted": "You received {{income}} in {{payments}} payments this month and you've spent {{expenses}}.",
+      "summaryOnePaymentNoCommitted": "You received {{income}} in one payment this month and you've spent {{expenses}}.",
+      "splitNoCommitted": "This month's income: {{spent}} spent and {{available}} available",
+      "loading": "Working out what's available this month…",
+      "loadError": "We couldn't work out what's available this month.",
+      "retry": "Try again",
+      "empty": "You have no income, spending or limits this month yet. Record your first income to see what's available.",
+      "emptyAction": "Record income",
+      "currencyLabel": "Currency",
+      "currency": {
+        "COP": "Colombian pesos",
+        "USD": "US dollars"
+      },
+      "overplannedTitle": "This month's limits add up to more than you received",
+      "overplannedBody": "If you spend what's left of your limits, you'd go over by {{amount}}. Check which budget limits you can adjust."
     },
     "cushion": {
       "title": "Your cushion",
@@ -71,5 +86,8 @@
     "salary": "Salary",
     "freelance": "Freelance work",
     "investment": "Investment"
+  },
+  "errors": {
+    "PERIOD_INVALID": "That month is not valid."
   }
 }

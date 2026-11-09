@@ -7,6 +7,8 @@ import {
   TransactionDraft,
   TransactionPage,
   TransactionQuery,
+  TransactionRange,
+  TransactionSummary,
   TransactionType,
 } from './transaction';
 
@@ -17,6 +19,9 @@ import {
 export abstract class TransactionRepository {
   /** Movimientos activos del usuario, del más reciente al más antiguo. */
   abstract list(query: TransactionQuery): Observable<TransactionPage>;
+
+  /** Lo que entró y salió en el rango, por moneda, y cuántos movimientos hubo. */
+  abstract summary(range: TransactionRange): Observable<TransactionSummary>;
 
   /** Registra un movimiento; en transferencias entre monedas el backend calcula el monto destino. */
   abstract create(draft: TransactionDraft): Observable<Transaction>;

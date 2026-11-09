@@ -8,6 +8,8 @@ import {
   TransactionDraft,
   TransactionPage,
   TransactionQuery,
+  TransactionRange,
+  TransactionSummary,
   TransactionType,
 } from '../domain/transaction';
 import {
@@ -20,6 +22,7 @@ import { TRANSACTION_USE_CASES } from '../transactions.providers';
 import {
   CreateTransactionUseCase,
   GetExchangeRateUseCase,
+  SummarizeTransactionsUseCase,
   ListTransactionAccountOptionsUseCase,
   ListTransactionCategoryOptionsUseCase,
   ListTransactionsUseCase,
@@ -54,10 +57,16 @@ const RATE: ExchangeRate = {
 class MemoryTransactionRepository extends TransactionRepository {
   queries: TransactionQuery[] = [];
   drafts: TransactionDraft[] = [];
+  ranges: TransactionRange[] = [];
 
   list(query: TransactionQuery): Observable<TransactionPage> {
     this.queries.push(query);
     return of({ items: [TRANSACTION], page: query.page, pageSize: query.pageSize, totalItems: 1 });
+  }
+
+  summary(range: TransactionRange): Observable<TransactionSummary> {
+    this.ranges.push(range);
+    return of({ totalItems: 1, currencies: [] });
   }
 
   create(draft: TransactionDraft): Observable<Transaction> {
@@ -124,11 +133,21 @@ describe('transaction use cases', () => {
   it('lists transactions with the given query', () => {
     let result: TransactionPage | undefined;
     TestBed.inject(ListTransactionsUseCase)
-      .execute({ page: 2, pageSize: 5, type: 'expense' })
+      .execute({ page: 1, pageSize: 5, fromDate: 'a', toDate: 'b' })
       .subscribe((value) => (result = value));
 
-    expect(transactions.queries).toEqual([{ page: 2, pageSize: 5, type: 'expense' }]);
+    expect(transactions.queries).toEqual([{ page: 1, pageSize: 5, fromDate: 'a', toDate: 'b' }]);
     expect(result?.items).toEqual([TRANSACTION]);
+  });
+
+  it('asks the summary of a range', () => {
+    let result: TransactionSummary | undefined;
+    TestBed.inject(SummarizeTransactionsUseCase)
+      .execute({ fromDate: 'a', toDate: 'b' })
+      .subscribe((value) => (result = value));
+
+    expect(transactions.ranges).toEqual([{ fromDate: 'a', toDate: 'b' }]);
+    expect(result?.totalItems).toBe(1);
   });
 
   it('trims the description before creating', () => {

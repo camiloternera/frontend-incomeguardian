@@ -1,0 +1,142 @@
+{
+  "list": {
+    "title": "Budget",
+    "subtitle": "How much you want to spend in each category and how much you have spent this month.",
+    "create": "Add limit",
+    "loading": "Loading your budget…",
+    "retry": "Try again",
+    "edit": "Edit the limit for {{name}}",
+    "inactive": "deactivated category",
+    "footnote": "Income has no limit. Transfers to categories such as savings count what leaves the source account.",
+    "month": {
+      "previous": "Previous month",
+      "next": "Next month",
+      "daysLeft": "{{count}} days left this month",
+      "daysLeftOne": "1 day left this month",
+      "lastDay": "Today is the last day of the month",
+      "ended": "This month is over",
+      "closed": "Month closed",
+      "closedNotice": "This month is closed: its limits stay as a reference and cannot be changed."
+    },
+    "currency": {
+      "label": "Currency",
+      "name": {
+        "COP": "Colombian pesos",
+        "USD": "US dollars"
+      }
+    },
+    "block": {
+      "budget": "Monthly limit",
+      "spent": "Spent",
+      "available": "Available",
+      "usedBefore": "You used",
+      "usedAfter": "of your plan"
+    },
+    "mobile": {
+      "availableOf": "Available of {{budget}}",
+      "spentLine": "Spent {{spent}} · {{percent}} used",
+      "spentOnly": "Spent {{spent}}"
+    },
+    "table": {
+      "category": "Category",
+      "budget": "Limit",
+      "spent": "Spent",
+      "available": "Available",
+      "usage": "Usage"
+    },
+    "type": {
+      "expense": "Expense",
+      "transfer": "Transfer",
+      "unknown": "Category"
+    },
+    "source": {
+      "recurring": "Every month",
+      "month": "This month only",
+      "none": "No limit",
+      "paused": "Paused this month only"
+    },
+    "usage": {
+      "paused": "Paused this month",
+      "unbudgeted": "No limit: you spent {{spent}}",
+      "over": "Over by {{amount}}",
+      "full": "Limit reached",
+      "partial": "{{percent}} used"
+    },
+    "shortUsage": {
+      "paused": "Paused",
+      "unbudgeted": "No limit",
+      "over": "Over",
+      "full": "Reached",
+      "partial": "{{percent}}"
+    },
+    "mobileMeta": {
+      "budgeted": "{{spent}} of {{budget}}",
+      "unbudgeted": "No limit · {{spent}} spent"
+    },
+    "empty": {
+      "title": "You have no limits yet",
+      "body": "Set how much you want to spend in each category. The limit repeats every month and you can adjust it for a single month.",
+      "action": "Add your first limit",
+      "closedTitle": "There were no limits in {{month}}"
+    },
+    "notice": {
+      "saved": "You saved the limit for {{name}}.",
+      "removed": "You removed the limit for {{name}}.",
+      "reset": "{{name}} is back on its recurring limit.",
+      "dismiss": "Dismiss"
+    }
+  },
+  "form": {
+    "newTitle": "New limit",
+    "newSubtitle": "Applies from {{month}}.",
+    "editSubtitle": "{{type}} · {{currency}}",
+    "close": "Close the panel",
+    "notFoundTitle": "Limit not found",
+    "notFound": "That category is not in this month's budget.",
+    "backToList": "Back to the budget",
+    "readOnly": {
+      "closed": "This month is closed: its limits cannot be changed. Reopen it to edit them.",
+      "inactive": "This category is deactivated. Reactivate it in Categories to change its limit."
+    },
+    "currency": "Currency",
+    "currencyHelp": "Only spending from accounts in this currency counts.",
+    "category": "Category",
+    "categoryPlaceholder": "Pick a category",
+    "categoryHelp": "Only expense and transfer categories without a limit in this currency show up.",
+    "categoryRequired": "Pick a category.",
+    "noCategories": "You have no expense or transfer categories without a limit in this currency.",
+    "createCategory": "Create a category",
+    "amount": "Monthly limit",
+    "amountRequired": "Enter the limit.",
+    "amountInvalid": "Enter a number with up to {{decimals}} decimals.",
+    "amountTooLarge": "The limit can have up to {{digits}} whole digits.",
+    "amountPositive": "The limit must be greater than zero. To pause it, choose “{{month}} only”.",
+    "spentNote": "You have spent {{amount}} in {{month}}.",
+    "scope": {
+      "legend": "Which months?",
+      "recurringTitle": "From {{month}} onwards",
+      "recurringBody": "Repeats every month. Earlier months keep their limit.",
+      "monthTitle": "{{month}} only",
+      "monthBody": "Other months keep the recurring limit. Enter 0 to pause it this month only."
+    },
+    "override": {
+      "withRecurring": "{{month}} uses its own limit. The recurring limit is",
+      "withoutRecurring": "{{month}} uses its own limit and there is no recurring limit.",
+      "reset": "Back to the recurring limit"
+    },
+    "remove": "Remove limit",
+    "cancel": "Cancel",
+    "submit": "Save limit",
+    "saving": "Saving…"
+  },
+  "errors": {
+    "BUDGET_AMOUNT_INVALID": "The limit must be a number greater than or equal to zero with up to 2 decimals.",
+    "BUDGET_CURRENCY_UNSUPPORTED": "You can only set limits in pesos or dollars.",
+    "BUDGET_CATEGORY_TYPE_INVALID": "Only expense and transfer categories can have a limit.",
+    "BUDGET_CATEGORY_NOT_FOUND": "That category is no longer available. Pick another one.",
+    "BUDGET_NOT_FOUND": "That limit no longer exists. We refreshed the budget.",
+    "BUDGET_CATEGORY_REQUIRED": "Pick a category.",
+    "PERIOD_INVALID": "That month is not valid.",
+    "PERIOD_CLOSED": "This month is closed: its limits cannot be changed."
+  }
+}

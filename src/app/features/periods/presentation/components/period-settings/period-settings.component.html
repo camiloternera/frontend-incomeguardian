@@ -1,0 +1,106 @@
+<section
+  *transloco="let t"
+  data-testid="period-settings"
+  class="grid gap-6 border-t border-ig-border pt-8 lg:grid-cols-[280px_minmax(0,1fr)]"
+  aria-labelledby="period-settings-title"
+>
+  <div>
+    <h2 id="period-settings-title" class="m-0 text-[15px] font-bold tracking-[-0.01em]">{{ t('periods.settings.title') }}</h2>
+    <p class="m-0 mt-2 text-[13px] leading-relaxed text-ig-muted">{{ t('periods.settings.body') }}</p>
+  </div>
+
+  <div class="flex min-w-0 flex-col gap-8">
+    @switch (settings().status) {
+      @case ('loading') {
+        <p class="m-0 text-[13px] text-ig-muted" role="status">{{ t('periods.settings.loading') }}</p>
+      }
+      @case ('error') {
+        <div class="flex flex-col items-start gap-3 rounded-lg border border-ig-border bg-ig-surface px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <p data-testid="period-settings-error" class="m-0 text-[13px]" role="alert">{{ $any(settings()).message }}</p>
+          <button type="button" class="shrink-0" [class]="ui.secondary" (click)="load()">{{ t('periods.settings.retry') }}</button>
+        </div>
+      }
+      @case ('ready') {
+        @if (current(); as current) {
+          <ul class="m-0 flex list-none flex-col rounded-lg border border-ig-border bg-ig-surface p-0">
+            @for (row of switches; track row.key) {
+              <li class="flex items-center justify-between gap-4 border-b border-ig-border px-4 py-4">
+                <div class="flex min-w-0 flex-col gap-1">
+                  <span [id]="'period-switch-' + row.key" class="text-[14px] font-bold">{{ t(row.label) }}</span>
+                  <span [id]="'period-switch-hint-' + row.key" class="text-[13px] leading-relaxed text-ig-muted">{{ t(row.hint) }}</span>
+                </div>
+                <button
+                  [attr.data-testid]="'period-switch-' + row.key"
+                  type="button"
+                  role="switch"
+                  class="relative h-7 w-12 shrink-0 rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                  [class]="(current[row.key] ? 'border-ig-accent bg-ig-accent ' : 'border-ig-border bg-ig-surface-raised ') + ui.focus"
+                  [attr.aria-checked]="current[row.key]"
+                  [attr.aria-labelledby]="'period-switch-' + row.key"
+                  [attr.aria-describedby]="'period-switch-hint-' + row.key"
+                  [disabled]="isSaving()"
+                  (click)="toggle(row.key)"
+                >
+                  <span
+                    class="absolute top-1/2 size-5 -translate-y-1/2 rounded-full transition-[left]"
+                    [class]="current[row.key] ? 'left-[calc(100%-22px)] bg-ig-on-accent' : 'left-0.5 bg-ig-muted'"
+                    aria-hidden="true"
+                  ></span>
+                </button>
+              </li>
+            }
+            <li class="flex flex-col gap-2 px-4 py-4 sm:flex-row sm:items-center sm:justify-between" [class.opacity-50]="!current.autoCloseEnabled">
+              <label class="text-[14px] font-bold" for="period-close-day">{{ t('periods.settings.day') }}</label>
+              <app-select
+                class="w-full sm:w-[240px]"
+                data-testid="period-close-day"
+                inputId="period-close-day"
+                [options]="dayOptions(t)"
+                [ngModel]="current.autoCloseDay"
+                [disabled]="!current.autoCloseEnabled || isSaving()"
+                (ngModelChange)="chooseDay($event)"
+              />
+            </li>
+          </ul>
+
+          @if (saveError()) {
+            <p data-testid="period-settings-save-error" class="m-0 rounded-lg border border-ig-border bg-ig-surface px-4 py-3 text-[13px]" role="alert">{{ saveError() }}</p>
+          }
+        }
+      }
+    }
+
+    <div class="flex flex-col gap-3">
+      <h3 class="m-0 text-[14px] font-bold">{{ t('periods.history.title') }}</h3>
+      @switch (history().status) {
+        @case ('loading') {
+          <div class="flex flex-col gap-2" role="status">
+            @for (row of [1, 2, 3]; track row) {
+              <span class="h-10 animate-pulse rounded bg-ig-surface"></span>
+            }
+          </div>
+        }
+        @case ('error') {
+          <p class="m-0 text-[13px] text-ig-muted" role="alert">{{ t('periods.history.error') }}</p>
+        }
+        @case ('ready') {
+          <ul data-testid="period-history" class="m-0 flex list-none flex-col p-0">
+            @for (log of $any(history()).data; track $index) {
+              <li class="flex items-baseline justify-between gap-4 border-b border-ig-border py-3 text-[14px]">
+                <span class="min-w-0">
+                  {{ logText(log) }}
+                  @if (logNote(log); as note) {
+                    <span class="text-ig-muted">· {{ note }}</span>
+                  }
+                </span>
+                <span class="shrink-0 text-[13px] text-ig-muted">{{ logDate(log) }}</span>
+              </li>
+            } @empty {
+              <li class="py-3 text-[14px] text-ig-muted">{{ t('periods.history.empty') }}</li>
+            }
+          </ul>
+        }
+      }
+    </div>
+  </div>
+</section>

@@ -10,6 +10,7 @@
       <h2 #heading id="category-panel-title" tabindex="-1" class="m-0 text-[20px] font-bold tracking-[-0.02em] outline-none">
         @switch (status()) {
           @case ('notFound') { {{ t('categories.form.notFoundTitle') }} }
+          @case ('readOnly') { {{ loaded()?.name }} }
           @default { {{ isEdit() ? t('categories.form.editTitle') : t('categories.form.createTitle') }} }
         }
       </h2>
@@ -57,6 +58,47 @@
           {{ t('categories.form.backToList') }}
         </a>
       </div>
+    }
+
+    @case ('readOnly') {
+      @if (loaded(); as current) {
+        <div data-testid="category-read-only" class="flex flex-col gap-6">
+          <p class="m-0 text-[14px] leading-normal text-ig-muted">{{ t('categories.form.readOnly') }}</p>
+          <dl class="m-0 flex flex-col gap-4 border-t border-ig-border pt-6 text-[14px]">
+            <div class="flex items-baseline justify-between gap-4">
+              <dt class="text-ig-muted">{{ t('categories.form.typeLabel') }}</dt>
+              <dd class="m-0 text-right">{{ t('categories.types.' + current.type) }}</dd>
+            </div>
+            <div class="flex flex-col gap-1">
+              <dt class="text-ig-muted">{{ t('categories.form.descriptionLabel') }}</dt>
+              <dd class="m-0 break-words">{{ current.description }}</dd>
+            </div>
+          </dl>
+
+          @if (formError()) {
+            <p data-testid="form-error" class="m-0 rounded-lg border border-ig-border bg-ig-surface-raised px-4 py-3 text-[14px]" role="alert">{{ formError() }}</p>
+          }
+
+          <div class="flex flex-wrap items-center justify-end gap-2 border-t border-ig-border pt-6">
+            <a
+              class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-border px-4 text-[14px] text-ig-text no-underline hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+              [routerLink]="listUrl"
+            >
+              {{ t('categories.form.backToList') }}
+            </a>
+            <button
+              data-testid="panel-activate"
+              class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-ig-accent bg-ig-accent px-5 text-[14px] font-bold text-ig-on-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+              type="button"
+              [disabled]="isChangingStatus()"
+              (click)="activate()"
+            >
+              <svg lucideRotateCcw [size]="16" aria-hidden="true"></svg>
+              {{ isChangingStatus() ? t('categories.list.activate.activating') : t('categories.list.activate.action') }}
+            </button>
+          </div>
+        </div>
+      }
     }
 
     @default {
@@ -147,26 +189,26 @@
           <p data-testid="form-error" class="m-0 rounded-lg border border-ig-border bg-ig-surface-raised px-4 py-3 text-[14px]" role="alert">{{ formError() }}</p>
         }
 
-        @if (confirmingDelete()) {
-          <div class="flex flex-col gap-3 border-t border-ig-border pt-6" data-testid="panel-delete-confirmation">
-            <p class="m-0 text-[14px]">{{ t('categories.list.delete.question', { name: categoryForm.controls.name.value }) }}</p>
+        @if (confirmingDeactivate()) {
+          <div class="flex flex-col gap-3 border-t border-ig-border pt-6" data-testid="panel-deactivate-confirmation">
+            <p class="m-0 text-[14px]">{{ t('categories.list.deactivate.question', { name: loaded()?.name }) }}</p>
             <div class="flex flex-wrap justify-end gap-2">
               <button
                 class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-border bg-transparent px-4 text-[14px] text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
                 type="button"
-                [disabled]="isDeleting()"
-                (click)="cancelDelete()"
+                [disabled]="isChangingStatus()"
+                (click)="cancelDeactivate()"
               >
-                {{ t('categories.list.delete.cancel') }}
+                {{ t('categories.list.deactivate.cancel') }}
               </button>
               <button
-                data-testid="panel-confirm-delete"
+                data-testid="panel-confirm-deactivate"
                 class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-text bg-ig-text px-4 text-[14px] font-bold text-ig-canvas focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
                 type="button"
-                [disabled]="isDeleting()"
-                (click)="confirmDelete()"
+                [disabled]="isChangingStatus()"
+                (click)="confirmDeactivate()"
               >
-                {{ isDeleting() ? t('categories.list.delete.deleting') : t('categories.list.delete.confirm') }}
+                {{ isChangingStatus() ? t('categories.list.deactivate.deactivating') : t('categories.list.deactivate.confirm') }}
               </button>
             </div>
           </div>
@@ -174,13 +216,13 @@
           <div class="flex flex-wrap items-center justify-between gap-4 border-t border-ig-border pt-6">
             @if (isEdit()) {
               <button
-                data-testid="panel-delete"
+                data-testid="panel-deactivate"
                 class="-ml-3 inline-flex min-h-11 items-center gap-2 rounded-lg border border-transparent bg-transparent px-3 text-[14px] font-medium text-ig-muted hover:text-ig-text focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
                 type="button"
-                (click)="askDelete()"
+                (click)="askDeactivate()"
               >
-                <svg lucideTrash2 [size]="16" aria-hidden="true"></svg>
-                {{ t('categories.list.delete.action') }}
+                <svg lucideBan [size]="16" aria-hidden="true"></svg>
+                {{ t('categories.list.deactivate.action') }}
               </button>
             }
             <div class="ml-auto flex gap-2">

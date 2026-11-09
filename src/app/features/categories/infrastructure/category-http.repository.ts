@@ -33,6 +33,7 @@ function toCategory(dto: CategoryDto): Category {
     name: dto.name,
     description: dto.description,
     type,
+    isActive: dto.isActive,
     createdAt: dto.createdAt,
     updatedAt: dto.updatedAt,
   };
@@ -54,7 +55,7 @@ export class CategoryHttpRepository extends CategoryRepository {
 
   list(): Observable<Category[]> {
     return this.http
-      .get<ApiResponse<CategoryDto[]>>(this.baseUrl)
+      .get<ApiResponse<CategoryDto[]>>(this.baseUrl, { params: { status: 'all' } })
       .pipe(
         // Una categoría de un tipo que la app no conoce no se puede usar: se omite sin tumbar la lista.
         this.unwrap((dtos) => dtos.filter((dto) => TYPES_BY_ID.has(dto.transactionTypeId)).map(toCategory)),
@@ -77,8 +78,16 @@ export class CategoryHttpRepository extends CategoryRepository {
       .pipe(this.unwrap(toCategory));
   }
 
-  remove(id: number): Observable<void> {
-    return this.http.delete<ApiResponse<boolean>>(`${this.baseUrl}/${id}`).pipe(this.unwrap(() => undefined));
+  deactivate(id: number): Observable<Category> {
+    return this.http
+      .patch<ApiResponse<CategoryDto>>(`${this.baseUrl}/${id}/deactivate`, null)
+      .pipe(this.unwrap(toCategory));
+  }
+
+  activate(id: number): Observable<Category> {
+    return this.http
+      .patch<ApiResponse<CategoryDto>>(`${this.baseUrl}/${id}/activate`, null)
+      .pipe(this.unwrap(toCategory));
   }
 
   /**
