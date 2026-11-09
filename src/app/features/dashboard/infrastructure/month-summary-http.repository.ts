@@ -6,9 +6,9 @@ import { environment } from '@env/environment';
 import { ApiResponse } from '@core/http/api-response';
 import { apiErrorCode, resolveApiError } from '@core/http/api-error';
 import { DashboardError, DashboardErrorCode } from '../domain/dashboard-error';
-import { MonthSummary, SummaryMonth } from '../domain/month-summary';
+import { CategorySpent, MonthSummary, SummaryMonth } from '../domain/month-summary';
 import { MonthSummaryRepository } from '../domain/month-summary.repository';
-import { MonthSummaryDto } from './month-summary.dto';
+import { CategorySpentDto, MonthSummaryDto } from './month-summary.dto';
 
 /** Cada código conocido del backend para el Resumen, asociado a su clave de traducción. */
 const DASHBOARD_ERROR_KEYS: Record<string, string> = Object.fromEntries(
@@ -16,6 +16,15 @@ const DASHBOARD_ERROR_KEYS: Record<string, string> = Object.fromEntries(
 );
 
 const KNOWN_CODES: readonly string[] = Object.values(DashboardErrorCode);
+
+/** Una categoría con un tipo desconocido no suma al gasto: se descarta en vez de inventarle uno. */
+function toCategories(dtos: CategorySpentDto[]): CategorySpent[] {
+  return dtos.flatMap((dto) =>
+    dto.type === 'expense' || dto.type === 'transfer'
+      ? [{ categoryId: dto.categoryId, name: dto.name, type: dto.type, spent: dto.spent }]
+      : [],
+  );
+}
 
 function toSummary(dto: MonthSummaryDto): MonthSummary {
   return {
@@ -27,6 +36,13 @@ function toSummary(dto: MonthSummaryDto): MonthSummary {
       incomePayments: item.incomePayments,
       spent: item.spent,
       committed: item.committed,
+      history: (item.history ?? []).map((point) => ({
+        year: point.year,
+        month: point.month,
+        income: point.income,
+        spent: point.spent,
+      })),
+      categories: toCategories(item.categories ?? []),
     })),
   };
 }

@@ -78,7 +78,7 @@ export function monthOutlook(overview: MonthFigures): MonthOutlook {
 }
 
 /** Promedia ingresos y gastos de los meses previos al del resumen; `null` si no hay ninguno. */
-export function previousAverages(overview: DashboardOverview): PreviousAverages | null {
+export function previousAverages(overview: Pick<DashboardOverview, 'month' | 'cashFlow'>): PreviousAverages | null {
   const previous = overview.cashFlow.filter((point) => point.month < overview.month);
 
   if (previous.length === 0) {

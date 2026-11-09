@@ -46,14 +46,11 @@
       "label": "This month's indicators",
       "income": "Income this month",
       "expenses": "Expenses this month",
-      "savings": "Projected savings",
       "aboveAverage": "{{pct}} above your {{count}}-month average",
       "belowAverage": "{{pct}} below your {{count}}-month average",
       "ofAverage": "{{pct}} of your monthly average",
       "ofAverageDays": "{{pct}} of your average, {{days}} days before month end",
-      "aboveGoal": "Above your {{goal}} goal",
-      "belowGoal": "Below your {{goal}} goal",
-      "noAverage": "No earlier months to compare yet"
+      "noAverage": "No earlier months with activity to compare yet"
     },
     "cashFlow": {
       "title": "Cash flow",
@@ -61,11 +58,15 @@
       "income": "Income",
       "expenses": "Expenses",
       "average": "Average {{amount}}",
-      "chartLabel": "Income and expenses over the last months"
+      "chartLabel": "Income and expenses over the last months",
+      "periodOne": "this month"
     },
     "categories": {
       "title": "Where it went",
-      "empty": "No spending this month yet."
+      "empty": "No spending this month yet.",
+      "more": "{{count}} more categories: scroll to see them",
+      "moreOne": "1 more category: scroll to see it",
+      "scrollLabel": "Spending by category, {{count}} categories"
     },
     "recent": {
       "title": "Recent transactions",
