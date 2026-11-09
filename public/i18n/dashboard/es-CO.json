@@ -46,14 +46,11 @@
       "label": "Indicadores del mes",
       "income": "Ingresos del mes",
       "expenses": "Gastos del mes",
-      "savings": "Ahorro proyectado",
       "aboveAverage": "{{pct}} sobre tu promedio de {{count}} meses",
       "belowAverage": "{{pct}} bajo tu promedio de {{count}} meses",
       "ofAverage": "{{pct}} de tu promedio mensual",
       "ofAverageDays": "{{pct}} de tu promedio, a {{days}} días del cierre",
-      "aboveGoal": "Por encima de tu meta del {{goal}}",
-      "belowGoal": "Por debajo de tu meta del {{goal}}",
-      "noAverage": "Sin meses anteriores para comparar"
+      "noAverage": "Aún no hay meses anteriores con movimientos para comparar"
     },
     "cashFlow": {
       "title": "Flujo de caja",
@@ -61,11 +58,15 @@
       "income": "Ingresos",
       "expenses": "Gastos",
       "average": "Promedio {{amount}}",
-      "chartLabel": "Ingresos y gastos de los últimos meses"
+      "chartLabel": "Ingresos y gastos de los últimos meses",
+      "periodOne": "este mes"
     },
     "categories": {
       "title": "En qué se fue",
-      "empty": "Aún no hay gastos este mes."
+      "empty": "Aún no hay gastos este mes.",
+      "more": "{{count}} categorías más: desliza para verlas",
+      "moreOne": "1 categoría más: desliza para verla",
+      "scrollLabel": "Gasto por categoría, {{count}} categorías"
     },
     "recent": {
       "title": "Movimientos recientes",
