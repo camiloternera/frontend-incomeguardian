@@ -1,0 +1,109 @@
+<dialog
+  #dialog
+  *transloco="let t"
+  data-testid="reopen-dialog"
+  class="fixed inset-x-0 bottom-0 top-auto m-0 max-h-[90dvh] w-full max-w-none overflow-y-auto rounded-t-2xl border border-ig-border bg-ig-canvas p-0 text-ig-text backdrop:bg-black/60 sm:inset-0 sm:m-auto sm:h-fit sm:w-[min(520px,calc(100vw-32px))] sm:rounded-lg"
+  aria-labelledby="reopen-dialog-title"
+  (close)="onDialogClosed()"
+  (click)="onDialogClick($event)"
+>
+  @if (target(); as target) {
+    @let period = target.period;
+    <form class="flex flex-col gap-6 p-6" novalidate (ngSubmit)="confirm()">
+      <div class="mx-auto -mt-2 h-1 w-10 rounded-full bg-ig-border sm:hidden" aria-hidden="true"></div>
+
+      <div class="flex flex-col gap-2">
+        <h2 #heading id="reopen-dialog-title" tabindex="-1" class="m-0 text-[20px] font-bold tracking-[-0.02em] outline-none">
+          @if (period.month === null) {
+            {{ t('periods.reopen.yearTitle', { year: period.year }) }}
+          } @else {
+            {{ t('periods.reopen.title', { month: monthTitle(period.month), year: period.year }) }}
+          }
+        </h2>
+        <p class="m-0 text-[14px] leading-relaxed text-ig-muted">
+          @if (period.month === null) {
+            {{ t('periods.reopen.yearBody') }}
+          } @else {
+            {{ t('periods.reopen.body', { month: monthLabel(period.month) }) }}
+          }
+        </p>
+      </div>
+
+      @if (period.month !== null && inClosedYear()) {
+        <p data-testid="reopen-closed-year" class="m-0 flex items-start gap-3 rounded-lg border border-ig-border bg-ig-surface p-4 text-[14px] leading-relaxed">
+          <svg lucideLockOpen [size]="18" class="mt-0.5 shrink-0 text-ig-accent-text" aria-hidden="true"></svg>
+          {{ t('periods.reopen.closedYear', { year: period.year, month: monthLabel(period.month) }) }}
+        </p>
+      }
+
+      @if (period.month !== null) {
+        <fieldset class="m-0 flex flex-col gap-2 border-0 p-0">
+          <legend class="mb-2 p-0 text-[14px] font-bold">{{ t('periods.reopen.when') }}</legend>
+          @for (option of ['auto', 'manual']; track option) {
+            <label
+              [attr.data-testid]="'reopen-mode-' + option"
+              class="flex cursor-pointer items-start gap-3 rounded-lg border p-4 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ig-accent"
+              [class]="mode() === option ? 'border-ig-accent bg-ig-accent/10' : 'border-ig-border hover:border-ig-muted'"
+            >
+              <input
+                class="mt-1 size-4 shrink-0 accent-[var(--ig-accent)]"
+                type="radio"
+                name="recloseMode"
+                [value]="option"
+                [checked]="mode() === option"
+                (change)="mode.set($any(option))"
+              />
+              <span class="flex flex-col gap-1">
+                <span class="text-[14px] font-bold">{{ t('periods.reopen.' + option) }}</span>
+                <span class="text-[13px] text-ig-muted">
+                  @if (option === 'auto') {
+                    {{ t('periods.reopen.autoHint', { date: recloseDate() }) }}
+                  } @else {
+                    {{ t('periods.reopen.manualHint') }}
+                  }
+                </span>
+              </span>
+            </label>
+          }
+        </fieldset>
+      }
+
+      <div class="flex flex-col gap-2">
+        <label class="text-[13px] font-bold" for="reopen-reason">{{ t('periods.reopen.reason') }}</label>
+        <input
+          id="reopen-reason"
+          data-testid="reopen-reason"
+          name="reason"
+          type="text"
+          class="min-h-11 rounded-lg border border-ig-border bg-ig-surface px-4 text-[14px] text-ig-text placeholder:text-ig-muted focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ig-accent"
+          autocomplete="off"
+          [maxlength]="reasonMax"
+          [ngModel]="reason()"
+          (ngModelChange)="reason.set($event)"
+          aria-describedby="reopen-reason-count"
+        />
+        <p id="reopen-reason-count" class="m-0 self-end text-[12px] text-ig-muted">
+          {{ t('periods.reopen.reasonCount', { count: reason().length, max: reasonMax }) }}
+        </p>
+      </div>
+
+      @if (error()) {
+        <p data-testid="reopen-error" class="m-0 rounded-lg border border-ig-border bg-ig-surface px-4 py-3 text-[14px]" role="alert">{{ error() }}</p>
+      }
+
+      <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <button type="button" [class]="ui.secondary" (click)="cancel()">{{ t('periods.actions.cancel') }}</button>
+        <button data-testid="reopen-confirm" type="submit" [class]="ui.primary" [disabled]="isSubmitting()">
+          @if (isSubmitting()) {
+            <svg lucideLoaderCircle [size]="16" class="animate-spin" aria-hidden="true"></svg>
+            {{ t('periods.reopen.reopening') }}
+          } @else if (period.month === null) {
+            {{ t('periods.reopen.confirmYear', { year: period.year }) }}
+          } @else {
+            {{ t('periods.reopen.confirm', { month: monthLabel(period.month) }) }}
+          }
+        </button>
+      </div>
+    </form>
+  }
+</dialog>
