@@ -11,6 +11,9 @@ export const CategoryErrorCode = {
   TransactionTypeRequired: 'CATEGORY_TRANSACTION_TYPE_REQUIRED',
   TransactionTypeInvalid: 'CATEGORY_TRANSACTION_TYPE_INVALID',
   NotFound: 'CATEGORY_NOT_FOUND',
+  StatusInvalid: 'CATEGORY_STATUS_INVALID',
+  AlreadyActive: 'CATEGORY_ALREADY_ACTIVE',
+  AlreadyInactive: 'CATEGORY_ALREADY_INACTIVE',
 } as const;
 
 export type CategoryErrorCode = (typeof CategoryErrorCode)[keyof typeof CategoryErrorCode];

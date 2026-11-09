@@ -6,10 +6,10 @@ import { Category, CategoryDraft, NewCategoryDraft } from './category';
  * Todo fallo llega como `CategoryError`.
  */
 export abstract class CategoryRepository {
-  /** Las categorías activas del usuario, de todos los tipos. */
+  /** Las categorías del usuario de todos los tipos, activas y desactivadas. */
   abstract list(): Observable<Category[]>;
 
-  /** Una categoría del usuario por su identificador. */
+  /** Una categoría del usuario por su identificador, aunque esté desactivada. */
   abstract get(id: number): Observable<Category>;
 
   /** Crea una categoría del tipo indicado. */
@@ -18,6 +18,9 @@ export abstract class CategoryRepository {
   /** Actualiza nombre y descripción; el tipo no se puede cambiar. */
   abstract update(id: number, draft: CategoryDraft): Observable<Category>;
 
-  /** El backend desactiva la categoría; deja de aparecer en `list`. */
-  abstract remove(id: number): Observable<void>;
+  /** Desactiva una categoría activa y la devuelve con `isActive` en false. */
+  abstract deactivate(id: number): Observable<Category>;
+
+  /** Reactiva una categoría desactivada y la devuelve con `isActive` en true. */
+  abstract activate(id: number): Observable<Category>;
 }

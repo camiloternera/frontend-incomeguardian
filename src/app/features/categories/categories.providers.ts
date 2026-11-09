@@ -1,7 +1,8 @@
 import { Provider } from '@angular/core';
 import {
+  ActivateCategoryUseCase,
   CreateCategoryUseCase,
-  DeleteCategoryUseCase,
+  DeactivateCategoryUseCase,
   GetCategoryUseCase,
   ListCategoriesUseCase,
   UpdateCategoryUseCase,
@@ -20,6 +21,7 @@ export function provideCategories(): Provider[] {
     GetCategoryUseCase,
     CreateCategoryUseCase,
     UpdateCategoryUseCase,
-    DeleteCategoryUseCase,
+    DeactivateCategoryUseCase,
+    ActivateCategoryUseCase,
   ];
 }
