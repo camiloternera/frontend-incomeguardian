@@ -40,7 +40,7 @@ const GROUPS: ShellNavGroup[] = [
     items: [
       { key: 'overview', icon: LucideLayoutDashboard, route: '/home' },
       { key: 'transactions', icon: LucideArrowLeftRight, route: '/transactions' },
-      { key: 'budgets', icon: LucideChartPie },
+      { key: 'budgets', icon: LucideChartPie, route: '/budgets' },
     ],
   },
   {

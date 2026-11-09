@@ -161,7 +161,10 @@ describe('TransactionPanelComponent', () => {
     type(element, 'transaction-amount', '4.500.000');
     choose(element, 'transaction-account', 'Bancolombia', harness);
     expect(query(element, 'account-balance')?.textContent).toContain('1.250.000');
-    expect(optionLabels(element, 'transaction-category', harness)[0]).toBe('Sin categoría');
+    // La categoría es obligatoria: no se ofrece «Sin categoría» y se explica para qué sirve.
+    expect(optionLabels(element, 'transaction-category', harness)).toEqual(['Salario']);
+    expect(query(element, 'transaction-category')?.textContent).toContain('Elige una categoría');
+    expect(query(element, 'category-help')?.textContent).toContain('Así sabrás en qué se va tu dinero cada mes.');
     // Crear una categoría desde aquí propone el tipo del movimiento.
     expect(footerHref(element, 'transaction-category', 'create-category', harness)).toBe('/categories/new?type=income');
     choose(element, 'transaction-category', 'Salario', harness);
@@ -182,10 +185,10 @@ describe('TransactionPanelComponent', () => {
     expect(TestBed.inject(Router).url).toBe('/transactions');
     expect(query(element, 'transaction-notice')?.textContent).toContain('Ingreso registrado');
     expect(query(element, 'transaction-notice')?.textContent).toContain('4.500.000');
-    expect(fakes.transactions.lastQuery).toEqual({ page: 1, pageSize: 5 });
+    expect(fakes.transactions.lastQuery).toMatchObject({ page: 1, pageSize: 5 });
   });
 
-  it('creates an expense from the chosen account without a category', async () => {
+  it('asks for a category before saving an expense', async () => {
     const { harness, element } = await open('/transactions/new/expense');
 
     type(element, 'transaction-amount', '52300');
@@ -193,21 +196,84 @@ describe('TransactionPanelComponent', () => {
     submit(element);
     await settle(harness);
 
+    const error = query(element, 'category-error')!;
+    expect(error.textContent).toContain('Pick a category to save the expense.');
+    expect(error.getAttribute('role')).toBe('alert');
+    expect(query(element, 'category-help')).toBeNull();
+    expect(
+      element.querySelector('[data-testid="transaction-category"] [data-testid="select-trigger"]')?.getAttribute('aria-describedby'),
+    ).toBe('transaction-category-error');
+    expect(fakes.transactions.lastDraft).toBeNull();
+
+    choose(element, 'transaction-category', 'Mercado', harness);
+    expect(query(element, 'category-error')).toBeNull();
+    submit(element);
+    await settle(harness);
+
     expect(fakes.transactions.lastDraft).toMatchObject({
       type: 'expense',
       amount: 52300,
-      categoryId: null,
+      categoryId: 1,
       description: null,
       fromAccountId: 3,
     });
   });
 
+  it('offers to create the first category when the type has none', async () => {
+    fakes.categories.categories = fakes.categories.categories.filter((category) => category.type !== 'income');
+    const { harness, element } = await open('/transactions/new/income');
+
+    expect(query(element, 'transaction-category')).toBeNull();
+    expect(query(element, 'no-categories')?.textContent).toContain('You have no income categories yet.');
+    expect(query(element, 'create-first-category')?.getAttribute('href')).toBe('/categories/new?type=income');
+
+    type(element, 'transaction-amount', '1000');
+    choose(element, 'transaction-account', 'Nequi', harness);
+    submit(element);
+    await settle(harness);
+
+    expect(query(element, 'category-error')?.textContent).toContain('Create an income category first.');
+    expect(fakes.transactions.lastDraft).toBeNull();
+  });
+
+  it('shows the same empty state for transfers and asks for a category first', async () => {
+    fakes.categories.categories = fakes.categories.categories.filter((category) => category.type !== 'transfer');
+    const { harness, element } = await open('/transactions/new/transfer');
+
+    expect(query(element, 'transaction-category')).toBeNull();
+    expect(query(element, 'no-categories')?.textContent).toContain('You have no transfer categories yet.');
+    expect(query(element, 'create-first-category')?.getAttribute('href')).toBe('/categories/new?type=transfer');
+
+    type(element, 'transaction-amount', '1000');
+    choose(element, 'transaction-from', 'Bancolombia', harness);
+    choose(element, 'transaction-to', 'Nequi', harness);
+    submit(element);
+    await settle(harness);
+
+    expect(query(element, 'category-error')?.textContent).toContain('Create a transfer category first.');
+    expect(fakes.transactions.lastDraft).toBeNull();
+  });
+
+  it('shows the backend category requirement next to the category', async () => {
+    const { harness, element } = await open('/transactions/new/expense');
+    fakes.transactions.failWith = new TransactionError('Required', TransactionErrorCode.CategoryRequired);
+
+    type(element, 'transaction-amount', '1000');
+    choose(element, 'transaction-account', 'Nequi', harness);
+    choose(element, 'transaction-category', 'Mercado', harness);
+    submit(element);
+    await settle(harness);
+
+    expect(query(element, 'category-error')?.textContent).toContain('Pick a category to save the transaction.');
+    expect(query(element, 'form-error')).toBeNull();
+  });
+
   it('transfers between accounts in the same currency without a conversion', async () => {
     const { harness, element } = await open('/transactions/new/transfer');
 
-    // Las transferencias también llevan categoría, pero solo de su tipo.
+    // Las transferencias también exigen categoría, solo de su tipo y sin opción vacía.
     expect(fakes.categories.lastType).toBe('transfer');
-    expect(optionLabels(element, 'transaction-category', harness)).toEqual(['No category', 'Ahorro']);
+    expect(optionLabels(element, 'transaction-category', harness)).toEqual(['Ahorro']);
     choose(element, 'transaction-category', 'Ahorro', harness);
     type(element, 'transaction-amount', '100000');
     choose(element, 'transaction-from', 'Bancolombia', harness);
@@ -240,6 +306,7 @@ describe('TransactionPanelComponent', () => {
     choose(element, 'transaction-from', 'Bancolombia', harness);
     choose(element, 'transaction-to', 'Wise', harness);
     type(element, 'transaction-amount', '400.000');
+    choose(element, 'transaction-category', 'Ahorro', harness);
     await settle(harness);
 
     // La TRM se pide para la fecha elegida, que por defecto es hoy.
@@ -328,6 +395,7 @@ describe('TransactionPanelComponent', () => {
 
     type(element, 'transaction-amount', '1000');
     choose(element, 'transaction-account', 'Nequi', harness);
+    choose(element, 'transaction-category', 'Mercado', harness);
     submit(element);
     await settle(harness);
 
@@ -342,6 +410,7 @@ describe('TransactionPanelComponent', () => {
 
     type(element, 'transaction-amount', '1000');
     choose(element, 'transaction-account', 'Nequi', harness);
+    choose(element, 'transaction-category', 'Mercado', harness);
     submit(element);
     await settle(harness);
 
@@ -441,6 +510,7 @@ describe('TransactionPanelComponent', () => {
 
       type(element, 'transaction-amount', '1000');
       choose(element, 'transaction-account', 'Nequi', harness);
+      choose(element, 'transaction-category', 'Mercado', harness);
       submit(element);
       await settle(harness);
 

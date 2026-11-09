@@ -1,0 +1,241 @@
+<section
+  *transloco="let t"
+  data-testid="budget-panel"
+  class="flex flex-col gap-6 lg:rounded-lg lg:border lg:border-ig-border lg:bg-ig-surface lg:p-6"
+  aria-labelledby="budget-panel-title"
+  (keydown.escape)="closeOnEscape()"
+>
+  <div class="flex items-start justify-between gap-4">
+    <div class="flex min-w-0 flex-col gap-1">
+      <h2 #heading id="budget-panel-title" tabindex="-1" class="m-0 text-[20px] font-bold tracking-[-0.02em] outline-none">
+        @if (status() === 'notFound') {
+          {{ t('budgets.form.notFoundTitle') }}
+        } @else {
+          {{ title() ?? t('budgets.form.newTitle') }}
+        }
+      </h2>
+      @if (status() !== 'notFound' && status() !== 'loading') {
+        <p data-testid="panel-subtitle" class="m-0 text-[13px] text-ig-muted">{{ t(subtitle().key, subtitle().params) }}</p>
+      }
+    </div>
+    <a
+      data-testid="budget-panel-close"
+      class="-mr-2 -mt-2 inline-grid size-11 shrink-0 place-items-center rounded-lg text-ig-muted hover:bg-ig-surface-raised hover:text-ig-text focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+      [routerLink]="listUrl"
+      queryParamsHandling="preserve"
+      [attr.aria-label]="t('budgets.form.close')"
+    >
+      <svg lucideX [size]="18" aria-hidden="true"></svg>
+    </a>
+  </div>
+
+  @switch (status()) {
+    @case ('loading') {
+      <p class="m-0 text-[14px] text-ig-muted" role="status">{{ t('budgets.list.loading') }}</p>
+    }
+
+    @case ('notFound') {
+      <div data-testid="budget-not-found" class="flex flex-col items-start gap-4">
+        <p class="m-0 text-[14px] text-ig-muted">{{ t('budgets.form.notFound') }}</p>
+        <a
+          class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-border px-5 text-[14px] font-bold text-ig-text no-underline hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+          [routerLink]="listUrl"
+          queryParamsHandling="preserve"
+        >
+          {{ t('budgets.form.backToList') }}
+        </a>
+      </div>
+    }
+
+    @case ('readOnly') {
+      <p data-testid="budget-read-only" class="m-0 rounded-lg border border-ig-border bg-ig-canvas p-4 text-[14px]">
+        {{ t(readOnlyCopy()) }}
+      </p>
+    }
+
+    @default {
+      <form class="flex flex-col gap-6" novalidate [formGroup]="form" (ngSubmit)="submit()">
+        @if (isNew()) {
+          <!-- Moneda primero: las categorías que se ofrecen dependen de ella -->
+          <fieldset class="m-0 flex flex-col gap-2 border-0 p-0">
+            <legend class="mb-2 p-0 text-[13px] font-bold">{{ t('budgets.form.currency') }}</legend>
+            <div class="grid grid-cols-2 gap-1 rounded-lg border border-ig-border p-1" role="radiogroup">
+              @for (code of currencies; track code) {
+                <button
+                  [attr.data-testid]="'budget-currency-' + code"
+                  type="button"
+                  role="radio"
+                  class="min-h-10 rounded-md border-0 text-[14px] focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:-outline-offset-2"
+                  [class]="form.controls.currency.value === code ? 'bg-ig-surface-raised font-bold text-ig-text' : 'bg-transparent text-ig-muted'"
+                  [attr.aria-checked]="form.controls.currency.value === code"
+                  (click)="chooseCurrency(code)"
+                >
+                  {{ code }}
+                </button>
+              }
+            </div>
+            @if (currencyError(); as message) {
+              <p class="m-0 text-[13px] text-ig-text" role="alert">{{ t(message.key, message.params) }}</p>
+            } @else {
+              <p class="m-0 text-[12px] text-ig-muted">{{ t('budgets.form.currencyHelp') }}</p>
+            }
+          </fieldset>
+
+          <div class="flex flex-col gap-2">
+            <label class="text-[13px] font-bold" for="budget-category">{{ t('budgets.form.category') }}</label>
+            @if (categoryOptions().length) {
+              <app-select
+                data-testid="budget-category"
+                inputId="budget-category"
+                formControlName="categoryId"
+                [options]="categoryOptions()"
+                [placeholder]="t('budgets.form.categoryPlaceholder')"
+                [invalid]="categoryError() !== null"
+                [describedBy]="categoryError() ? 'budget-category-error' : 'budget-category-help'"
+              />
+              @if (categoryError(); as message) {
+                <p id="budget-category-error" data-testid="category-error" class="m-0 text-[13px] text-ig-text" role="alert">
+                  {{ t(message.key, message.params) }}
+                </p>
+              } @else {
+                <p id="budget-category-help" class="m-0 text-[12px] text-ig-muted">{{ t('budgets.form.categoryHelp') }}</p>
+              }
+            } @else {
+              <div
+                data-testid="no-budget-categories"
+                class="flex flex-col items-start gap-3 rounded-lg border border-dashed border-ig-border p-4"
+              >
+                <p class="m-0 text-[14px]">{{ t('budgets.form.noCategories') }}</p>
+                <a
+                  class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-ig-border px-4 text-[14px] font-bold text-ig-text no-underline hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                  routerLink="/categories/new"
+                  [queryParams]="{ type: 'expense' }"
+                >
+                  <svg lucidePlus [size]="16" aria-hidden="true"></svg>
+                  {{ t('budgets.form.createCategory') }}
+                </a>
+              </div>
+            }
+          </div>
+        }
+
+        <div class="flex flex-col gap-2">
+          <label class="text-[13px] font-bold" for="budget-amount">{{ t('budgets.form.amount') }}</label>
+          <div
+            class="flex min-h-14 items-center gap-2 rounded-lg border bg-ig-canvas px-3 focus-within:border-ig-accent focus-within:outline-2 focus-within:outline-ig-accent/30"
+            [class]="amountError() ? 'border-ig-text' : 'border-ig-border'"
+          >
+            <span class="text-[20px] font-bold text-ig-muted" aria-hidden="true">{{ symbol() }}</span>
+            <input
+              id="budget-amount"
+              data-testid="budget-amount"
+              class="min-w-0 flex-1 border-0 bg-transparent text-[24px] font-bold tracking-[-0.02em] text-ig-text tabular-nums outline-none"
+              type="text"
+              inputmode="decimal"
+              autocomplete="off"
+              formControlName="amount"
+              placeholder="0"
+              [attr.aria-invalid]="amountError() !== null"
+              [attr.aria-describedby]="amountError() ? 'budget-amount-error' : spentNote() ? 'budget-spent-note' : null"
+            />
+            <span class="text-[13px] font-medium text-ig-muted">{{ currency() }}</span>
+          </div>
+          @if (amountError(); as message) {
+            <p id="budget-amount-error" data-testid="amount-error" class="m-0 text-[13px] leading-snug text-ig-text" role="alert">
+              {{ t(message.key, message.params) }}
+            </p>
+          } @else if (spentNote()) {
+            <p id="budget-spent-note" data-testid="spent-note" class="m-0 text-[12px] text-ig-muted tabular-nums">
+              {{ t('budgets.form.spentNote', { amount: spentNote(), month: monthText() }) }}
+            </p>
+          }
+        </div>
+
+        <fieldset class="m-0 flex flex-col gap-2 border-0 p-0">
+          <legend class="mb-2 p-0 text-[13px] font-bold">{{ t('budgets.form.scope.legend') }}</legend>
+          @for (option of ['recurring', 'month']; track option) {
+            <label
+              [attr.data-testid]="'scope-' + option"
+              class="flex cursor-pointer items-start gap-3 rounded-lg border px-4 py-3"
+              [class]="form.controls.scope.value === option ? 'border-ig-accent bg-ig-surface-raised' : 'border-ig-border'"
+            >
+              <input
+                class="mt-0.5 size-4 shrink-0 accent-ig-accent"
+                type="radio"
+                name="budget-scope"
+                [value]="option"
+                [checked]="form.controls.scope.value === option"
+                (change)="chooseScope($any(option))"
+              />
+              <span class="flex flex-col gap-0.5">
+                <span class="font-bold">{{ t('budgets.form.scope.' + option + 'Title', { month: monthText() }) }}</span>
+                <span class="text-[13px] text-ig-muted">{{ t('budgets.form.scope.' + option + 'Body') }}</span>
+              </span>
+            </label>
+          }
+        </fieldset>
+
+        @if (override(); as current) {
+          <div data-testid="budget-override" class="flex flex-col items-start gap-2 rounded-lg border border-ig-border bg-ig-canvas p-4">
+            <p class="m-0 text-[13px]">
+              @if (current.recurring) {
+                {{ t('budgets.form.override.withRecurring', { month: monthStart() }) }}
+                <span class="font-bold tabular-nums">{{ current.recurring }}</span>.
+              } @else {
+                {{ t('budgets.form.override.withoutRecurring', { month: monthStart() }) }}
+              }
+            </p>
+            @if (current.recurring) {
+              <button
+                data-testid="budget-reset"
+                class="inline-flex min-h-11 items-center rounded-lg border-0 bg-transparent px-0 text-[13px] font-bold text-ig-accent-text hover:underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 disabled:opacity-60"
+                type="button"
+                [disabled]="isChanging()"
+                (click)="reset()"
+              >
+                {{ t('budgets.form.override.reset') }}
+              </button>
+            }
+          </div>
+        }
+
+        @if (formError()) {
+          <p data-testid="form-error" class="m-0 rounded-lg border border-ig-border bg-ig-canvas p-3 text-[14px]" role="alert">
+            {{ formError() }}
+          </p>
+        }
+
+        <div class="flex flex-wrap items-center justify-between gap-4 border-t border-ig-border pt-6">
+          @if (canRemove()) {
+            <button
+              data-testid="budget-remove"
+              class="-ml-3 inline-flex min-h-11 items-center rounded-lg border border-transparent bg-transparent px-3 text-[14px] font-medium text-ig-muted hover:bg-ig-surface-raised hover:text-ig-text focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 disabled:opacity-60"
+              type="button"
+              [disabled]="isChanging()"
+              (click)="remove()"
+            >
+              {{ t('budgets.form.remove') }}
+            </button>
+          }
+          <div class="ml-auto flex gap-2">
+            <a
+              class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-border px-4 text-[14px] text-ig-text no-underline hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+              [routerLink]="listUrl"
+              queryParamsHandling="preserve"
+            >
+              {{ t('budgets.form.cancel') }}
+            </a>
+            <button
+              data-testid="budget-submit"
+              class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-accent bg-ig-accent px-5 text-[14px] font-bold text-ig-on-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+              type="submit"
+              [disabled]="isSubmitting()"
+            >
+              {{ isSubmitting() ? t('budgets.form.saving') : t('budgets.form.submit') }}
+            </button>
+          </div>
+        </div>
+      </form>
+    }
+  }
+</section>

@@ -11,7 +11,7 @@ import {
 } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
-import { LucideLock, LucidePlus, LucideX } from '@lucide/angular';
+import { LucideCircleAlert, LucideLock, LucidePlus, LucideX } from '@lucide/angular';
 import { Observable, Subject, Subscription, catchError, finalize, map, merge, of, startWith, switchMap } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { LanguageService } from '@core/i18n/language.service';
@@ -89,6 +89,7 @@ const TYPE_ORDER: readonly TransactionType[] = ['expense', 'income', 'transfer']
     ReactiveFormsModule,
     RouterLink,
     TranslocoDirective,
+    LucideCircleAlert,
     LucideLock,
     LucidePlus,
     LucideX,
@@ -145,7 +146,8 @@ export class TransactionPanelComponent {
   protected readonly form = this.formBuilder.group({
     amount: ['', amountValidator],
     description: ['', Validators.maxLength(TRANSACTION_DESCRIPTION_MAX_LENGTH)],
-    categoryId: this.formBuilder.control<number | null>(null),
+    /** Todo movimiento lleva categoría de su mismo tipo. */
+    categoryId: this.formBuilder.control<number | null>(null, Validators.required),
     /** Cuenta de un ingreso (a la que entra) o de un gasto (de la que sale). */
     accountId: this.formBuilder.control<number | null>(null),
     fromAccountId: this.formBuilder.control<number | null>(null),
@@ -186,30 +188,15 @@ export class TransactionPanelComponent {
   /** Saldo actual de la cuenta destino de la transferencia. */
   protected readonly destinationBalanceText = computed(() => this.balanceOf(this.destination()));
 
-  /**
-   * Opciones del selector de categoría. La primera, sin valor, permite dejar el movimiento sin
-   * categoría; su texto llega traducido desde la plantilla.
-   */
-  private categoryOptionsCache: { noneLabel: string; source: TransactionCategoryOption[]; options: SelectOption<number | null>[] } | null =
-    null;
+  /** No hay categorías activas del tipo: no se puede guardar hasta crear una. */
+  protected readonly missingCategories = computed(
+    () => this.categoriesStatus() === 'ready' && this.categories().length === 0,
+  );
 
-  protected categoryOptions(noneLabel: string): SelectOption<number | null>[] {
-    const source = this.categories();
-    const cache = this.categoryOptionsCache;
-
-    // Se reutiliza el mismo arreglo mientras no cambien las categorías ni el idioma.
-    if (cache?.noneLabel === noneLabel && cache.source === source) {
-      return cache.options;
-    }
-
-    const options = [
-      { value: null, label: noneLabel },
-      ...source.map((category) => ({ value: category.id, label: category.name })),
-    ];
-    this.categoryOptionsCache = { noneLabel, source, options };
-
-    return options;
-  }
+  /** Opciones del selector de categoría: solo las activas del tipo, sin opción vacía. */
+  protected readonly categoryOptions = computed<SelectOption<number>[]>(() =>
+    this.categories().map((category) => ({ value: category.id, label: category.name })),
+  );
 
   /** Mensaje del fallo de la TRM, si lo hay. */
   protected readonly rateMessage = computed(() => {
@@ -429,7 +416,17 @@ export class TransactionPanelComponent {
   protected categoryError(): FieldMessage | null {
     const code = this.categoryServerError();
 
-    return code ? this.codeMessage(code) : null;
+    if (code) {
+      return this.codeMessage(code);
+    }
+
+    if (!this.showsError(this.form.controls.categoryId)) {
+      return null;
+    }
+
+    return this.missingCategories()
+      ? { key: `transactions.form.noCategoriesRequired.${this.type()}` }
+      : { key: `transactions.form.categoryRequired.${this.type()}` };
   }
 
   protected dateError(): FieldMessage | null {
@@ -575,6 +572,8 @@ export class TransactionPanelComponent {
     setRequired(controls.accountId, !transfer);
     setRequired(controls.fromAccountId, transfer);
     setRequired(controls.toAccountId, transfer);
+    // Al cambiar de tipo la categoría vuelve a estar vacía: no se acusa el error hasta volver a enviar.
+    controls.categoryId.markAsUntouched();
 
     this.loadCategories();
   }

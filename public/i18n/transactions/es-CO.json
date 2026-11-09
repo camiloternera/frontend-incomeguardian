@@ -6,33 +6,34 @@
   },
   "list": {
     "title": "Movimientos",
-    "subtitle": "Lo que entra, lo que sale y lo que mueves entre tus cuentas.",
+    "subtitle": "Lo que entra, lo que sale y lo que mueves entre tus cuentas, día por día.",
     "create": "Registrar movimiento",
     "loading": "Cargando tus movimientos…",
     "retry": "Intentar de nuevo",
     "route": "{{from}} → {{to}}",
     "unknownAccount": "Cuenta no disponible",
     "arrived": "llegaron",
-    "filter": {
-      "label": "Filtrar por cuenta",
-      "allAccounts": "Todas las cuentas"
+    "month": {
+      "label": "Mes",
+      "previous": "Mes anterior",
+      "next": "Mes siguiente",
+      "current": "Ir al mes actual"
     },
-    "tabs": {
-      "label": "Tipo de movimiento",
-      "all": "Todos",
-      "income": "Ingresos",
-      "expense": "Gastos",
-      "transfer": "Transferencias"
+    "summary": {
+      "label": "Resumen del mes",
+      "income": "Entró",
+      "expense": "Salió",
+      "count": "Movimientos"
+    },
+    "day": {
+      "today": "Hoy",
+      "yesterday": "Ayer",
+      "countOne": "1 movimiento",
+      "countOther": "{{count}} movimientos"
     },
     "empty": {
-      "allTitle": "Todavía no hay movimientos",
-      "allBody": "Registra un ingreso, un gasto o una transferencia para verlo aquí.",
-      "incomeTitle": "No hay ingresos",
-      "incomeBody": "Los ingresos que registres aparecerán en esta pestaña.",
-      "expenseTitle": "No hay gastos",
-      "expenseBody": "Los gastos que registres aparecerán en esta pestaña.",
-      "transferTitle": "No hay transferencias",
-      "transferBody": "Cuando muevas dinero entre tus cuentas lo verás aquí."
+      "title": "Sin movimientos en {{month}}",
+      "body": "No registraste ingresos, gastos ni transferencias con fecha de este mes."
     },
     "notice": {
       "income": "Ingreso registrado: {{amount}}",
@@ -82,6 +83,33 @@
     "fromRequired": "Elige la cuenta de origen.",
     "toRequired": "Elige la cuenta de destino.",
     "categoryLabel": "Categoría",
+    "categoryPlaceholder": "Elige una categoría",
+    "categoryHelp": "Así sabrás en qué se va tu dinero cada mes.",
+    "categoryRequired": {
+      "income": "Elige una categoría para guardar el ingreso.",
+      "expense": "Elige una categoría para guardar el gasto.",
+      "transfer": "Elige una categoría para guardar la transferencia."
+    },
+    "noCategories": {
+      "income": "Todavía no tienes categorías de ingreso. Crea una para poder guardar este movimiento.",
+      "expense": "Todavía no tienes categorías de gasto. Crea una para poder guardar este movimiento.",
+      "transfer": "Todavía no tienes categorías de transferencia. Crea una para poder guardar este movimiento."
+    },
+    "noCategoriesRequired": {
+      "income": "Primero crea una categoría de ingreso.",
+      "expense": "Primero crea una categoría de gasto.",
+      "transfer": "Primero crea una categoría de transferencia."
+    },
+    "createCategory": {
+      "income": "Crear una categoría de ingreso",
+      "expense": "Crear una categoría de gasto",
+      "transfer": "Crear una categoría de transferencia"
+    },
+    "createCategoryButton": {
+      "income": "Crear categoría de ingreso",
+      "expense": "Crear categoría de gasto",
+      "transfer": "Crear categoría de transferencia"
+    },
     "optional": "(opcional)",
     "categoriesLoading": "Cargando categorías…",
     "categoriesError": "No pudimos cargar las categorías.",
@@ -112,9 +140,7 @@
       "formulaMultiply": "{{amount}} × {{rate}}",
       "help": "Se calcula con la TRM oficial. Si quieres que llegue otro valor, ajusta el monto que envías.",
       "needsDate": "Elige una fecha de hoy o anterior para calcular con la TRM."
-    },
-    "noCategory": "Sin categoría",
-    "createCategory": "Crear una categoría"
+    }
   },
   "errors": {
     "TRANSACTION_AMOUNT_INVALID": "El monto debe ser mayor que cero y tener hasta 2 decimales.",
@@ -123,6 +149,7 @@
     "TRANSACTION_ACCOUNTS_MUST_DIFFER": "La cuenta de destino debe ser distinta de la de origen.",
     "TRANSACTION_ACCOUNT_NOT_FOUND": "No encontramos esa cuenta. Elige otra de la lista.",
     "ACCOUNT_INACTIVE": "Esa cuenta está desactivada. Elige una cuenta activa.",
+    "TRANSACTION_CATEGORY_REQUIRED": "Elige una categoría para guardar el movimiento.",
     "TRANSACTION_CATEGORY_NOT_FOUND": "Esa categoría ya no está disponible. Elige otra.",
     "TRANSACTION_CATEGORY_TYPE_MISMATCH": "Esa categoría es de otro tipo de movimiento. Elige una de este tipo.",
     "TRANSACTION_DESCRIPTION_MAX_LENGTH": "La descripción puede tener hasta {{descriptionMax}} caracteres.",

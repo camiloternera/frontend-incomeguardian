@@ -59,8 +59,118 @@ export interface TransactionPage {
 export interface TransactionQuery {
   page: number;
   pageSize: number;
-  type?: TransactionType;
-  accountId?: number;
+  /** Primer instante incluido, ISO 8601 en UTC. */
+  fromDate?: string;
+  /** Último instante incluido, ISO 8601 en UTC. */
+  toDate?: string;
+}
+
+/** Un mes del calendario; `month` va de 1 a 12. */
+export interface TransactionMonth {
+  year: number;
+  month: number;
+}
+
+/** Desfase de Colombia respecto a UTC, en horas; no tiene horario de verano. */
+const TIME_ZONE_OFFSET_HOURS = -5;
+
+/** Rango de instantes UTC que cubre el mes completo en hora de Colombia; ambos límites incluidos. */
+export function monthRange({ year, month }: TransactionMonth): TransactionRange {
+  const start = Date.UTC(year, month - 1, 1, -TIME_ZONE_OFFSET_HOURS);
+  const next = Date.UTC(year, month, 1, -TIME_ZONE_OFFSET_HOURS);
+
+  return { fromDate: new Date(start).toISOString(), toDate: new Date(next - 1).toISOString() };
+}
+
+/** Mes desplazado `delta` meses (negativo hacia atrás). */
+export function shiftMonth({ year, month }: TransactionMonth, delta: number): TransactionMonth {
+  const index = year * 12 + (month - 1) + delta;
+
+  return { year: Math.floor(index / 12), month: (index % 12) + 1 };
+}
+
+/** Compara dos meses: negativo si `a` es anterior, 0 si son el mismo. */
+export function compareMonths(a: TransactionMonth, b: TransactionMonth): number {
+  return a.year * 12 + a.month - (b.year * 12 + b.month);
+}
+
+/** Mes de un día `YYYY-MM-DD`. */
+export function monthOfDay(day: string): TransactionMonth {
+  const [year, month] = day.split('-').map(Number);
+
+  return { year, month };
+}
+
+/** Lee un mes con la forma `YYYY-MM`; null si no la tiene. */
+export function parseMonth(value: string | null): TransactionMonth | null {
+  const match = /^(\d{4})-(\d{2})$/.exec(value ?? '');
+  const month = match ? Number(match[2]) : 0;
+
+  return match && month >= 1 && month <= 12 ? { year: Number(match[1]), month } : null;
+}
+
+/** El mes como `YYYY-MM`. */
+export function formatMonthKey({ year, month }: TransactionMonth): string {
+  return `${year}-${String(month).padStart(2, '0')}`;
+}
+
+/** Día (`YYYY-MM-DD`) en hora de Colombia de un instante ISO. */
+export function dayOf(instant: string): string {
+  // `en-CA` formatea las fechas como `YYYY-MM-DD`.
+  return new Intl.DateTimeFormat('en-CA', { timeZone: TRANSACTION_TIME_ZONE }).format(new Date(instant));
+}
+
+/** Movimientos consecutivos de un mismo día, en el orden en que llegaron. */
+export interface TransactionDay<T> {
+  /** Día `YYYY-MM-DD` en hora de Colombia. */
+  day: string;
+  items: T[];
+}
+
+/** Agrupa por día una lista ya ordenada por fecha, sin reordenarla. */
+export function groupByDay<T>(items: readonly T[], instantOf: (item: T) => string): TransactionDay<T>[] {
+  const groups: TransactionDay<T>[] = [];
+
+  for (const item of items) {
+    const day = dayOf(instantOf(item));
+    const last = groups.at(-1);
+
+    if (last?.day === day) {
+      last.items.push(item);
+    } else {
+      groups.push({ day, items: [item] });
+    }
+  }
+
+  return groups;
+}
+
+/** Lo que se movió en una moneda durante un rango; COP y USD nunca se mezclan. */
+export interface CurrencySummary {
+  currency: string;
+  /** Ingresos en la moneda de su cuenta destino. */
+  income: number;
+  /** Gastos en la moneda de su cuenta origen. */
+  expense: number;
+  /** Transferencias recibidas, ya convertidas a esta moneda. */
+  transfersIn: number;
+  transfersOut: number;
+  /** income + transfersIn − expense − transfersOut. */
+  net: number;
+}
+
+/** Resumen de un rango de fechas, con los mismos filtros que el listado. */
+export interface TransactionSummary {
+  /** Coincide con el `totalItems` del listado del mismo rango. */
+  totalItems: number;
+  /** Una entrada por moneda con movimientos; vacía si no hubo ninguno. */
+  currencies: CurrencySummary[];
+}
+
+/** Rango de instantes UTC, ambos incluidos. */
+export interface TransactionRange {
+  fromDate: string;
+  toDate: string;
 }
 
 /** Campos comunes a cualquier movimiento nuevo. */

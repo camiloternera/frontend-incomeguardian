@@ -8,6 +8,8 @@ import {
   TransactionDraft,
   TransactionPage,
   TransactionQuery,
+  TransactionRange,
+  TransactionSummary,
   TransactionType,
 } from '../domain/transaction';
 import {
@@ -34,6 +36,15 @@ export class ListTransactionsUseCase {
 
   execute(query: TransactionQuery): Observable<TransactionPage> {
     return this.repository.list(query);
+  }
+}
+
+@Injectable()
+export class SummarizeTransactionsUseCase {
+  private readonly repository = inject(TransactionRepository);
+
+  execute(range: TransactionRange): Observable<TransactionSummary> {
+    return this.repository.summary(range);
   }
 }
 

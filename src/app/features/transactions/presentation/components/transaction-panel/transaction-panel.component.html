@@ -338,11 +338,10 @@
             </div>
           }
 
-          <!-- Categoría -->
+          <!-- Categoría: obligatoria en todo movimiento -->
           <div class="flex flex-col gap-2">
             <label class="text-[13px] font-bold" for="transaction-category">
               {{ t('transactions.form.categoryLabel') }}
-              <span class="font-normal text-ig-muted">{{ t('transactions.form.optional') }}</span>
             </label>
             @switch (categoriesStatus()) {
               @case ('loading') {
@@ -365,36 +364,63 @@
                 </div>
               }
               @default {
-                <app-select
-                  data-testid="transaction-category"
-                  inputId="transaction-category"
-                  formControlName="categoryId"
-                  [options]="categoryOptions(t('transactions.form.noCategory'))"
-                  [placeholder]="t('transactions.form.noCategory')"
-                  [invalid]="categoryError() !== null"
-                  [describedBy]="categoryError() ? 'transaction-category-error' : null"
-                >
-                  <a
-                    selectFooter
-                    data-testid="create-category"
-                    class="flex min-h-11 items-center gap-3 rounded-md px-3 text-[14px] font-medium text-ig-accent-text no-underline hover:bg-ig-accent/10 focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:-outline-offset-2"
-                    routerLink="/categories/new"
-                    [queryParams]="{ type: type() }"
+                @if (missingCategories()) {
+                  <div
+                    id="transaction-category"
+                    data-testid="no-categories"
+                    class="flex flex-col items-start gap-3 rounded-lg border border-dashed p-4"
+                    [class]="categoryError() ? 'border-ig-text' : 'border-ig-border'"
                   >
-                    <svg lucidePlus [size]="16" aria-hidden="true"></svg>
-                    {{ t('transactions.form.createCategory') }}
-                  </a>
-                </app-select>
+                    <p class="m-0 text-[14px]">{{ t('transactions.form.noCategories.' + type()) }}</p>
+                    <a
+                      data-testid="create-first-category"
+                      class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-ig-border px-4 text-[14px] font-bold text-ig-text no-underline hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                      routerLink="/categories/new"
+                      [queryParams]="{ type: type() }"
+                    >
+                      <svg lucidePlus [size]="16" aria-hidden="true"></svg>
+                      {{ t('transactions.form.createCategoryButton.' + type()) }}
+                    </a>
+                  </div>
+                } @else {
+                  <app-select
+                    data-testid="transaction-category"
+                    inputId="transaction-category"
+                    formControlName="categoryId"
+                    [options]="categoryOptions()"
+                    [placeholder]="t('transactions.form.categoryPlaceholder')"
+                    [invalid]="categoryError() !== null"
+                    [describedBy]="
+                      categoryError() ? 'transaction-category-error' : 'transaction-category-help'
+                    "
+                  >
+                    <a
+                      selectFooter
+                      data-testid="create-category"
+                      class="flex min-h-11 items-center gap-3 rounded-md px-3 text-[14px] font-medium text-ig-accent-text no-underline hover:bg-ig-accent/10 focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:-outline-offset-2"
+                      routerLink="/categories/new"
+                      [queryParams]="{ type: type() }"
+                    >
+                      <svg lucidePlus [size]="16" aria-hidden="true"></svg>
+                      {{ t('transactions.form.createCategory.' + type()) }}
+                    </a>
+                  </app-select>
+                }
               }
             }
             @if (categoryError(); as message) {
               <p
                 id="transaction-category-error"
                 data-testid="category-error"
-                class="m-0 text-[13px] leading-snug text-ig-text"
+                class="m-0 flex items-start gap-2 text-[13px] leading-snug text-ig-text"
                 role="alert"
               >
+                <svg lucideCircleAlert [size]="16" class="mt-px shrink-0" aria-hidden="true"></svg>
                 {{ t(message.key, message.params) }}
+              </p>
+            } @else if (categoriesStatus() === 'ready' && !missingCategories()) {
+              <p id="transaction-category-help" data-testid="category-help" class="m-0 text-[12px] text-ig-muted">
+                {{ t('transactions.form.categoryHelp') }}
               </p>
             }
           </div>
