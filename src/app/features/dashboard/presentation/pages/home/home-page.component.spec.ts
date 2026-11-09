@@ -3,13 +3,14 @@ import { provideRouter } from '@angular/router';
 import { firstValueFrom, of } from 'rxjs';
 import { translocoTesting } from '@core/i18n/i18n.testing';
 import { LanguageService } from '@core/i18n/language.service';
+import { FakePeriodRepository, periodYear, provideFakePeriods } from '@features/periods/testing';
 import { HomePageComponent } from './home-page.component';
 import { provideDashboard } from '../../../dashboard.providers';
 import { DashboardOverview } from '../../../domain/dashboard-overview';
 import { DashboardRepository } from '../../../domain/dashboard.repository';
 import { InMemoryDashboardRepository } from '../../../infrastructure/in-memory-dashboard.repository';
 
-async function setup(changes: Partial<DashboardOverview> = {}) {
+async function setup(changes: Partial<DashboardOverview> = {}, periods = new FakePeriodRepository()) {
   const sample = await firstValueFrom(new InMemoryDashboardRepository().overview());
 
   await TestBed.configureTestingModule({
@@ -17,6 +18,7 @@ async function setup(changes: Partial<DashboardOverview> = {}) {
     providers: [
       provideRouter([]),
       provideDashboard(),
+      provideFakePeriods(periods),
       { provide: DashboardRepository, useValue: { overview: () => of({ ...sample, ...changes }) } },
     ],
   }).compileComponents();
@@ -128,6 +130,39 @@ describe('HomePageComponent', () => {
 
       expect(text(element, 'stat-income')).toContain('No earlier months to compare yet');
       expect(text(element, 'cushion')).toContain('Once you have earlier months recorded');
+    });
+  });
+  describe('with the period closing', () => {
+    it('shows the month selector and proposes closing the month that ended', async () => {
+      const periods = new FakePeriodRepository();
+      periods.pendingPeriod = { year: 2026, month: 10, endedOn: '2026-10-31', autoCloseOn: null, canClose: true };
+      await setup({}, periods);
+      const { fixture, element } = render();
+
+      expect(element.querySelector('[data-testid="period-selector"]')).toBeTruthy();
+      expect(text(element, 'period-banner')).toContain('October is over. Close it?');
+
+      element.querySelector<HTMLButtonElement>('[data-testid="period-banner-review"]')!.click();
+      fixture.detectChanges();
+
+      expect(periods.calls).toContain('review 2026-10');
+    });
+
+    it('marks the days of a closed month', async () => {
+      const periods = new FakePeriodRepository();
+      periods.years[2026] = periodYear(2026, Array(10).fill('closed').concat(['current']));
+      await setup({}, periods);
+      const { element } = render();
+
+      expect(element.querySelectorAll('[data-testid="movement-day"] [data-testid="closed-month-badge"]').length).toBe(3);
+    });
+
+    it('does not mark the days while their month is open', async () => {
+      await setup();
+      const { element } = render();
+
+      expect(element.querySelector('[data-testid="closed-month-badge"]')).toBeNull();
+      expect(element.querySelector('[data-testid="period-banner"]')).toBeNull();
     });
   });
 });

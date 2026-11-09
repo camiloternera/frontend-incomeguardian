@@ -5,6 +5,12 @@ import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { LucideArrowDownLeft, LucideArrowUpRight, LucideEye, LucideEyeOff, LucidePlus, LucideShield } from '@lucide/angular';
 import { LanguageService } from '@core/i18n/language.service';
+import {
+  ClosedMonthBadgeComponent,
+  PeriodBannerComponent,
+  PeriodOverlaysComponent,
+  PeriodSelectorComponent,
+} from '@features/periods';
 import { ThemeService } from '@core/theme/theme.service';
 import { GetOverviewUseCase } from '../../../application/get-overview.use-case';
 import { cushionMonths, groupByDay, monthOutlook, previousAverages, projectedSavingsRate } from '../../../domain/overview-insights';
@@ -25,6 +31,10 @@ interface MeterSegment {
     RouterLink,
     TranslocoDirective,
     CashFlowChartComponent,
+    ClosedMonthBadgeComponent,
+    PeriodBannerComponent,
+    PeriodOverlaysComponent,
+    PeriodSelectorComponent,
     LucideArrowDownLeft,
     LucideArrowUpRight,
     LucideEye,
@@ -88,12 +98,6 @@ export class HomePageComponent {
       index,
       fill: Math.min(1, Math.max(0, months - index)),
     }));
-  });
-
-  protected readonly monthLabel = computed(() => {
-    const month = this.overview()?.month;
-
-    return month ? formatDate(`${month}-01T00:00:00`, 'LLLL yyyy', this.locale()) : '';
   });
 
   protected readonly bars = computed<CashFlowBar[]>(() =>
