@@ -9,15 +9,30 @@
       "label": "Tu mes de un vistazo",
       "availableUntil": "Disponible para gastar hasta el {{date}}",
       "overspentTitle": "Este mes ya usaste más de lo que recibiste",
-      "summary": "Recibiste {{income}} en {{payments}} pagos este mes. Ya gastaste {{expenses}} y tienes {{committed}} comprometido en gastos fijos.",
-      "summaryOnePayment": "Recibiste {{income}} en un pago este mes. Ya gastaste {{expenses}} y tienes {{committed}} comprometido en gastos fijos.",
-      "overspentBody": "Entre lo gastado y lo comprometido van {{amount}} más de lo que entró. Revisa qué gastos fijos puedes mover al próximo mes.",
+      "summary": "Recibiste {{income}} en {{payments}} pagos este mes. Ya gastaste {{expenses}} y tienes {{committed}} comprometido en tus topes del presupuesto.",
+      "summaryOnePayment": "Recibiste {{income}} en un pago este mes. Ya gastaste {{expenses}} y tienes {{committed}} comprometido en tus topes del presupuesto.",
+      "overspentBody": "Entre lo gastado y lo comprometido en tus topes van {{amount}} más de lo que entró. Revisa qué topes del presupuesto puedes ajustar.",
       "split": "Reparto del ingreso del mes: {{spent}} gastado, {{committed}} comprometido y {{available}} disponible",
       "spent": "Gastado",
       "committed": "Comprometido",
       "available": "Disponible",
       "perDay": "≈ {{amount}} por día durante los próximos {{days}} días",
-      "perDayLast": "≈ {{amount}} para el último día del mes"
+      "perDayLast": "≈ {{amount}} para el último día del mes",
+      "summaryNoCommitted": "Recibiste {{income}} en {{payments}} pagos este mes y ya gastaste {{expenses}}.",
+      "summaryOnePaymentNoCommitted": "Recibiste {{income}} en un pago este mes y ya gastaste {{expenses}}.",
+      "splitNoCommitted": "Reparto del ingreso del mes: {{spent}} gastado y {{available}} disponible",
+      "loading": "Calculando lo disponible del mes…",
+      "loadError": "No pudimos calcular lo disponible del mes.",
+      "retry": "Intentar de nuevo",
+      "empty": "Todavía no tienes ingresos, gastos ni topes este mes. Registra tu primer ingreso para ver cuánto tienes disponible.",
+      "emptyAction": "Registrar un ingreso",
+      "currencyLabel": "Moneda",
+      "currency": {
+        "COP": "Pesos colombianos",
+        "USD": "Dólares"
+      },
+      "overplannedTitle": "Tus topes del mes superan lo que recibiste",
+      "overplannedBody": "Si gastas lo que falta de tus topes, te pasarías por {{amount}}. Revisa qué topes del presupuesto puedes ajustar."
     },
     "cushion": {
       "title": "Tu colchón",
@@ -71,5 +86,8 @@
     "salary": "Salario",
     "freelance": "Trabajo independiente",
     "investment": "Inversión"
+  },
+  "errors": {
+    "PERIOD_INVALID": "Ese mes no es válido."
   }
 }
