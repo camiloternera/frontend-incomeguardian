@@ -11,11 +11,19 @@ import { provideDashboard } from '../../../dashboard.providers';
 import { DashboardError, DashboardErrorCode } from '../../../domain/dashboard-error';
 import { DashboardOverview } from '../../../domain/dashboard-overview';
 import { DashboardRepository } from '../../../domain/dashboard.repository';
-import { CurrencyMonth, MonthSummary, SummaryMonth, monthKey, monthOfDay, todayInDashboardZone } from '../../../domain/month-summary';
+import {
+  CategorySpent,
+  CurrencyMonth,
+  MonthSummary,
+  SummaryMonth,
+  monthKey,
+  monthOfDay,
+  todayInDashboardZone,
+} from '../../../domain/month-summary';
 import { MonthSummaryRepository } from '../../../domain/month-summary.repository';
 import { monthOutlook } from '../../../domain/overview-insights';
 import { InMemoryDashboardRepository } from '../../../infrastructure/in-memory-dashboard.repository';
-import { FakeMonthSummaryRepository } from '../../month-summary-repository.fake';
+import { FakeMonthSummaryRepository, sampleMonthSummary } from '../../month-summary-repository.fake';
 
 /** El bloque principal pide el mes en curso en hora de Colombia: depende del reloj real. */
 const TODAY = todayInDashboardZone();
@@ -39,8 +47,24 @@ function summaryWith(...currencies: CurrencyMonth[]): MonthSummary {
   return { ...CURRENT, currencies };
 }
 
+/** Pesos del mes de ejemplo (6 meses de historial y 6 categorías), con cambios. */
 function cop(overrides: Partial<CurrencyMonth> = {}): CurrencyMonth {
-  return { currency: 'COP', income: 6_200_000, incomePayments: 3, spent: 2_360_000, committed: 1_000_000, ...overrides };
+  return { ...sampleMonthSummary(CURRENT).currencies[0], ...overrides };
+}
+
+/** Dólares del mes de ejemplo (1 mes de historial y 1 categoría), con cambios. */
+function usd(overrides: Partial<CurrencyMonth> = {}): CurrencyMonth {
+  return { ...sampleMonthSummary(CURRENT).currencies[1], ...overrides };
+}
+
+/** `count` categorías de gasto de 100.000 cada una. */
+function categories(count: number): CategorySpent[] {
+  return Array.from({ length: count }, (_, index) => ({
+    categoryId: index + 1,
+    name: `Categoría ${index + 1}`,
+    type: 'expense' as const,
+    spent: 100_000,
+  }));
 }
 
 interface Setup {
@@ -93,6 +117,21 @@ function split(element: HTMLElement) {
   const legend = [...(bar.parentElement?.querySelectorAll('ul li') ?? [])].map((item) => item.textContent!.replace(/\s+/g, ' ').trim());
 
   return { bar, segments: bar.querySelectorAll('span').length, legend };
+}
+
+/** Indicadores, flujo de caja y categorías solo existen con cifras del mes en la moneda activa. */
+/** Filas de «En qué se fue» como «nombre | monto · %». */
+function categoryRows(element: HTMLElement): string[] {
+  return [...element.querySelectorAll('[data-testid="category-row"]')].map((row) => {
+    const [name, amount] = [...row.querySelectorAll('span')].map((span) => span.textContent!.replace(/\s+/g, ' ').trim());
+    return `${name} | ${amount}`;
+  });
+}
+
+function expectNoMonthSections(element: HTMLElement): void {
+  for (const testId of ['stats', 'cash-flow', 'categories']) {
+    expect(element.querySelector(`[data-testid="${testId}"]`)).toBeNull();
+  }
 }
 
 describe('HomePageComponent', () => {
@@ -155,13 +194,32 @@ describe('HomePageComponent', () => {
       expect(element.querySelectorAll('[data-testid="cushion"] [role="img"] > span').length).toBe(6);
     });
 
-    it('compares the month with the average of the previous months', () => {
+    it('compares the month with the average of the previous months in the history', () => {
       const { element } = render();
+      const { daysLeft } = outlookOf(cop());
 
+      expect(element.querySelectorAll('[data-testid="stats"] > [data-testid^="stat-"]').length).toBe(2);
+      expect(element.querySelector('[data-testid="stat-savings"]')).toBeNull();
+      expect(text(element, 'stat-income')).toContain('$6,200,000');
       expect(text(element, 'stat-income')).toContain('18.3% above your 5-month average');
-      expect(text(element, 'stat-expenses')).toContain('60.8% of your average, 11 days before month end');
-      expect(text(element, 'stat-savings')).toContain('45.8%');
-      expect(text(element, 'stat-savings')).toContain('Above your 30% goal');
+      expect(text(element, 'stat-expenses')).toContain('$2,360,000');
+      // Promedio de gasto de los 5 meses anteriores: 3.880.000.
+      expect(text(element, 'stat-expenses')).toContain(
+        daysLeft > 1 ? `60.8% of your average, ${daysLeft} days before month end` : '60.8% of your monthly average',
+      );
+    });
+
+    it('lists the spending by category with its share', () => {
+      const { element } = render();
+      // Nombres tal cual llegan del backend; parte sobre el total de categorías (2.360.000).
+      expect(categoryRows(element)).toEqual([
+        'Vivienda | $1,150,000 · 48.7%',
+        'Comida y mercado | $520,000 · 22%',
+        'Transporte | $240,000 · 10.2%',
+        'Suscripciones | $180,000 · 7.6%',
+        'Salud | $150,000 · 6.4%',
+        'Ahorro | $120,000 · 5.1%',
+      ]);
     });
 
     it('groups the recent movements by day', () => {
@@ -174,11 +232,14 @@ describe('HomePageComponent', () => {
       expect(days[0].querySelectorAll('li').length).toBe(2);
     });
 
-    it('draws a pair of bars per month and the income average', () => {
+    it('draws a pair of bars per month of the history and the income average', () => {
       const { element } = render();
 
       expect(element.querySelectorAll('app-cash-flow-chart svg rect').length).toBe(12);
       expect(element.querySelector('app-cash-flow-chart line[stroke-dasharray]')).toBeTruthy();
+      expect(text(element, 'cash-flow')).toContain('· last 6 months');
+      // Promedio de ingreso de los 5 meses anteriores: 5.240.000.
+      expect(text(element, 'chart-average')).toBe('Average $5.2M');
     });
 
     it('masks every amount on demand', () => {
@@ -200,6 +261,14 @@ describe('HomePageComponent', () => {
       expect(element.textContent).not.toContain('6,200,000');
       expect(element.textContent).not.toContain('2,840,000');
       expect(element.textContent).not.toContain('3,200,000');
+      expect(text(element, 'stat-income')).toContain('•••••');
+      expect(text(element, 'stat-expenses')).toContain('•••••');
+      expect(text(element, 'stat-expenses')).not.toContain('2,360,000');
+      expect(text(element, 'chart-average')).toBe('Average •••••');
+      expect(categoryRows(element)[0]).toBe('Vivienda | ••••• · 48.7%');
+      expect(text(element, 'categories')).not.toContain('1,150,000');
+      const ticks = [...element.querySelectorAll('app-cash-flow-chart svg text')].map((tick) => tick.textContent!.trim());
+      expect(ticks.some((label) => /\d/.test(label) && !/^[A-Za-z]/.test(label))).toBe(false);
       expect(toggle.textContent).toContain('Show amounts');
     });
 
@@ -214,6 +283,7 @@ describe('HomePageComponent', () => {
       expect(text(element, 'hero-summary')).toContain('comprometido en tus topes del presupuesto');
       expect(element.textContent).toContain('Flujo de caja');
       expect(element.textContent).toContain('Vivienda');
+      expect(text(element, 'chart-average')).toBe('Promedio $5,2 M');
     });
   });
 
@@ -239,6 +309,7 @@ describe('HomePageComponent', () => {
         "Working out what's available this month…",
       );
       expect(element.querySelector('[data-testid="available"]')).toBeNull();
+      expectNoMonthSections(element);
 
       pending.next(summaryWith(cop()));
       fixture.detectChanges();
@@ -337,7 +408,7 @@ describe('HomePageComponent', () => {
     });
 
     it('treats limits without income or spending as overplanned', async () => {
-      await setupWith(summaryWith({ currency: 'USD', income: 0, incomePayments: 0, spent: 0, committed: 20 }));
+      await setupWith(summaryWith(usd({ income: 0, incomePayments: 0, spent: 0, committed: 20 })));
       const { element } = render();
 
       expect(element.querySelector('[data-testid="hero-empty"]')).toBeNull();
@@ -378,6 +449,7 @@ describe('HomePageComponent', () => {
       expect(element.querySelector('[data-testid="hero-add-income"]')?.getAttribute('href')).toBe('/transactions/new/income');
       expect(element.querySelector('[data-testid="available"]')).toBeNull();
       expect(element.querySelector('[data-testid="summary-currency"]')).toBeNull();
+      expectNoMonthSections(element);
     });
 
     it('treats a currency with every figure in zero as empty', async () => {
@@ -401,6 +473,7 @@ describe('HomePageComponent', () => {
       expect(text(element, 'hero-error')).toContain("We couldn't work out what's available this month.");
       expect(text(element, 'hero-error')).toContain('That month is not valid.');
       expect(element.querySelector('[data-testid="available"]')).toBeNull();
+      expectNoMonthSections(element);
 
       element.querySelector<HTMLButtonElement>('[data-testid="hero-retry"]')!.click();
       fixture.detectChanges();
@@ -412,9 +485,9 @@ describe('HomePageComponent', () => {
   });
 
   describe('with several currencies', () => {
-    const usd: CurrencyMonth = { currency: 'USD', income: 1_200.5, incomePayments: 1, spent: 300, committed: 0 };
+    const dollars = usd({ income: 1_200.5 });
 
-    beforeEach(() => setupWith(summaryWith(usd, cop())));
+    beforeEach(() => setupWith(summaryWith(dollars, cop())));
 
     async function open(url = '/') {
       const harness = await RouterTestingHarness.create(url);
@@ -464,6 +537,9 @@ describe('HomePageComponent', () => {
       expect(router.url).toBe('/?currency=USD');
       expect(text(element, 'available-currency')).toBe('USD');
       expect(text(element, 'available')).toBe('$900.50');
+      expect(text(element, 'stat-income')).toContain('$1,200.50');
+      expect(element.querySelectorAll('app-cash-flow-chart svg rect').length).toBe(2);
+      expect(categoryRows(element)).toEqual(['Software | $300 · 100%']);
       expect(text(element, 'hero-summary')).toBe("You received $1,200.50 in one payment this month and you've spent $300.");
 
       await choose(element, harness, 'COP');
@@ -489,7 +565,7 @@ describe('HomePageComponent', () => {
 
   describe('with dollars in whole amounts', () => {
     it('shows no decimals when the amounts are whole', async () => {
-      await setupWith(summaryWith({ currency: 'USD', income: 1_200, incomePayments: 1, spent: 300, committed: 0 }));
+      await setupWith(summaryWith(usd()));
       const { element } = render();
 
       expect(text(element, 'available')).toBe('$900');
@@ -519,14 +595,158 @@ describe('HomePageComponent', () => {
     });
   });
 
-  describe('without previous months', () => {
+  describe('without previous months in the sample overview', () => {
     beforeEach(() => setup({ overview: { cashFlow: [{ month: '2026-10', income: 6_200_000, expenses: 2_360_000 }] } }));
 
-    it('explains that there is nothing to compare yet', () => {
+    it('explains that the cushion needs earlier months', () => {
       const { element } = render();
 
-      expect(text(element, 'stat-income')).toContain('No earlier months to compare yet');
       expect(text(element, 'cushion')).toContain('Once you have earlier months recorded');
+    });
+  });
+
+  describe('without previous months in the history', () => {
+    beforeEach(() => setupWith(summaryWith(cop({ history: cop().history.slice(-1) }))));
+
+    it('has nothing to compare the indicators with', () => {
+      const { element } = render();
+
+      expect(text(element, 'stat-income')).toContain('$6,200,000');
+      expect(text(element, 'stat-income')).toContain('No earlier months with activity to compare yet');
+      expect(text(element, 'stat-expenses')).toContain('No earlier months with activity to compare yet');
+    });
+
+    it('says so in Spanish', () => {
+      TestBed.inject(LanguageService).setLanguage('es-CO');
+      const { element } = render();
+
+      expect(text(element, 'stat-income')).toContain('Aún no hay meses anteriores con movimientos para comparar');
+    });
+
+    it('draws only this month without the average', () => {
+      const { element } = render();
+
+      expect(element.querySelectorAll('app-cash-flow-chart svg rect').length).toBe(2);
+      expect(text(element, 'cash-flow')).toContain('· this month');
+      expect(element.querySelector('[data-testid="chart-average"]')).toBeNull();
+      expect(element.querySelector('app-cash-flow-chart line[stroke-dasharray]')).toBeNull();
+    });
+  });
+
+  describe('with dollars and a previous month', () => {
+    it('shows the compact average with the dollar sign', async () => {
+      const [current] = usd().history;
+      const previous =
+        current.month === 1 ? { year: current.year - 1, month: 12 } : { year: current.year, month: current.month - 1 };
+      await setupWith(summaryWith(usd({ history: [{ ...previous, income: 1_000, spent: 200 }, current] })));
+      const { element } = render();
+
+      expect(text(element, 'chart-average')).toBe('Average $1K');
+      expect(text(element, 'stat-income')).toContain('20% above your 1-month average');
+    });
+  });
+
+  describe('when the previous months are all zero', () => {
+    it('treats an average of zero as nothing to compare', async () => {
+      const history = cop().history.map((point, index, all) =>
+        index < all.length - 1 ? { ...point, income: 0, spent: 0 } : point,
+      );
+      await setupWith(summaryWith(cop({ history })));
+      const { element } = render();
+
+      expect(text(element, 'stat-income')).toContain('No earlier months with activity to compare yet');
+      expect(text(element, 'stat-expenses')).toContain('No earlier months with activity to compare yet');
+      expect(element.querySelector('[data-testid="chart-average"]')).toBeNull();
+      expect(element.querySelectorAll('app-cash-flow-chart svg rect').length).toBe(12);
+    });
+  });
+
+  describe('when the income is below the average', () => {
+    it('says by how much', async () => {
+      // Promedio de los 5 meses anteriores: 5.240.000; este mes 4.192.000 = 20% menos.
+      await setupWith(summaryWith(cop({ income: 4_192_000 })));
+      const { element } = render();
+
+      expect(text(element, 'stat-income')).toContain('20% below your 5-month average');
+    });
+  });
+
+  describe('with the dollars of the sample month', () => {
+    beforeEach(() => setupWith(summaryWith(usd())));
+
+    it('shows the indicators, one bar pair and one category in dollars', () => {
+      const { element } = render();
+
+      expect(text(element, 'stat-income')).toContain('$1,200');
+      expect(text(element, 'stat-income')).toContain('No earlier months with activity to compare yet');
+      expect(text(element, 'stat-expenses')).toContain('$300');
+      expect(element.querySelectorAll('app-cash-flow-chart svg rect').length).toBe(2);
+      expect(element.querySelector('[data-testid="chart-average"]')).toBeNull();
+
+      expect(categoryRows(element)).toEqual(['Software | $300 · 100%']);
+    });
+  });
+
+  describe('with the categories of the month', () => {
+    it('says when nothing was spent by category', async () => {
+      await setupWith(summaryWith(cop({ categories: [] })));
+      const { element } = render();
+
+      expect(element.querySelector('[data-testid="category-row"]')).toBeNull();
+      expect(element.querySelector('[data-testid="categories-scroll"]')).toBeNull();
+      expect(text(element, 'categories')).toContain('No spending this month yet.');
+    });
+
+    it('shows up to five categories without scrolling', async () => {
+      await setupWith(summaryWith(cop({ categories: categories(5) })));
+      const { element } = render();
+      const list = element.querySelector('[data-testid="categories-scroll"]')!;
+
+      expect(element.querySelectorAll('[data-testid="category-row"]').length).toBe(5);
+      expect(list.classList.contains('categories-scroll')).toBe(false);
+      expect(list.hasAttribute('tabindex')).toBe(false);
+      expect(list.hasAttribute('role')).toBe(false);
+      expect(list.hasAttribute('aria-label')).toBe(false);
+      expect(element.querySelector('[data-testid="categories-more"]')).toBeNull();
+    });
+
+    it('scrolls the sixth category and says one more is hidden', async () => {
+      await setupWith(summaryWith(cop()));
+      const { element } = render();
+      const list = element.querySelector('[data-testid="categories-scroll"]')!;
+
+      expect(list.classList.contains('categories-scroll')).toBe(true);
+      expect(list.getAttribute('tabindex')).toBe('0');
+      expect(list.getAttribute('role')).toBe('region');
+      expect(list.getAttribute('aria-label')).toBe('Spending by category, 6 categories');
+      expect(text(element, 'categories-more')).toBe('1 more category: scroll to see it');
+    });
+
+    it('counts several hidden categories', async () => {
+      await setupWith(summaryWith(cop({ categories: categories(8) })));
+      const { element } = render();
+
+      expect(element.querySelectorAll('[data-testid="category-row"]').length).toBe(8);
+      expect(element.querySelector('[data-testid="categories-scroll"]')!.getAttribute('aria-label')).toBe(
+        'Spending by category, 8 categories',
+      );
+      expect(text(element, 'categories-more')).toBe('3 more categories: scroll to see them');
+    });
+
+    it('translates the scroll hint into Spanish', async () => {
+      await setupWith(summaryWith(cop({ categories: categories(7) })));
+      TestBed.inject(LanguageService).setLanguage('es-CO');
+      const { element } = render();
+
+      expect(text(element, 'categories-more')).toBe('2 categorías más: desliza para verlas');
+    });
+
+    it('translates a single hidden category into Spanish', async () => {
+      await setupWith(summaryWith(cop()));
+      TestBed.inject(LanguageService).setLanguage('es-CO');
+      const { element } = render();
+
+      expect(text(element, 'categories-more')).toBe('1 categoría más: desliza para verla');
     });
   });
 

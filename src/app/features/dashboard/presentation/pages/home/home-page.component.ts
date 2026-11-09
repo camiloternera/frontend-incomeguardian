@@ -16,8 +16,8 @@ import {
 import { ThemeService } from '@core/theme/theme.service';
 import { GetMonthSummaryUseCase } from '../../../application/get-month-summary.use-case';
 import { GetOverviewUseCase } from '../../../application/get-overview.use-case';
-import { MonthSummary, monthKey, monthOfDay, todayInDashboardZone } from '../../../domain/month-summary';
-import { cushionMonths, groupByDay, monthOutlook, previousAverages, projectedSavingsRate } from '../../../domain/overview-insights';
+import { CategorySpent, MonthSummary, monthKey, monthOfDay, todayInDashboardZone } from '../../../domain/month-summary';
+import { cushionMonths, groupByDay, monthOutlook, previousAverages } from '../../../domain/overview-insights';
 import { CashFlowBar, CashFlowChartComponent } from '../../components/cash-flow-chart.component';
 
 /** Texto que reemplaza un monto cuando el usuario decide ocultarlos. */
@@ -28,6 +28,14 @@ interface MeterSegment {
   index: number;
   fill: number;
 }
+
+/** Categoría del mes con su parte del gasto, de 0 a 1. */
+interface CategoryShare extends CategorySpent {
+  share: number;
+}
+
+/** Categorías que «En qué se fue» muestra antes de desplazarse. */
+const VISIBLE_CATEGORIES = 5;
 
 /** Estado de las cifras reales del mes que alimentan el bloque principal. */
 type SummaryState =
@@ -130,13 +138,6 @@ export class HomePageComponent {
       : null;
   });
 
-  /** Reparto del mes de ejemplo; lo usan los indicadores, que aún no leen del backend. */
-  protected readonly sampleOutlook = computed(() => {
-    const overview = this.overview();
-
-    return overview ? monthOutlook(overview) : null;
-  });
-
   /** Si el mes en la moneda activa no tiene nada que mostrar todavía. */
   protected readonly isEmpty = computed(() => {
     const figures = this.activeFigures();
@@ -174,7 +175,32 @@ export class HomePageComponent {
   /** El desplegable solo aparece cuando el mes tiene más de una moneda. */
   protected readonly hasManyCurrencies = computed(() => this.currencies().length > 1);
 
-  protected readonly averages = computed(() => {
+  /** Historial real de la moneda activa con la forma `yyyy-MM` que usan los promedios. */
+  private readonly cashFlow = computed(() =>
+    (this.activeFigures()?.history ?? []).map((point) => ({
+      month: monthKey(point),
+      income: point.income,
+      expenses: point.spent,
+    })),
+  );
+
+  /** Promedios de los meses anteriores al actual en el historial real; `null` si no hay ninguno. */
+  protected readonly averages = computed(() =>
+    previousAverages({ month: monthKey(monthOfDay(this.today)), cashFlow: this.cashFlow() }),
+  );
+
+  /** Categorías del mes con su parte del gasto, en el orden del backend (de mayor a menor). */
+  protected readonly categoryShares = computed<CategoryShare[]>(() => {
+    const categories = this.activeFigures()?.categories ?? [];
+    const total = categories.reduce((sum, category) => sum + category.spent, 0);
+
+    return categories.map((category) => ({ ...category, share: total > 0 ? category.spent / total : 0 }));
+  });
+
+  protected readonly visibleCategories = VISIBLE_CATEGORIES;
+
+  /** Promedios del Resumen de ejemplo; solo los usa el colchón, que aún no lee del backend. */
+  protected readonly sampleAverages = computed(() => {
     const overview = this.overview();
 
     return overview ? previousAverages(overview) : null;
@@ -182,15 +208,9 @@ export class HomePageComponent {
 
   protected readonly cushion = computed(() => {
     const overview = this.overview();
-    const averages = this.averages();
+    const averages = this.sampleAverages();
 
     return overview && averages ? cushionMonths(overview.savings, averages.expenses) : null;
-  });
-
-  protected readonly savingsRate = computed(() => {
-    const overview = this.overview();
-
-    return overview ? projectedSavingsRate(overview) : null;
   });
 
   protected readonly days = computed(() => {
@@ -211,7 +231,7 @@ export class HomePageComponent {
   });
 
   protected readonly bars = computed<CashFlowBar[]>(() =>
-    (this.overview()?.cashFlow ?? []).map((point) => ({
+    this.cashFlow().map((point) => ({
       label: formatDate(`${point.month}-01T00:00:00`, 'LLL', this.locale()),
       income: point.income,
       expenses: point.expenses,
@@ -265,6 +285,11 @@ export class HomePageComponent {
     return formatted.replace(/^-/, '−');
   }
 
+  /** Monto corto en la moneda activa ($5,2 M), para la leyenda del promedio. */
+  protected compactMoney(value: number): string {
+    return this.money(value, true, this.activeCurrency() ?? 'COP');
+  }
+
   /** Formatea un monto en la moneda del resumen, o lo enmascara si están ocultos. */
   protected money(value: number, compact = false, currencyCode?: string): string {
     if (this.amountsHidden()) {
@@ -274,7 +299,7 @@ export class HomePageComponent {
     const currency = currencyCode ?? this.overview()?.currency ?? 'COP';
 
     if (compact) {
-      const format = new Intl.NumberFormat(this.locale(), { style: 'currency', currency, notation: 'compact', maximumFractionDigits: 1 });
+      const format = new Intl.NumberFormat(this.locale(), { style: 'currency', currency, currencyDisplay: 'narrowSymbol', notation: 'compact', maximumFractionDigits: 1 });
       return format.format(value);
     }
 

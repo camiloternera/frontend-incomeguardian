@@ -2,6 +2,27 @@
   display: block;
 }
 
+/*
+ * «En qué se fue» con más de 5 categorías: la lista se desplaza dentro de la tarjeta. La altura deja
+ * ver 5 filas completas y asoma la sexta, y el difuminado inferior avisa que hay más.
+ * Fila = texto 20px + espacio 8px + barra 6px (34px); entre filas, 16px.
+ */
+.categories-scroll {
+  max-height: calc(5 * 34px + 5 * 16px + 14px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 8px;
+  border-radius: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-ig-border) transparent;
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+}
+
+.categories-scroll:focus-visible {
+  outline: 2px solid var(--color-ig-accent);
+  outline-offset: 4px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
