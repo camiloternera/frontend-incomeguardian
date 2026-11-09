@@ -131,6 +131,7 @@
     "TRANSACTION_NOT_FOUND": "We could not find that transaction.",
     "TRANSACTION_ACCOUNT_CURRENCY_UNSUPPORTED": "That account uses a currency that does not allow transactions. Pick one in pesos or dollars.",
     "EXCHANGE_RATE_UNAVAILABLE": "The exchange rate is not available right now.",
-    "EXCHANGE_RATE_DATE_INVALID": "There is no TRM for that date. Pick today or an earlier date."
+    "EXCHANGE_RATE_DATE_INVALID": "There is no TRM for that date. Pick today or an earlier date.",
+    "PERIOD_CLOSED": "The month of that date is closed. Reopen it to record transactions."
   }
 }

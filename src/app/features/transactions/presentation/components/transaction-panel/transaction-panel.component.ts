@@ -15,6 +15,7 @@ import { LucideLock, LucidePlus, LucideX } from '@lucide/angular';
 import { Observable, Subject, Subscription, catchError, finalize, map, merge, of, startWith, switchMap } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { LanguageService } from '@core/i18n/language.service';
+import { LockedDateNoteComponent, PeriodOverlaysComponent } from '@features/periods';
 import { DatePickerComponent } from '@shared/ui/date-picker/date-picker.component';
 import { SelectComponent, SelectOption } from '@shared/ui/select/select.component';
 import {
@@ -84,7 +85,18 @@ const TYPE_ORDER: readonly TransactionType[] = ['expense', 'income', 'transfer']
  */
 @Component({
   selector: 'app-transaction-panel',
-  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective, LucideLock, LucidePlus, LucideX, SelectComponent, DatePickerComponent],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    TranslocoDirective,
+    LucideLock,
+    LucidePlus,
+    LucideX,
+    SelectComponent,
+    DatePickerComponent,
+    LockedDateNoteComponent,
+    PeriodOverlaysComponent,
+  ],
   templateUrl: './transaction-panel.component.html',
 })
 export class TransactionPanelComponent {
@@ -97,6 +109,7 @@ export class TransactionPanelComponent {
   private readonly router = inject(Router);
   private readonly transloco = inject(TranslocoService);
   private readonly heading = viewChild<ElementRef<HTMLElement>>('heading');
+  private readonly lockedNote = viewChild(LockedDateNoteComponent);
 
   protected readonly listUrl = LIST_URL;
   protected readonly typeOrder = TYPE_ORDER;
@@ -140,7 +153,7 @@ export class TransactionPanelComponent {
     date: [todayInputDate(), [Validators.required, notInFuture]],
   });
 
-  private readonly formValue = toSignal(this.form.valueChanges.pipe(map(() => this.form.getRawValue())), {
+  protected readonly formValue = toSignal(this.form.valueChanges.pipe(map(() => this.form.getRawValue())), {
     initialValue: this.form.getRawValue(),
   });
 
@@ -297,9 +310,18 @@ export class TransactionPanelComponent {
     };
   });
 
-  /** Sin TRM no se puede calcular ni crear una transferencia entre monedas. */
+  /** Si la fecha elegida cae en un mes cerrado: no se puede guardar hasta reabrirlo o cambiarla. */
+  protected readonly dateLocked = computed(() => this.lockedNote()?.locked() ?? false);
+
+  /**
+   * Sin TRM no se puede calcular ni crear una transferencia entre monedas, y no se guarda un
+   * movimiento con fecha en un mes cerrado.
+   */
   protected readonly canSubmit = computed(
-    () => !this.isSubmitting() && (!this.crossCurrency() || this.rateState().status === 'ready'),
+    () =>
+      !this.isSubmitting() &&
+      !this.dateLocked() &&
+      (!this.crossCurrency() || this.rateState().status === 'ready'),
   );
 
   private categoriesRequest: Subscription | null = null;
@@ -457,6 +479,12 @@ export class TransactionPanelComponent {
     });
   }
 
+  /** «Usar hoy» de la nota de fecha cerrada. */
+  protected useToday(date: string): void {
+    this.form.controls.date.setValue(date);
+    this.form.controls.date.markAsDirty();
+  }
+
   protected retryRate(): void {
     this.rateRetries.next();
   }
@@ -563,7 +591,10 @@ export class TransactionPanelComponent {
   private handleSubmitError(error: unknown): void {
     const code = error instanceof TransactionError ? error.code : null;
 
-    if (code && AMOUNT_ERROR_CODES.includes(code)) {
+    if (code === TransactionErrorCode.PeriodClosed) {
+      // Otro dispositivo pudo cerrar el mes: la nota de la fecha lo explica y ofrece reabrirlo.
+      this.lockedNote()?.markLocked(this.form.controls.date.value);
+    } else if (code && AMOUNT_ERROR_CODES.includes(code)) {
       this.amountServerError.set(code);
     } else if (code && ACCOUNT_ERROR_CODES.includes(code)) {
       this.accountServerError.set(code);

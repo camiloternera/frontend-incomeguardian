@@ -2,14 +2,14 @@ import { DatePipe } from '@angular/common';
 import { Component, ElementRef, HostListener, computed, inject, signal } from '@angular/core';
 import { RouterLink, RouterOutlet } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
-import { LucideEllipsis, LucidePencil, LucidePlus, LucideSearch, LucideTrash2 } from '@lucide/angular';
-import { finalize } from 'rxjs';
+import { LucideBan, LucideEllipsis, LucidePencil, LucidePlus, LucideRotateCcw, LucideSearch } from '@lucide/angular';
+import { Observable, finalize } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { LanguageService } from '@core/i18n/language.service';
 import { ThemeService } from '@core/theme/theme.service';
 import { PaginationComponent } from '@shared/ui/pagination.component';
 import { ListCategoriesUseCase } from '../../../application/category-use-cases';
-import { CATEGORY_TYPES, Category, CategoryType, matchesCategory } from '../../../domain/category';
+import { CATEGORY_TABS, Category, CategoryTab, matchesCategory, sortByTypeThenName } from '../../../domain/category';
 import { CategoryError } from '../../../domain/category-error';
 import { CategoryWorkspace } from '../../category-workspace';
 
@@ -24,11 +24,12 @@ export const CATEGORY_PAGE_SIZE = 5;
     RouterOutlet,
     TranslocoDirective,
     PaginationComponent,
+    LucideBan,
     LucideEllipsis,
     LucidePencil,
     LucidePlus,
+    LucideRotateCcw,
     LucideSearch,
-    LucideTrash2,
   ],
   providers: [CategoryWorkspace],
   templateUrl: './category-list-page.component.html',
@@ -40,8 +41,8 @@ export class CategoryListPageComponent {
   private readonly transloco = inject(TranslocoService);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
-  /** Una pestaña por tipo de movimiento. */
-  protected readonly tabs = CATEGORY_TYPES;
+  /** Una pestaña por tipo de movimiento para las activas, más la de desactivadas. */
+  protected readonly tabs = CATEGORY_TABS;
   protected readonly pageSize = CATEGORY_PAGE_SIZE;
   protected readonly theme = inject(ThemeService).theme;
   protected readonly locale = inject(LanguageService).language;
@@ -58,19 +59,20 @@ export class CategoryListPageComponent {
   /** Fila cuyo menú de acciones está desplegado. */
   protected readonly openMenuId = signal<number | null>(null);
 
-  /** Categoría cuya eliminación espera confirmación en su propia fila. */
-  protected readonly pendingDeleteId = signal<number | null>(null);
-  protected readonly isDeleting = signal(false);
-  protected readonly deleteError = signal('');
+  /** Categoría cuya desactivación espera confirmación en su propia fila. */
+  protected readonly pendingDeactivateId = signal<number | null>(null);
+  /** Categoría que se está desactivando o reactivando. */
+  protected readonly busyId = signal<number | null>(null);
+  protected readonly actionError = signal('');
 
   private readonly matching = computed(() => (this.categories() ?? []).filter((category) => matchesCategory(category, this.query())));
 
-  /** Cuántas categorías de cada tipo coinciden con la búsqueda, para el contador de cada pestaña. */
+  /** Cuántas categorías de cada pestaña coinciden con la búsqueda, para su contador. */
   protected readonly counts = computed(() => {
-    const counts: Record<CategoryType, number> = { income: 0, expense: 0, transfer: 0 };
+    const counts: Record<CategoryTab, number> = { income: 0, expense: 0, transfer: 0, inactive: 0 };
 
     for (const category of this.matching()) {
-      counts[category.type]++;
+      counts[category.isActive ? category.type : 'inactive']++;
     }
 
     return counts;
@@ -78,9 +80,18 @@ export class CategoryListPageComponent {
   protected readonly searching = computed(() => this.query().trim() !== '');
 
   /** Pestaña visible; vive en el workspace para que el panel proponga ese tipo al crear. */
-  protected readonly tab = this.workspace.type;
-  /** Categorías de la pestaña visible que coinciden con la búsqueda. */
-  protected readonly visible = computed(() => this.matching().filter((category) => category.type === this.tab()));
+  protected readonly tab = this.workspace.tab;
+  /**
+   * Categorías de la pestaña visible que coinciden con la búsqueda. Las desactivadas se agrupan
+   * por tipo, en el mismo orden que las pestañas.
+   */
+  protected readonly visible = computed(() => {
+    const tab = this.tab();
+
+    return tab === 'inactive'
+      ? sortByTypeThenName(this.matching().filter((category) => !category.isActive))
+      : this.matching().filter((category) => category.isActive && category.type === tab);
+  });
 
   private readonly requestedPage = signal(1);
 
@@ -113,15 +124,16 @@ export class CategoryListPageComponent {
     this.requestedPage.set(1);
   }
 
-  protected selectTab(tab: CategoryType): void {
+  protected selectTab(tab: CategoryTab): void {
     this.tab.set(tab);
     this.requestedPage.set(1);
-    this.pendingDeleteId.set(null);
+    this.pendingDeactivateId.set(null);
+    this.actionError.set('');
   }
 
   protected goToPage(page: number): void {
     this.requestedPage.set(page);
-    this.pendingDeleteId.set(null);
+    this.pendingDeactivateId.set(null);
     this.openMenuId.set(null);
   }
 
@@ -143,29 +155,38 @@ export class CategoryListPageComponent {
     this.openMenuId.set(null);
   }
 
-  protected askDelete(category: Category): void {
+  protected askDeactivate(category: Category): void {
     this.openMenuId.set(null);
-    this.deleteError.set('');
-    this.pendingDeleteId.set(category.id);
+    this.actionError.set('');
+    this.pendingDeactivateId.set(category.id);
   }
 
-  protected cancelDelete(): void {
-    this.pendingDeleteId.set(null);
+  protected cancelDeactivate(): void {
+    this.pendingDeactivateId.set(null);
   }
 
-  protected confirmDelete(category: Category): void {
-    this.isDeleting.set(true);
-    this.deleteError.set('');
+  protected confirmDeactivate(category: Category): void {
+    this.run(category, this.workspace.deactivate(category));
+  }
 
-    this.workspace
-      .remove(category)
+  /** Reactivar no es destructivo: se hace sin pedir confirmación. */
+  protected activate(category: Category): void {
+    this.openMenuId.set(null);
+    this.run(category, this.workspace.activate(category));
+  }
+
+  private run(category: Category, request: Observable<Category>): void {
+    this.busyId.set(category.id);
+    this.actionError.set('');
+
+    request
       .pipe(
         finalize(() => {
-          this.isDeleting.set(false);
-          this.pendingDeleteId.set(null);
+          this.busyId.set(null);
+          this.pendingDeactivateId.set(null);
         }),
       )
-      .subscribe({ error: (error: unknown) => this.deleteError.set(this.messageOf(error)) });
+      .subscribe({ error: (error: unknown) => this.actionError.set(this.messageOf(error)) });
   }
 
   protected dismissNotice(): void {

@@ -44,11 +44,11 @@
 
         @if (categories(); as all) {
           <div class="flex flex-col-reverse gap-4">
-            <div class="flex gap-5 border-b border-ig-border sm:gap-6" role="group" [attr.aria-label]="t('categories.list.tabs.label')">
+            <div class="flex gap-5 overflow-x-auto shadow-[inset_0_-1px_0_var(--color-ig-border)] sm:gap-6" role="group" [attr.aria-label]="t('categories.list.tabs.label')">
               @for (option of tabs; track option) {
                 <button
                   [attr.data-testid]="'tab-' + option"
-                  class="-mb-px inline-flex min-h-11 items-center gap-2 whitespace-nowrap border-0 border-b-2 bg-transparent px-1 text-[14px] focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                  class="inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap border-0 border-b-2 bg-transparent px-1 text-[14px] focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
                   [class]="tab() === option ? 'border-ig-accent font-bold text-ig-text' : 'border-transparent text-ig-muted hover:text-ig-text'"
                   type="button"
                   [attr.aria-pressed]="tab() === option"
@@ -75,8 +75,8 @@
             </label>
           </div>
 
-          @if (deleteError()) {
-            <p data-testid="delete-error" class="m-0 rounded-lg border border-ig-border bg-ig-surface px-4 py-3 text-[14px]" role="alert">{{ deleteError() }}</p>
+          @if (actionError()) {
+            <p data-testid="action-error" class="m-0 rounded-lg border border-ig-border bg-ig-surface px-4 py-3 text-[14px]" role="alert">{{ actionError() }}</p>
           }
 
           @if (visible().length) {
@@ -90,16 +90,19 @@
                 >
                   <a
                     class="min-w-0 flex-1 rounded py-2 text-ig-text no-underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                    [class.text-ig-muted]="!category.isActive"
                     [routerLink]="[category.id, 'edit']"
                     [attr.aria-current]="selected ? 'true' : null"
-                    [attr.aria-label]="t('categories.list.editNamed', { name: category.name })"
+                    [attr.aria-label]="t(category.isActive ? 'categories.list.editNamed' : 'categories.list.viewNamed', { name: category.name })"
                   >
                     <span class="block break-words text-[15px] font-bold">{{ category.name }}</span>
                     <span class="mt-1 block truncate text-[13px] text-ig-muted">{{ category.description }}</span>
                   </a>
                   <span class="hidden shrink-0 text-[13px] text-ig-muted sm:block">
                     @if (selected) {
-                      {{ t('categories.list.editing') }}
+                      {{ category.isActive ? t('categories.list.editing') : t('categories.list.viewing') }}
+                    } @else if (!category.isActive) {
+                      <span [attr.data-testid]="'type-' + category.id">{{ t('categories.types.' + category.type) }}</span>
                     } @else if (category.updatedAt) {
                       {{ t('categories.list.updatedAt', { date: (category.updatedAt | date: 'd MMM' : undefined : locale()) }) }}
                     } @else {
@@ -119,51 +122,65 @@
                     <svg lucideEllipsis [size]="18" aria-hidden="true"></svg>
                   </button>
 
+
                   @if (openMenuId() === category.id) {
                     <div
                       [id]="'category-menu-' + category.id"
                       class="absolute right-2 top-[calc(100%-8px)] z-10 flex min-w-[180px] flex-col rounded-lg border border-ig-border bg-ig-surface p-1 shadow-[0_8px_24px_rgb(0_0_0/0.16)]"
                       (keydown.escape)="closeMenu(category.id)"
                     >
-                      <a
-                        class="flex min-h-11 items-center gap-3 rounded-md px-3 text-[14px] text-ig-text no-underline hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:-outline-offset-2"
-                        [routerLink]="[category.id, 'edit']"
-                      >
-                        <svg lucidePencil [size]="16" aria-hidden="true"></svg>
-                        {{ t('categories.list.edit') }}
-                      </a>
-                      <button
-                        [attr.data-testid]="'delete-' + category.id"
-                        class="flex min-h-11 items-center gap-3 rounded-md border-0 bg-transparent px-3 text-left text-[14px] text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:-outline-offset-2"
-                        type="button"
-                        (click)="askDelete(category)"
-                      >
-                        <svg lucideTrash2 [size]="16" aria-hidden="true"></svg>
-                        {{ t('categories.list.delete.action') }}
-                      </button>
+                      @if (category.isActive) {
+                        <a
+                          class="flex min-h-11 items-center gap-3 rounded-md px-3 text-[14px] text-ig-text no-underline hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:-outline-offset-2"
+                          [routerLink]="[category.id, 'edit']"
+                        >
+                          <svg lucidePencil [size]="16" aria-hidden="true"></svg>
+                          {{ t('categories.list.edit') }}
+                        </a>
+                        <button
+                          [attr.data-testid]="'deactivate-' + category.id"
+                          class="flex min-h-11 items-center gap-3 rounded-md border-0 bg-transparent px-3 text-left text-[14px] text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:-outline-offset-2"
+                          type="button"
+                          (click)="askDeactivate(category)"
+                        >
+                          <svg lucideBan [size]="16" aria-hidden="true"></svg>
+                          {{ t('categories.list.deactivate.action') }}
+                        </button>
+                      } @else {
+                        <button
+                          [attr.data-testid]="'activate-' + category.id"
+                          class="flex min-h-11 items-center gap-3 rounded-md border-0 bg-transparent px-3 text-left text-[14px] text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:-outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                          type="button"
+                          [disabled]="busyId() === category.id"
+                          (click)="activate(category)"
+                        >
+                          <svg lucideRotateCcw [size]="16" aria-hidden="true"></svg>
+                          {{ busyId() === category.id ? t('categories.list.activate.activating') : t('categories.list.activate.action') }}
+                        </button>
+                      }
                     </div>
                   }
 
-                  @if (pendingDeleteId() === category.id) {
-                    <div class="flex basis-full flex-col gap-3 pb-2 sm:flex-row sm:items-center sm:justify-between" data-testid="delete-confirmation">
-                      <p class="m-0 text-[14px]">{{ t('categories.list.delete.question', { name: category.name }) }}</p>
+                  @if (pendingDeactivateId() === category.id) {
+                    <div class="flex basis-full flex-col gap-3 pb-2 sm:flex-row sm:items-center sm:justify-between" data-testid="deactivate-confirmation">
+                      <p class="m-0 text-[14px]">{{ t('categories.list.deactivate.question', { name: category.name }) }}</p>
                       <div class="flex shrink-0 gap-2">
                         <button
                           class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-border bg-transparent px-4 text-[14px] text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
                           type="button"
-                          [disabled]="isDeleting()"
-                          (click)="cancelDelete()"
+                          [disabled]="busyId() === category.id"
+                          (click)="cancelDeactivate()"
                         >
-                          {{ t('categories.list.delete.cancel') }}
+                          {{ t('categories.list.deactivate.cancel') }}
                         </button>
                         <button
-                          data-testid="confirm-delete"
+                          data-testid="confirm-deactivate"
                           class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-text bg-ig-text px-4 text-[14px] font-bold text-ig-canvas focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
                           type="button"
-                          [disabled]="isDeleting()"
-                          (click)="confirmDelete(category)"
+                          [disabled]="busyId() === category.id"
+                          (click)="confirmDeactivate(category)"
                         >
-                          {{ isDeleting() ? t('categories.list.delete.deleting') : t('categories.list.delete.confirm') }}
+                          {{ busyId() === category.id ? t('categories.list.deactivate.deactivating') : t('categories.list.deactivate.confirm') }}
                         </button>
                       </div>
                     </div>
@@ -176,7 +193,7 @@
           } @else {
             <div data-testid="category-empty" class="flex flex-col items-start gap-2 rounded-lg border border-dashed border-ig-border px-6 py-8">
               <h2 class="m-0 text-[15px] font-bold">{{ t('categories.list.empty.' + tab()) }}</h2>
-              <p class="m-0 max-w-[520px] text-[14px] text-ig-muted">{{ t('categories.list.empty.body') }}</p>
+              <p class="m-0 max-w-[520px] text-[14px] text-ig-muted">{{ t(tab() === 'inactive' ? 'categories.list.empty.inactiveBody' : 'categories.list.empty.body') }}</p>
             </div>
           }
 

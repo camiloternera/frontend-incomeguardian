@@ -5,10 +5,8 @@
   [attr.data-theme]="theme()"
 >
   <header class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
-    <div class="flex flex-col gap-2">
-      @if (monthLabel()) {
-        <p class="m-0 text-[14px] font-medium capitalize text-ig-accent-text">{{ monthLabel() }}</p>
-      }
+    <div class="flex flex-col gap-4">
+      <app-period-selector />
       <h1 class="m-0 text-[28px] font-bold leading-[1.05] tracking-[-0.03em] sm:text-[34px]">{{ t('dashboard.home.title') }}</h1>
     </div>
 
@@ -38,6 +36,9 @@
       </a>
     </div>
   </header>
+
+  <app-period-banner />
+  <app-period-overlays />
 
   @if (overview(); as data) {
     @if (outlook(); as month) {
@@ -233,12 +234,15 @@
 
       @for (day of days(); track day.date) {
         <div data-testid="movement-day">
-          <h3 class="m-0 border-b border-ig-border py-2 text-[13px] font-medium text-ig-muted">
-            @switch (day.relative) {
-              @case ('today') { {{ t('dashboard.home.recent.today') }} · {{ longDate(day.date) }} }
-              @case ('yesterday') { {{ t('dashboard.home.recent.yesterday') }} }
-              @default { {{ capitalized(longDate(day.date)) }} }
-            }
+          <h3 class="m-0 flex flex-wrap items-center gap-2 border-b border-ig-border py-2 text-[13px] font-medium text-ig-muted">
+            <span>
+              @switch (day.relative) {
+                @case ('today') { {{ t('dashboard.home.recent.today') }} · {{ longDate(day.date) }} }
+                @case ('yesterday') { {{ t('dashboard.home.recent.yesterday') }} }
+                @default { {{ capitalized(longDate(day.date)) }} }
+              }
+            </span>
+            <app-closed-month-badge [date]="day.date" />
           </h3>
           <ul class="m-0 list-none p-0">
             @for (movement of day.movements; track movement.id) {

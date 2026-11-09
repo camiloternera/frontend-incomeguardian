@@ -1,6 +1,7 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router, Routes } from '@angular/router';
 import { provideTranslocoScope } from '@jsverse/transloco';
+import { providePeriods } from '@features/periods';
 import { isTransactionType } from './domain/transaction';
 import { provideTransactions } from './transactions.providers';
 import { TransactionListPageComponent } from './presentation/pages/transaction-list/transaction-list-page.component';
@@ -30,7 +31,7 @@ const knownType: CanActivateFn = (route, state) => {
 export const transactionsRoutes: Routes = [
   {
     path: '',
-    providers: [provideTranslocoScope('transactions'), provideTransactions()],
+    providers: [provideTranslocoScope('transactions'), provideTransactions(), providePeriods()],
     component: TransactionListPageComponent,
     children: [
       { path: 'new', pathMatch: 'full', redirectTo: 'new/expense' },

@@ -7,22 +7,29 @@
     "retry": "Intentar de nuevo",
     "edit": "Editar",
     "editNamed": "Editar la categoría {{name}}",
+    "viewNamed": "Ver la categoría {{name}}",
     "createdAt": "Creada el {{date}}",
     "updatedAt": "Actualizada el {{date}}",
-    "delete": {
-      "action": "Eliminar",
-      "question": "¿Eliminar «{{name}}»? Dejará de aparecer en tus listas.",
+    "deactivate": {
+      "action": "Desactivar",
+      "question": "¿Desactivar «{{name}}»? No podrás usarla en movimientos nuevos; los que ya la usan la conservan y podrás reactivarla.",
       "cancel": "Cancelar",
-      "confirm": "Sí, eliminar",
-      "deleting": "Eliminando…"
+      "confirm": "Sí, desactivar",
+      "deactivating": "Desactivando…"
+    },
+    "activate": {
+      "action": "Reactivar",
+      "activating": "Reactivando…"
     },
     "notice": {
       "created": "Creaste la categoría «{{name}}».",
       "updated": "Guardaste los cambios de «{{name}}».",
-      "deleted": "Eliminaste la categoría «{{name}}».",
+      "deactivated": "Desactivaste la categoría «{{name}}».",
+      "activated": "Reactivaste la categoría «{{name}}».",
       "dismiss": "Cerrar"
     },
     "editing": "Editando",
+    "viewing": "Consultando",
     "moreActions": "Más acciones para {{name}}",
     "search": {
       "label": "Buscar categorías",
@@ -30,20 +37,24 @@
       "noMatches": {
         "income": "Ninguna categoría de ingresos coincide con «{{query}}».",
         "expense": "Ninguna categoría de gastos coincide con «{{query}}».",
-        "transfer": "Ninguna categoría de transferencias coincide con «{{query}}»."
+        "transfer": "Ninguna categoría de transferencias coincide con «{{query}}».",
+        "inactive": "Ninguna categoría desactivada coincide con «{{query}}»."
       }
     },
     "tabs": {
-      "label": "Tipo de movimiento",
+      "label": "Categorías a mostrar",
       "income": "Ingresos",
       "expense": "Gastos",
-      "transfer": "Transferencias"
+      "transfer": "Transferencias",
+      "inactive": "Desactivadas"
     },
     "empty": {
       "income": "Aún no tienes categorías de ingresos",
       "expense": "Aún no tienes categorías de gastos",
       "transfer": "Aún no tienes categorías de transferencias",
-      "body": "Crea una para agrupar tus movimientos de este tipo."
+      "body": "Crea una para agrupar tus movimientos de este tipo.",
+      "inactive": "No tienes categorías desactivadas",
+      "inactiveBody": "Cuando desactives una categoría aparecerá aquí, agrupada por tipo, para consultarla o reactivarla."
     }
   },
   "form": {
@@ -67,7 +78,8 @@
     "descriptionHint": "Para recordar qué movimientos van aquí.",
     "typeLabel": "Tipo de movimiento",
     "typeHint": "Solo podrás usarla en movimientos de este tipo; no se puede cambiar después.",
-    "typeLocked": "El tipo no se puede cambiar."
+    "typeLocked": "El tipo no se puede cambiar.",
+    "readOnly": "Esta categoría está desactivada: puedes consultarla y reactivarla, pero no editarla ni usarla en movimientos nuevos."
   },
   "errors": {
     "CATEGORY_NAME_REQUIRED": "Escribe un nombre para la categoría.",
@@ -75,9 +87,12 @@
     "CATEGORY_NAME_ALREADY_EXISTS": "Ya existe una categoría con ese nombre.",
     "CATEGORY_DESCRIPTION_REQUIRED": "Escribe una descripción para la categoría.",
     "CATEGORY_DESCRIPTION_MAX_LENGTH": "La descripción puede tener hasta {{descriptionMax}} caracteres.",
-    "CATEGORY_NOT_FOUND": "No encontramos esta categoría. Puede que ya se haya eliminado.",
+    "CATEGORY_NOT_FOUND": "No encontramos esta categoría.",
     "CATEGORY_TRANSACTION_TYPE_REQUIRED": "Elige el tipo de movimiento de la categoría.",
-    "CATEGORY_TRANSACTION_TYPE_INVALID": "Ese tipo de movimiento no es válido. Elige otro."
+    "CATEGORY_TRANSACTION_TYPE_INVALID": "Ese tipo de movimiento no es válido. Elige otro.",
+    "CATEGORY_STATUS_INVALID": "No pudimos filtrar las categorías por estado. Intenta de nuevo.",
+    "CATEGORY_ALREADY_ACTIVE": "Esta categoría ya estaba activa.",
+    "CATEGORY_ALREADY_INACTIVE": "Esta categoría ya estaba desactivada."
   },
   "types": {
     "income": "Ingreso",

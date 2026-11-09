@@ -19,8 +19,26 @@ export interface Category {
   description: string;
   /** Tipo de movimiento en el que se puede usar; se fija al crearla y no se puede cambiar. */
   type: CategoryType;
+  /** Las desactivadas se pueden consultar y reactivar, pero no editar ni usar en movimientos nuevos. */
+  isActive: boolean;
   createdAt: string;
   updatedAt: string | null;
+}
+
+/** Pestañas del listado: una por tipo de movimiento para las activas y una para las desactivadas. */
+export const CATEGORY_TABS = [...CATEGORY_TYPES, 'inactive'] as const;
+export type CategoryTab = (typeof CATEGORY_TABS)[number];
+
+/**
+ * Ordena por tipo (en el orden de `CATEGORY_TYPES`) y luego por nombre, como agrupa el backend
+ * la sección de desactivadas.
+ */
+export function sortByTypeThenName(categories: readonly Category[]): Category[] {
+  return [...categories].sort(
+    (a, b) =>
+      CATEGORY_TYPES.indexOf(a.type) - CATEGORY_TYPES.indexOf(b.type) ||
+      a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }),
+  );
 }
 
 /** Ordena las categorías alfabéticamente por nombre, sin distinguir mayúsculas ni tildes. */

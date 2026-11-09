@@ -90,6 +90,7 @@
     "ACCOUNT_CURRENCY_INVALID": "That currency is not available. Pick one from the list.",
     "ACCOUNT_CURRENCY_LOCKED": "The account already has transactions, so its currency cannot change.",
     "ACCOUNT_OPENING_DATE_REQUIRED": "Enter the day and time you opened the account.",
-    "ACCOUNT_OPENING_DATE_FUTURE": "The opening date cannot be later than now."
+    "ACCOUNT_OPENING_DATE_FUTURE": "The opening date cannot be later than now.",
+    "ACCOUNT_LOCKED_BY_CLOSED_PERIOD": "You can't change the opening balance or currency: there are closed months since this account opened. Reopen them first."
   }
 }

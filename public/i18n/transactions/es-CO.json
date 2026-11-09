@@ -131,6 +131,7 @@
     "TRANSACTION_NOT_FOUND": "No encontramos ese movimiento.",
     "TRANSACTION_ACCOUNT_CURRENCY_UNSUPPORTED": "Esa cuenta está en una moneda que no admite movimientos. Elige una en pesos o dólares.",
     "EXCHANGE_RATE_UNAVAILABLE": "La TRM no está disponible en este momento.",
-    "EXCHANGE_RATE_DATE_INVALID": "No hay TRM para esa fecha. Elige hoy o una fecha anterior."
+    "EXCHANGE_RATE_DATE_INVALID": "No hay TRM para esa fecha. Elige hoy o una fecha anterior.",
+    "PERIOD_CLOSED": "El mes de esa fecha está cerrado. Reábrelo para registrar movimientos."
   }
 }

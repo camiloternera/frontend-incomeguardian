@@ -3,12 +3,14 @@ import { provideRouter } from '@angular/router';
 import { translocoTesting } from '@core/i18n/i18n.testing';
 import { LanguageService } from '@core/i18n/language.service';
 import { ThemeService } from '@core/theme/theme.service';
+import { FakePeriodRepository, provideFakePeriods } from '@features/periods/testing';
 import { PreferencesError } from '../../../domain/preferences-error';
 import { FakePreferencesRepository, provideFakeSettings } from '../../preferences-repository.fake';
 import { SettingsPageComponent } from './settings-page.component';
 
 describe('SettingsPageComponent', () => {
   let fake: FakePreferencesRepository;
+  let periods: FakePeriodRepository;
 
   function render() {
     const fixture = TestBed.createComponent(SettingsPageComponent);
@@ -24,9 +26,10 @@ describe('SettingsPageComponent', () => {
   beforeEach(async () => {
     localStorage.clear();
     fake = new FakePreferencesRepository();
+    periods = new FakePeriodRepository();
     await TestBed.configureTestingModule({
       imports: [SettingsPageComponent, translocoTesting()],
-      providers: [provideRouter([]), provideFakeSettings(fake)],
+      providers: [provideRouter([]), provideFakeSettings(fake), provideFakePeriods(periods)],
     }).compileComponents();
   });
 
@@ -85,5 +88,11 @@ describe('SettingsPageComponent', () => {
 
     expect(element.querySelector('[data-testid="load-error"]')).toBeNull();
     expect(TestBed.inject(ThemeService).theme()).toBe('noir');
+  });
+  it('includes the period closing preferences and history', () => {
+    const { element } = render();
+
+    expect(element.querySelector('[data-testid="period-settings"]')?.textContent).toContain('Period closing');
+    expect(periods.calls).toEqual(expect.arrayContaining(['settings', 'history 20']));
   });
 });

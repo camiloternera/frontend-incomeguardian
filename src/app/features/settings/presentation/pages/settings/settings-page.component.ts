@@ -5,6 +5,7 @@ import { finalize } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { Language } from '@core/i18n/language';
 import { LanguageService } from '@core/i18n/language.service';
+import { PeriodSettingsComponent } from '@features/periods';
 import { ThemeName } from '@core/theme/theme-name';
 import { ThemeService } from '@core/theme/theme.service';
 import { LoadPreferencesUseCase, SavePreferencesUseCase } from '../../../application/preferences-use-cases';
@@ -16,7 +17,7 @@ type SaveStatus = 'idle' | 'saving' | 'saved';
 
 @Component({
   selector: 'app-settings-page',
-  imports: [TranslocoDirective, LucideCheck],
+  imports: [TranslocoDirective, LucideCheck, PeriodSettingsComponent],
   templateUrl: './settings-page.component.html',
   styleUrls: ['./settings-page.component.css'],
 })

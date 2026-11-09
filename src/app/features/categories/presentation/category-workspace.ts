@@ -1,12 +1,12 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { Observable, tap } from 'rxjs';
-import { DeleteCategoryUseCase } from '../application/category-use-cases';
-import { Category, CategoryType, sortCategories } from '../domain/category';
+import { ActivateCategoryUseCase, DeactivateCategoryUseCase } from '../application/category-use-cases';
+import { Category, CategoryTab, CategoryType, isCategoryType, sortCategories } from '../domain/category';
 import { CategoryError, CategoryErrorCode } from '../domain/category-error';
 
 /** Acción completada que la vista confirma al usuario. */
 export interface CategoryNotice {
-  kind: 'created' | 'updated' | 'deleted';
+  kind: 'created' | 'updated' | 'deactivated' | 'activated';
   name: string;
 }
 
@@ -16,43 +16,78 @@ export interface CategoryNotice {
  */
 @Injectable()
 export class CategoryWorkspace {
-  private readonly deleteCategory = inject(DeleteCategoryUseCase);
+  private readonly deactivateCategory = inject(DeactivateCategoryUseCase);
+  private readonly activateCategory = inject(ActivateCategoryUseCase);
 
-  /** `null` mientras se cargan las categorías por primera vez. */
+  /** Activas y desactivadas; `null` mientras se cargan por primera vez. */
   readonly categories = signal<Category[] | null>(null);
   /** Aviso de la última acción completada. */
   readonly notice = signal<CategoryNotice | null>(null);
   /** Categoría abierta en el panel, para resaltarla en la lista. */
   readonly selectedId = signal<number | null>(null);
-  /** Pestaña visible del listado; también es el tipo que propone el panel al crear. */
-  readonly type = signal<CategoryType>('expense');
+  /** Pestaña visible del listado; si es un tipo, también es el que propone el panel al crear. */
+  readonly tab = signal<CategoryTab>('expense');
+
+  /** Tipo que se propone al crear: el de la pestaña visible, o gasto si se ven las desactivadas. */
+  proposedType(): CategoryType {
+    const tab = this.tab();
+
+    return isCategoryType(tab) ? tab : 'expense';
+  }
 
   /** Incorpora a la lista una categoría recién creada o editada, muestra su pestaña y avisa del cambio. */
   saved(category: Category, kind: 'created' | 'updated'): void {
-    this.type.set(category.type);
-    this.categories.update((categories) =>
-      categories === null ? null : sortCategories([...categories.filter((item) => item.id !== category.id), category]),
-    );
+    this.tab.set(category.type);
+    this.put(category);
     this.notice.set({ kind, name: category.name });
   }
 
+  /** Desactiva la categoría y la pasa a la pestaña de desactivadas. */
+  deactivate(category: Category): Observable<Category> {
+    return this.deactivateCategory
+      .execute(category.id)
+      .pipe(this.track(category, false, CategoryErrorCode.AlreadyInactive, 'deactivated'));
+  }
+
+  /** Reactiva la categoría y la devuelve a la pestaña de su tipo. */
+  activate(category: Category): Observable<Category> {
+    return this.activateCategory
+      .execute(category.id)
+      .pipe(this.track(category, true, CategoryErrorCode.AlreadyActive, 'activated'));
+  }
+
   /**
-   * Elimina la categoría y la retira de la lista. Si el backend ya no la tiene, también se retira,
-   * pero el error sigue su curso para que la vista lo cuente.
+   * Refleja el resultado en la lista. Si el backend ya la tenía en el estado pedido, o ya no la
+   * tiene, la lista se sincroniza igual, pero el error sigue su curso para que la vista lo cuente.
    */
-  remove(category: Category): Observable<void> {
-    return this.deleteCategory.execute(category.id).pipe(
-      tap({
-        next: () => {
+  private track(
+    category: Category,
+    isActive: boolean,
+    alreadyCode: CategoryErrorCode,
+    kind: 'deactivated' | 'activated',
+  ) {
+    return tap<Category>({
+      next: (updated) => {
+        this.put(updated);
+        this.notice.set({ kind, name: updated.name });
+      },
+      error: (error: unknown) => {
+        if (!(error instanceof CategoryError)) {
+          return;
+        }
+
+        if (error.code === alreadyCode) {
+          this.put({ ...category, isActive });
+        } else if (error.code === CategoryErrorCode.NotFound) {
           this.drop(category.id);
-          this.notice.set({ kind: 'deleted', name: category.name });
-        },
-        error: (error: unknown) => {
-          if (error instanceof CategoryError && error.code === CategoryErrorCode.NotFound) {
-            this.drop(category.id);
-          }
-        },
-      }),
+        }
+      },
+    });
+  }
+
+  private put(category: Category): void {
+    this.categories.update((categories) =>
+      categories === null ? null : sortCategories([...categories.filter((item) => item.id !== category.id), category]),
     );
   }
 

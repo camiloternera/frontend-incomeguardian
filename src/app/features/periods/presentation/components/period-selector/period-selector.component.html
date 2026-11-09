@@ -1,0 +1,188 @@
+<div *transloco="let t" class="relative flex flex-wrap items-center gap-2">
+  <button
+    #trigger
+    data-testid="period-selector"
+    type="button"
+    aria-haspopup="dialog"
+    class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-ig-border bg-ig-surface px-4 text-[14px] text-ig-text hover:border-ig-muted"
+    [class]="ui.focus"
+    [attr.aria-expanded]="isOpen()"
+    [attr.aria-controls]="isOpen() ? dialogId : null"
+    [attr.aria-label]="t('periods.selector.button', { period: currentLabel(), status: t('periods.status.current') })"
+    (click)="toggle()"
+  >
+    <span class="font-bold">{{ currentLabel() }}</span>
+    <span class="text-ig-muted" aria-hidden="true">· {{ t('periods.selector.current') }}</span>
+    <svg lucideChevronDown [size]="16" class="text-ig-muted" aria-hidden="true"></svg>
+  </button>
+
+  @if (snoozedPending(); as pending) {
+    <button
+      data-testid="period-pending-chip"
+      type="button"
+      class="inline-flex min-h-11 items-center gap-2 rounded-full border border-dashed border-ig-accent bg-transparent px-4 text-[13px] font-medium text-ig-accent-text hover:bg-ig-accent/10"
+      [class]="ui.focus"
+      (click)="openSnoozed()"
+    >
+      <span class="size-1.5 rounded-full bg-ig-accent" aria-hidden="true"></span>
+      {{ t('periods.banner.chip', { month: long(pending.month) }) }}
+    </button>
+  }
+
+  @if (isOpen()) {
+    <!-- En mobile la hoja inferior va sobre un velo; en desktop es un popover sin velo. -->
+    <div class="fixed inset-0 z-30 bg-black/60 sm:hidden" aria-hidden="true" (click)="close()"></div>
+
+    <div
+      #popover
+      data-testid="period-popover"
+      role="dialog"
+      tabindex="-1"
+      [id]="dialogId"
+      [attr.aria-label]="t('periods.selector.label')"
+      class="fixed inset-x-0 bottom-0 z-40 flex max-h-[85dvh] flex-col gap-4 overflow-y-auto rounded-t-2xl border-t border-ig-border bg-ig-canvas px-4 pb-6 pt-4 text-ig-text shadow-[0_-8px_24px_rgb(0_0_0/0.16)] outline-none sm:absolute sm:inset-x-auto sm:bottom-auto sm:left-0 sm:top-[calc(100%+8px)] sm:max-h-none sm:w-[400px] sm:rounded-lg sm:border sm:p-4 sm:shadow-[0_8px_24px_rgb(0_0_0/0.16)]"
+      (keydown.escape)="close()"
+    >
+      <div class="mx-auto -mt-2 h-1 w-10 shrink-0 rounded-full bg-ig-border sm:hidden" aria-hidden="true"></div>
+
+      <!-- Año: estado y navegación. -->
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <span class="text-[16px] font-bold" aria-live="polite">{{ year() }}</span>
+          @if (data(); as data) {
+            @if (data.yearClosed) {
+              <span class="inline-flex items-center gap-1 rounded-full border border-ig-border bg-ig-surface px-2 py-0.5 text-[12px] text-ig-muted">
+                <svg lucideLock [size]="12" aria-hidden="true"></svg>
+                {{ t('periods.year.closed') }}
+              </span>
+            } @else {
+              <span class="rounded-full border border-ig-border px-2 py-0.5 text-[12px] text-ig-muted">{{ t('periods.year.open') }}</span>
+            }
+          }
+        </div>
+        <div class="flex items-center">
+          <button
+            data-testid="period-previous-year"
+            type="button"
+            [class]="ui.icon"
+            [disabled]="!canGoBack()"
+            [attr.aria-label]="t('periods.selector.previousYear')"
+            (click)="shiftYear(-1)"
+          >
+            <svg lucideChevronLeft [size]="18" aria-hidden="true"></svg>
+          </button>
+          <button
+            data-testid="period-next-year"
+            type="button"
+            [class]="ui.icon"
+            [disabled]="!canGoForward()"
+            [attr.aria-label]="t('periods.selector.nextYear')"
+            (click)="shiftYear(1)"
+          >
+            <svg lucideChevronRight [size]="18" aria-hidden="true"></svg>
+          </button>
+          <button type="button" class="sm:hidden" [class]="ui.icon" [attr.aria-label]="t('periods.selector.close')" (click)="close()">
+            <svg lucideX [size]="18" aria-hidden="true"></svg>
+          </button>
+        </div>
+      </div>
+
+      @switch (entry().status) {
+        @case ('error') {
+          <div class="flex flex-col items-start gap-2 rounded-lg border border-ig-border bg-ig-surface p-4">
+            <p class="m-0 text-[13px] text-ig-muted" role="alert">{{ $any(entry()).message }}</p>
+            <button type="button" [class]="ui.secondary" (click)="retry()">{{ t('periods.selector.retry') }}</button>
+          </div>
+        }
+        @case ('loading') {
+          <div class="grid grid-cols-3 gap-2 sm:grid-cols-4" role="status" [attr.aria-label]="t('periods.selector.loading')">
+            @for (index of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]; track index) {
+              <span class="h-12 animate-pulse rounded-lg bg-ig-surface sm:h-11"></span>
+            }
+          </div>
+        }
+        @case ('ready') {
+          @if (data(); as data) {
+            <div class="grid grid-cols-3 gap-2 sm:grid-cols-4">
+              @for (month of data.months; track month.month) {
+                <button
+                  [attr.data-testid]="'period-month-' + month.month"
+                  type="button"
+                  [class]="monthClass(month)"
+                  [disabled]="month.status === 'future'"
+                  [attr.aria-pressed]="month.month === selectedMonth()"
+                  [attr.aria-label]="t('periods.selector.monthAria', { month: long(month.month), year: data.year, status: t('periods.status.' + month.status) })"
+                  (click)="choose(month)"
+                >
+                  <span>{{ short(month.month) }}</span>
+                  @if (month.status === 'closed') {
+                    <svg lucideLock [size]="14" aria-hidden="true"></svg>
+                  } @else if (month.status === 'pending') {
+                    <span class="size-1.5 rounded-full bg-ig-accent" aria-hidden="true"></span>
+                  }
+                </button>
+              }
+            </div>
+
+            <ul class="m-0 flex list-none flex-wrap gap-x-4 gap-y-1 p-0 text-[12px] text-ig-muted" aria-hidden="true">
+              <li class="inline-flex items-center gap-1"><svg lucideLock [size]="12"></svg>{{ t('periods.legend.closed') }}</li>
+              <li class="inline-flex items-center gap-1"><span class="size-1.5 rounded-full bg-ig-accent"></span>{{ t('periods.legend.pending') }}</li>
+              <li>{{ t('periods.legend.current') }}</li>
+            </ul>
+
+            <!-- Detalle del mes elegido. -->
+            @if (selected(); as month) {
+              <div data-testid="period-detail" class="flex flex-col gap-3 rounded-lg border border-ig-border bg-ig-surface p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex min-w-0 flex-col gap-1">
+                  <p class="m-0 text-[14px] font-bold">{{ long(month.month) }} {{ data.year }}</p>
+                  @let copy = detail(month, data);
+                  <p class="m-0 text-[13px] text-ig-muted">{{ t(copy.key, copy.params) }}</p>
+                  @if (detailHint(month); as hint) {
+                    <p class="m-0 text-[13px] text-ig-muted">{{ t(hint.key, hint.params) }}</p>
+                  }
+                </div>
+                @switch (monthAction(month)) {
+                  @case ('close') {
+                    <button data-testid="period-close-month" type="button" class="w-full shrink-0 sm:w-auto" [class]="ui.primary" (click)="closeMonth(month)">
+                      <svg lucideLock [size]="16" aria-hidden="true"></svg>
+                      {{ t('periods.actions.closeMonth') }}
+                    </button>
+                  }
+                  @case ('reopen') {
+                    <button data-testid="period-reopen-month" type="button" class="w-full shrink-0 sm:w-auto" [class]="ui.accentOutline" (click)="reopenMonth(month)">
+                      {{ t('periods.actions.reopen') }}
+                    </button>
+                  }
+                }
+              </div>
+            }
+
+            <!-- Año completo. -->
+            <div data-testid="period-year-row" class="flex flex-col gap-2 border-t border-ig-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+              @let hint = yearHint(data);
+              <p class="m-0 text-[13px] text-ig-muted">{{ t(hint.key, hint.params) }}</p>
+              @switch (yearAction()) {
+                @case ('close') {
+                  <button data-testid="period-close-year" type="button" class="shrink-0" [class]="ui.primary" (click)="closeYear()">
+                    <svg lucideLock [size]="16" aria-hidden="true"></svg>
+                    {{ t('periods.actions.closeYear', { year: data.year }) }}
+                  </button>
+                }
+                @case ('closeDisabled') {
+                  <button data-testid="period-close-year" type="button" class="shrink-0" [class]="ui.secondary" disabled>
+                    {{ t('periods.actions.closeYear', { year: data.year }) }}
+                  </button>
+                }
+                @case ('reopen') {
+                  <button data-testid="period-reopen-year" type="button" class="shrink-0" [class]="ui.link" (click)="reopenYear()">
+                    {{ t('periods.actions.reopenYear', { year: data.year }) }}
+                  </button>
+                }
+              }
+            </div>
+          }
+        }
+      }
+    </div>
+  }
+</div>

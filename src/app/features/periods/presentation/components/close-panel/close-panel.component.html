@@ -1,0 +1,252 @@
+<dialog
+  #dialog
+  *transloco="let t"
+  data-testid="close-panel"
+  class="fixed inset-y-0 left-auto right-0 m-0 h-dvh max-h-none w-full max-w-none border-0 border-ig-border bg-ig-canvas p-0 text-ig-text backdrop:bg-black/60 sm:w-[480px] sm:border-l"
+  aria-labelledby="close-panel-title"
+  (close)="onDialogClosed()"
+  (click)="onDialogClick($event)"
+>
+  @if (period(); as period) {
+    <div class="flex h-full flex-col">
+      <!-- Encabezado. -->
+      <div class="flex items-start justify-between gap-4 border-b border-ig-border px-4 py-4 sm:px-6">
+        <h2
+          #heading
+          id="close-panel-title"
+          tabindex="-1"
+          class="m-0 break-words text-[20px] font-bold tracking-[-0.02em] outline-none"
+        >
+          @if (period.month === null) {
+            {{ t('periods.panel.yearTitle', { year: period.year }) }}
+          } @else {
+            {{ t('periods.panel.monthTitle', { month: monthLabel(period.month), year: period.year }) }}
+          }
+        </h2>
+        <button data-testid="close-panel-dismiss" type="button" class="-mr-2 -mt-2" [class]="ui.icon" [attr.aria-label]="t('periods.panel.close')" (click)="dismiss()">
+          <svg lucideX [size]="18" aria-hidden="true"></svg>
+        </button>
+      </div>
+
+      @if (done(); as closed) {
+        <!-- Confirmación. -->
+        <div data-testid="close-panel-done" class="flex flex-1 flex-col items-center justify-center gap-4 px-6 py-10 text-center">
+          <span class="grid size-14 place-items-center rounded-full bg-ig-accent/15 text-ig-accent-text" aria-hidden="true">
+            <svg lucideLock [size]="24"></svg>
+          </span>
+          <p class="m-0 text-[20px] font-bold" role="status">
+            @if (closed.month === null) {
+              {{ t('periods.panel.yearDoneTitle', { year: closed.year }) }}
+            } @else {
+              {{ t('periods.panel.monthDoneTitle', { month: monthTitle(closed.month) }) }}
+            }
+          </p>
+          <p class="m-0 max-w-[360px] text-[14px] leading-relaxed text-ig-muted">
+            {{ t(closed.month === null ? 'periods.panel.yearDoneBody' : 'periods.panel.monthDoneBody') }}
+          </p>
+          @if (submitError()) {
+            <p class="m-0 text-[13px] text-ig-text" role="alert">{{ submitError() }}</p>
+          }
+          <div class="flex flex-wrap justify-center gap-2 pt-2">
+            <button data-testid="close-panel-undo" type="button" [class]="ui.secondary" [disabled]="isUndoing()" (click)="undo()">
+              @if (isUndoing()) {
+                <svg lucideLoaderCircle [size]="16" class="animate-spin" aria-hidden="true"></svg>
+              }
+              {{ t('periods.actions.undo') }}
+            </button>
+            <button data-testid="close-panel-back" type="button" [class]="ui.primary" (click)="dismiss()">
+              {{ t('periods.actions.backToSummary') }}
+            </button>
+          </div>
+        </div>
+      } @else {
+        <!-- Revisión. -->
+        <div class="flex flex-1 flex-col gap-8 overflow-y-auto px-4 py-6 sm:px-6">
+          <p class="m-0 text-[14px] leading-relaxed text-ig-muted">
+            @if (period.month === null) {
+              {{ t('periods.panel.yearIntro', { year: period.year }) }}
+            } @else {
+              {{ t('periods.panel.monthIntro', { month: monthLabel(period.month) }) }}
+            }
+          </p>
+
+          @switch (state().status) {
+            @case ('error') {
+              <div class="flex flex-col items-start gap-3 rounded-lg border border-ig-border bg-ig-surface p-4">
+                <p data-testid="close-panel-error" class="m-0 text-[14px]" role="alert">{{ $any(state()).message }}</p>
+                <button type="button" [class]="ui.secondary" (click)="retry()">{{ t('periods.actions.retry') }}</button>
+              </div>
+            }
+            @case ('loading') {
+              <div class="flex flex-col gap-4" role="status" [attr.aria-label]="t('periods.panel.loading')">
+                @for (row of [1, 2, 3, 4, 5]; track row) {
+                  <span class="h-6 animate-pulse rounded bg-ig-surface"></span>
+                }
+              </div>
+            }
+            @case ('ready') {
+              @if (review(); as review) {
+                <!-- Meses del año. -->
+                @if (review.yearState; as year) {
+                  <section class="flex flex-col gap-3" aria-labelledby="close-panel-months">
+                    <h3 id="close-panel-months" class="m-0 text-[14px] font-bold">{{ t('periods.panel.yearMonths', { year: year.year }) }}</h3>
+                    <ul class="m-0 grid list-none grid-cols-6 gap-2 p-0">
+                      @for (month of year.months; track month.month) {
+                        <li
+                          class="flex min-h-10 items-center justify-center gap-1 rounded-lg border text-[12px]"
+                          [class]="
+                            month.status === 'closed'
+                              ? 'border-ig-border bg-ig-surface text-ig-muted'
+                              : month.status === 'noActivity'
+                                ? 'border-transparent text-ig-muted'
+                                : 'border-dashed border-ig-accent font-bold text-ig-text'
+                          "
+                          [attr.aria-label]="monthTitle(month.month) + ', ' + t('periods.status.' + month.status)"
+                        >
+                          <span aria-hidden="true">{{ short(month.month) }}</span>
+                          @if (month.status === 'closed') {
+                            <svg lucideLock [size]="11" aria-hidden="true"></svg>
+                          }
+                        </li>
+                      }
+                    </ul>
+                    @if (openMonths().length === 1) {
+                      <p class="m-0 text-[13px] text-ig-muted">{{ t('periods.panel.openMonthNote', { month: monthTitle(openMonths()[0].month) }) }}</p>
+                    } @else if (openMonths().length > 1) {
+                      <p class="m-0 text-[13px] text-ig-muted">{{ t('periods.panel.openMonthsNote', { count: openMonths().length }) }}</p>
+                    }
+                  </section>
+                }
+
+                <!-- Totales. -->
+                <section class="flex flex-col gap-3" aria-labelledby="close-panel-totals">
+                  <h3 id="close-panel-totals" class="m-0 text-[14px] font-bold">
+                    @if (period.month === null) {
+                      {{ t('periods.panel.yearSummary', { year: period.year }) }}
+                    } @else {
+                      {{ t('periods.panel.monthSummary', { month: monthLabel(period.month) }) }}
+                    }
+                  </h3>
+                  @for (totals of review.totals; track totals.currency) {
+                    <dl data-testid="close-panel-totals" class="m-0 flex flex-col">
+                      @if (review.totals.length > 1) {
+                        <p class="m-0 pb-1 text-[12px] font-bold text-ig-muted">{{ totals.currency }}</p>
+                      }
+                      <div class="flex items-baseline justify-between gap-4 border-b border-ig-border py-3 text-[14px]">
+                        <dt class="text-ig-muted">{{ t('periods.panel.income') }}</dt>
+                        <dd class="m-0 font-bold tabular-nums">{{ amount(totals.income, totals.currency) }}</dd>
+                      </div>
+                      <div class="flex items-baseline justify-between gap-4 border-b border-ig-border py-3 text-[14px]">
+                        <dt class="text-ig-muted">{{ t('periods.panel.expense') }}</dt>
+                        <dd class="m-0 font-bold tabular-nums">{{ amount(totals.expense, totals.currency) }}</dd>
+                      </div>
+                      <div class="flex items-baseline justify-between gap-4 py-3 text-[14px]">
+                        <dt class="text-ig-muted">{{ t('periods.panel.savings') }}</dt>
+                        <dd class="m-0 font-bold tabular-nums">
+                          {{ amount(totals.savings, totals.currency) }}
+                          @if (totals.savingsRate !== null) {
+                            <span class="font-normal text-ig-muted">· {{ rate(totals.savingsRate) }}</span>
+                          }
+                        </dd>
+                      </div>
+                    </dl>
+                  } @empty {
+                    <p class="m-0 text-[14px] text-ig-muted">{{ t('periods.panel.noTotals') }}</p>
+                  }
+                </section>
+
+                <!-- Saldos. -->
+                <section class="flex flex-col gap-3" aria-labelledby="close-panel-balances">
+                  <h3 id="close-panel-balances" class="m-0 text-[14px] font-bold">
+                    @if (period.month === null) {
+                      {{ t('periods.panel.yearBalances') }}
+                    } @else {
+                      {{ t('periods.panel.monthBalances', { date: lastDay(period) }) }}
+                    }
+                  </h3>
+                  <ul class="m-0 flex list-none flex-col p-0">
+                    @for (balance of review.balances; track balance.accountId) {
+                      <li data-testid="close-panel-balance" class="flex items-baseline justify-between gap-4 border-b border-ig-border py-3 text-[14px]">
+                        <span class="min-w-0 truncate">
+                          {{ balance.name }}
+                          <span class="text-ig-muted">· {{ balance.currency }}{{ balance.isActive ? '' : ' · ' + t('periods.panel.inactive') }}</span>
+                        </span>
+                        <span class="shrink-0 font-bold tabular-nums">{{ amount(balance.balance, balance.currency) }}</span>
+                      </li>
+                    } @empty {
+                      <li class="py-3 text-[14px] text-ig-muted">{{ t('periods.panel.noBalances') }}</li>
+                    }
+                  </ul>
+                  <p class="m-0 text-[13px] text-ig-muted">{{ t('periods.panel.balancesNote') }}</p>
+                </section>
+
+                <!-- Checks informativos: nunca bloquean el cierre. -->
+                <section class="flex flex-col gap-3" aria-labelledby="close-panel-checks">
+                  <h3 id="close-panel-checks" class="m-0 text-[14px] font-bold">{{ t('periods.panel.checksTitle') }}</h3>
+                  <ul class="m-0 flex list-none flex-col gap-2 p-0 text-[14px]">
+                    <li class="flex items-center gap-2">
+                      <svg lucideCircleCheck [size]="18" class="shrink-0 text-ig-accent-text" aria-hidden="true"></svg>
+                      {{ t('periods.panel.balancesOk') }}
+                    </li>
+                    @if (review.uncategorizedCount > 0) {
+                      <li data-testid="close-panel-uncategorized" class="flex flex-wrap items-center gap-x-2">
+                        <span class="size-[18px] shrink-0 rounded-full border border-ig-muted" aria-hidden="true"></span>
+                        <span class="text-ig-muted">
+                          @if (review.uncategorizedCount === 1) {
+                            {{ t('periods.panel.uncategorizedOne') }}
+                          } @else {
+                            {{ t('periods.panel.uncategorized', { count: review.uncategorizedCount }) }}
+                          }
+                        </span>
+                        <a class="no-underline" [class]="ui.link" routerLink="/transactions" (click)="dismiss()">{{ t('periods.panel.review') }}</a>
+                      </li>
+                    }
+                  </ul>
+                </section>
+
+                <!-- Qué cambia. -->
+                <section class="flex flex-col gap-2 rounded-lg border border-ig-border bg-ig-surface p-4" aria-labelledby="close-panel-rules">
+                  <h3 id="close-panel-rules" class="m-0 text-[14px] font-bold">{{ t('periods.panel.rulesTitle') }}</h3>
+                  <ul class="m-0 flex list-disc flex-col gap-1 pl-5 text-[13px] leading-relaxed text-ig-muted">
+                    <li>
+                      @if (period.month === null) {
+                        {{ t('periods.panel.yearRule', { year: period.year }) }}
+                      } @else {
+                        {{ t('periods.panel.monthRule', { month: monthLabel(period.month) }) }}
+                      }
+                    </li>
+                    <li>{{ t('periods.panel.lockedRule') }}</li>
+                    <li>{{ t('periods.panel.reopenRule') }}</li>
+                  </ul>
+                </section>
+              }
+            }
+          }
+        </div>
+
+        <!-- Pie fijo. -->
+        <div class="flex flex-col gap-3 border-t border-ig-border px-4 py-4 sm:px-6">
+          @if (submitError()) {
+            <p data-testid="close-panel-submit-error" class="m-0 rounded-lg border border-ig-border bg-ig-surface px-4 py-3 text-[14px]" role="alert">{{ submitError() }}</p>
+          }
+          <div class="flex flex-wrap justify-end gap-2">
+            <button type="button" [class]="ui.secondary" (click)="dismiss()">{{ t('periods.actions.notNow') }}</button>
+            <button data-testid="close-panel-confirm" type="button" [class]="ui.primary" [disabled]="!review() || isSubmitting()" (click)="confirm()">
+              @if (isSubmitting()) {
+                <svg lucideLoaderCircle [size]="16" class="animate-spin" aria-hidden="true"></svg>
+                {{ t('periods.panel.closing') }}
+              } @else {
+                <svg lucideLock [size]="16" aria-hidden="true"></svg>
+                @if (period.month === null) {
+                  {{ t('periods.panel.confirmYear', { year: period.year }) }}
+                } @else {
+                  {{ t('periods.panel.confirmMonth', { month: monthLabel(period.month) }) }}
+                }
+              }
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</dialog>

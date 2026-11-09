@@ -7,22 +7,29 @@
     "retry": "Try again",
     "edit": "Edit",
     "editNamed": "Edit the {{name}} category",
+    "viewNamed": "View the {{name}} category",
     "createdAt": "Created {{date}}",
     "updatedAt": "Updated {{date}}",
-    "delete": {
-      "action": "Delete",
-      "question": "Delete “{{name}}”? It will no longer show up in your lists.",
+    "deactivate": {
+      "action": "Deactivate",
+      "question": "Deactivate “{{name}}”? You will not be able to use it in new transactions; the ones that use it keep it, and you can reactivate it.",
       "cancel": "Cancel",
-      "confirm": "Yes, delete",
-      "deleting": "Deleting…"
+      "confirm": "Yes, deactivate",
+      "deactivating": "Deactivating…"
+    },
+    "activate": {
+      "action": "Reactivate",
+      "activating": "Reactivating…"
     },
     "notice": {
       "created": "You created the “{{name}}” category.",
       "updated": "You saved the changes to “{{name}}”.",
-      "deleted": "You deleted the “{{name}}” category.",
+      "deactivated": "You deactivated the “{{name}}” category.",
+      "activated": "You reactivated the “{{name}}” category.",
       "dismiss": "Dismiss"
     },
     "editing": "Editing",
+    "viewing": "Viewing",
     "moreActions": "More actions for {{name}}",
     "search": {
       "label": "Search categories",
@@ -30,20 +37,24 @@
       "noMatches": {
         "income": "No income category matches “{{query}}”.",
         "expense": "No expense category matches “{{query}}”.",
-        "transfer": "No transfer category matches “{{query}}”."
+        "transfer": "No transfer category matches “{{query}}”.",
+        "inactive": "No deactivated category matches “{{query}}”."
       }
     },
     "tabs": {
-      "label": "Transaction type",
+      "label": "Categories to show",
       "income": "Income",
       "expense": "Expenses",
-      "transfer": "Transfers"
+      "transfer": "Transfers",
+      "inactive": "Deactivated"
     },
     "empty": {
       "income": "You have no income categories yet",
       "expense": "You have no expense categories yet",
       "transfer": "You have no transfer categories yet",
-      "body": "Create one to group your transactions of this type."
+      "body": "Create one to group your transactions of this type.",
+      "inactive": "You have no deactivated categories",
+      "inactiveBody": "When you deactivate a category it shows up here, grouped by type, so you can look it up or reactivate it."
     }
   },
   "form": {
@@ -67,7 +78,8 @@
     "descriptionHint": "To remember which transactions belong here.",
     "typeLabel": "Transaction type",
     "typeHint": "You can only use it on transactions of this type; it cannot be changed later.",
-    "typeLocked": "The type cannot be changed."
+    "typeLocked": "The type cannot be changed.",
+    "readOnly": "This category is deactivated: you can look it up and reactivate it, but you cannot edit it or use it in new transactions."
   },
   "errors": {
     "CATEGORY_NAME_REQUIRED": "Enter a name for the category.",
@@ -75,9 +87,12 @@
     "CATEGORY_NAME_ALREADY_EXISTS": "A category with that name already exists.",
     "CATEGORY_DESCRIPTION_REQUIRED": "Enter a description for the category.",
     "CATEGORY_DESCRIPTION_MAX_LENGTH": "The description can be up to {{descriptionMax}} characters.",
-    "CATEGORY_NOT_FOUND": "We could not find this category. It may have been deleted already.",
+    "CATEGORY_NOT_FOUND": "We could not find this category.",
     "CATEGORY_TRANSACTION_TYPE_REQUIRED": "Choose the transaction type for the category.",
-    "CATEGORY_TRANSACTION_TYPE_INVALID": "That transaction type is not valid. Choose another one."
+    "CATEGORY_TRANSACTION_TYPE_INVALID": "That transaction type is not valid. Choose another one.",
+    "CATEGORY_STATUS_INVALID": "We could not filter the categories by status. Try again.",
+    "CATEGORY_ALREADY_ACTIVE": "This category was already active.",
+    "CATEGORY_ALREADY_INACTIVE": "This category was already deactivated."
   },
   "types": {
     "income": "Income",
