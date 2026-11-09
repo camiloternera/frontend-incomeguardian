@@ -453,8 +453,8 @@
               formControlName="date"
               [today]="today"
               [max]="today"
-              [invalid]="dateError() !== null"
-              [describedBy]="dateError() ? 'transaction-date-error' : null"
+              [invalid]="dateError() !== null || dateLocked()"
+              [describedBy]="dateError() ? 'transaction-date-error' : dateLocked() ? 'transaction-date-locked' : null"
             />
             @if (dateError(); as message) {
               <p
@@ -467,6 +467,13 @@
               </p>
             }
           </div>
+
+          <app-locked-date-note
+            noteId="transaction-date-locked"
+            [date]="formValue().date"
+            [kind]="type()"
+            (useToday)="useToday($event)"
+          />
 
           @if (formError()) {
             <p
@@ -503,4 +510,6 @@
       }
     }
   }
+
+  <app-period-overlays />
 </section>

@@ -3,6 +3,7 @@ import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { translocoTesting } from '@core/i18n/i18n.testing';
 import { LanguageService } from '@core/i18n/language.service';
+import { periodYear } from '@features/periods/testing';
 import { TransactionError, TransactionErrorCode } from '../../../domain/transaction-error';
 import { TransactionFakes, fakeTransactionsRoutes } from '../../transaction-repository.fake';
 
@@ -354,5 +355,100 @@ describe('TransactionPanelComponent', () => {
     await settle(harness);
 
     expect(TestBed.inject(Router).url).toBe('/transactions');
+  });
+  describe('with a date in a closed month', () => {
+    /** Cierra todos los meses anteriores al de `today` (este año y el pasado). */
+    function closeMonthsBefore(today: string): void {
+      const [year, month] = today.split('-').map(Number);
+
+      for (const each of [year - 1, year]) {
+        fakes.periods.years[each] = periodYear(
+          each,
+          Array.from({ length: 12 }, (_, index) =>
+            each < year || index + 1 < month ? 'closed' : index + 1 === month ? 'current' : 'future',
+          ),
+        );
+      }
+    }
+
+    /** Abre el formulario de gasto con monto y cuenta, y elige una fecha de hace 40 días. */
+    async function openWithClosedDate() {
+      const today = new Date();
+      closeMonthsBefore(
+        `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`,
+      );
+      const opened = await open('/transactions/new/expense');
+      const { harness, element } = opened;
+      const closedDate = shiftDate(dateValue(element), -40);
+      type(element, 'transaction-amount', '52300');
+      choose(element, 'transaction-account', 'Nequi', harness);
+      pickDate(element, closedDate, harness);
+      await settle(harness);
+
+      return { ...opened, closedDate };
+    }
+
+    it('does not show the note while the date is in an open month', async () => {
+      const { element } = await open('/transactions/new/expense');
+
+      expect(query(element, 'locked-date-note')).toBeNull();
+      expect(submitButton(element).disabled).toBe(false);
+    });
+
+    it('explains the closed month and blocks saving until the date changes', async () => {
+      const { harness, element } = await openWithClosedDate();
+
+      expect(query(element, 'locked-date-note')?.textContent).toContain('is closed');
+      expect(query(element, 'locked-date-note')?.textContent).toContain('To save this expense');
+      expect(query(element, 'date-picker-trigger')?.getAttribute('aria-describedby')).toContain('transaction-date-locked');
+      expect(submitButton(element).disabled).toBe(true);
+
+      click(element, 'locked-date-today');
+      await settle(harness);
+
+      expect(query(element, 'locked-date-note')).toBeNull();
+      expect(submitButton(element).disabled).toBe(false);
+    });
+
+    it('reopens the month from the note and offers to keep recording', async () => {
+      const { harness, element, closedDate } = await openWithClosedDate();
+      const [year, month] = closedDate.split('-').map(Number);
+
+      click(element, 'locked-date-reopen');
+      await settle(harness);
+      expect(query(element, 'reopen-dialog')?.textContent).toContain('Reopen');
+
+      query(element, 'reopen-dialog')!.querySelector('form')!.dispatchEvent(new Event('submit'));
+      await settle(harness);
+
+      expect(fakes.periods.lastReopen).toEqual({ period: { year, month }, request: { recloseMode: 'auto', reason: null } });
+      expect(query(element, 'locked-date-note')).toBeNull();
+      expect(submitButton(element).disabled).toBe(false);
+      expect(query(element, 'period-notice')?.textContent).toContain('It closes on its own tomorrow.');
+
+      click(element, 'period-notice-keep-going');
+      await settle(harness);
+
+      expect(query(element, 'period-notice')).toBeNull();
+      expect(TestBed.inject(Router).url).toBe('/transactions/new/expense');
+    });
+
+    it('locks the date when the backend says another device closed the month', async () => {
+      const { harness, element } = await open('/transactions/new/expense');
+      const [year] = dateValue(element).split('-').map(Number);
+      const loads = fakes.periods.count(`year ${year}`);
+      fakes.transactions.failWith = new TransactionError('Closed.', TransactionErrorCode.PeriodClosed);
+
+      type(element, 'transaction-amount', '1000');
+      choose(element, 'transaction-account', 'Nequi', harness);
+      submit(element);
+      await settle(harness);
+
+      expect(query(element, 'locked-date-note')?.textContent).toContain('is closed');
+      expect(query(element, 'form-error')).toBeNull();
+      expect(submitButton(element).disabled).toBe(true);
+      // Se vuelve a consultar el año para traer el cierre hecho en el otro dispositivo.
+      expect(fakes.periods.count(`year ${year}`)).toBe(loads + 1);
+    });
   });
 });
