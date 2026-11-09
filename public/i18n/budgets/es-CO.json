@@ -1,0 +1,142 @@
+{
+  "list": {
+    "title": "Presupuesto",
+    "subtitle": "Cuánto quieres gastar en cada categoría y cuánto llevas este mes.",
+    "create": "Agregar tope",
+    "loading": "Cargando tu presupuesto…",
+    "retry": "Intentar de nuevo",
+    "edit": "Editar tope de {{name}}",
+    "inactive": "categoría desactivada",
+    "footnote": "Los ingresos no tienen tope. Las transferencias a categorías como ahorro cuentan lo que sale de la cuenta de origen.",
+    "month": {
+      "previous": "Mes anterior",
+      "next": "Mes siguiente",
+      "daysLeft": "Quedan {{count}} días del mes",
+      "daysLeftOne": "Queda 1 día del mes",
+      "lastDay": "Hoy es el último día del mes",
+      "ended": "Este mes ya terminó",
+      "closed": "Mes cerrado",
+      "closedNotice": "Este mes está cerrado: sus topes quedan como referencia y no se pueden cambiar."
+    },
+    "currency": {
+      "label": "Moneda",
+      "name": {
+        "COP": "Pesos colombianos",
+        "USD": "Dólares"
+      }
+    },
+    "block": {
+      "budget": "Tope del mes",
+      "spent": "Gastado",
+      "available": "Disponible",
+      "usedBefore": "Usaste",
+      "usedAfter": "de lo planeado"
+    },
+    "mobile": {
+      "availableOf": "Disponible de {{budget}}",
+      "spentLine": "Gastado {{spent}} · {{percent}} usado",
+      "spentOnly": "Gastado {{spent}}"
+    },
+    "table": {
+      "category": "Categoría",
+      "budget": "Tope",
+      "spent": "Gastado",
+      "available": "Disponible",
+      "usage": "Uso"
+    },
+    "type": {
+      "expense": "Gasto",
+      "transfer": "Transferencia",
+      "unknown": "Categoría"
+    },
+    "source": {
+      "recurring": "Cada mes",
+      "month": "Solo este mes",
+      "none": "Sin tope",
+      "paused": "Pausado solo este mes"
+    },
+    "usage": {
+      "paused": "Pausado este mes",
+      "unbudgeted": "Sin tope: gastaste {{spent}}",
+      "over": "Te pasaste por {{amount}}",
+      "full": "Tope completo",
+      "partial": "{{percent}} usado"
+    },
+    "shortUsage": {
+      "paused": "Pausado",
+      "unbudgeted": "Sin tope",
+      "over": "Te pasaste",
+      "full": "Completo",
+      "partial": "{{percent}}"
+    },
+    "mobileMeta": {
+      "budgeted": "{{spent}} de {{budget}}",
+      "unbudgeted": "Sin tope · {{spent}} gastado"
+    },
+    "empty": {
+      "title": "Todavía no tienes topes",
+      "body": "Define cuánto quieres gastar en cada categoría. El tope se repite cada mes y puedes ajustarlo para un mes en particular.",
+      "action": "Agregar el primer tope",
+      "closedTitle": "No hubo topes en {{month}}"
+    },
+    "notice": {
+      "saved": "Guardaste el tope de {{name}}.",
+      "removed": "Quitaste el tope de {{name}}.",
+      "reset": "{{name}} volvió al tope recurrente.",
+      "dismiss": "Cerrar"
+    }
+  },
+  "form": {
+    "newTitle": "Nuevo tope",
+    "newSubtitle": "Se aplica a partir de {{month}}.",
+    "editSubtitle": "{{type}} · {{currency}}",
+    "close": "Cerrar el panel",
+    "notFoundTitle": "Tope no encontrado",
+    "notFound": "Esa categoría no aparece en el presupuesto de este mes.",
+    "backToList": "Volver al presupuesto",
+    "readOnly": {
+      "closed": "Este mes está cerrado: sus topes no se pueden cambiar. Reábrelo para editarlos.",
+      "inactive": "La categoría está desactivada. Reactívala en Categorías para cambiar su tope."
+    },
+    "currency": "Moneda",
+    "currencyHelp": "Solo cuenta lo que gastes desde cuentas en esta moneda.",
+    "category": "Categoría",
+    "categoryPlaceholder": "Elige una categoría",
+    "categoryHelp": "Solo aparecen categorías de gasto y de transferencia sin tope en esta moneda.",
+    "categoryRequired": "Elige una categoría.",
+    "noCategories": "No tienes categorías de gasto ni de transferencia sin tope en esta moneda.",
+    "createCategory": "Crear una categoría",
+    "amount": "Tope mensual",
+    "amountRequired": "Escribe el tope.",
+    "amountInvalid": "Escribe un número con hasta {{decimals}} decimales.",
+    "amountTooLarge": "El tope puede tener hasta {{digits}} cifras enteras.",
+    "amountPositive": "El tope debe ser mayor que cero. Para pausarlo, elige «Solo {{month}}».",
+    "spentNote": "Llevas {{amount}} gastado en {{month}}.",
+    "scope": {
+      "legend": "¿Para qué meses?",
+      "recurringTitle": "Desde {{month}} en adelante",
+      "recurringBody": "Se repite cada mes. Los meses anteriores conservan su tope.",
+      "monthTitle": "Solo {{month}}",
+      "monthBody": "Los demás meses siguen con el tope recurrente. Con 0 lo pausas solo este mes."
+    },
+    "override": {
+      "withRecurring": "{{month}} usa un tope propio. El recurrente es",
+      "withoutRecurring": "{{month}} usa un tope propio y no hay tope recurrente.",
+      "reset": "Volver al tope recurrente"
+    },
+    "remove": "Quitar tope",
+    "cancel": "Cancelar",
+    "submit": "Guardar tope",
+    "saving": "Guardando…"
+  },
+  "errors": {
+    "BUDGET_AMOUNT_INVALID": "El tope debe ser un número mayor o igual a cero con hasta 2 decimales.",
+    "BUDGET_CURRENCY_UNSUPPORTED": "Solo puedes fijar topes en pesos o dólares.",
+    "BUDGET_CATEGORY_TYPE_INVALID": "Solo las categorías de gasto y de transferencia admiten tope.",
+    "BUDGET_CATEGORY_NOT_FOUND": "Esa categoría ya no está disponible. Elige otra.",
+    "BUDGET_NOT_FOUND": "Ese tope ya no existe. Actualizamos el presupuesto.",
+    "BUDGET_CATEGORY_REQUIRED": "Elige una categoría.",
+    "PERIOD_INVALID": "Ese mes no es válido.",
+    "PERIOD_CLOSED": "Este mes está cerrado: sus topes no se pueden cambiar."
+  }
+}
