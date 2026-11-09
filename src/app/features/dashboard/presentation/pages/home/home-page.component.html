@@ -175,7 +175,7 @@
           @if (months !== null) {
             <p class="m-0 text-[40px] font-bold leading-none tracking-[-0.04em]">{{ t('dashboard.home.cushion.months', { months: decimal(months) }) }}</p>
             <p class="m-0 text-[14px] leading-relaxed text-ig-muted">
-              {{ t('dashboard.home.cushion.body', { months: decimal(months), average: money(averages()!.expenses) }) }}
+              {{ t('dashboard.home.cushion.body', { months: decimal(months), average: money(sampleAverages()!.expenses) }) }}
             </p>
             <div
               class="flex gap-1 pt-2"
@@ -195,16 +195,17 @@
         </div>
       </section>
 
-    @if (sampleOutlook(); as month) {
-      <section class="grid gap-6 sm:grid-cols-3" [attr.aria-label]="t('dashboard.home.stats.label')">
+    @if (activeFigures(); as figures) {
+      @let avg = averages();
+      <section data-testid="stats" class="grid gap-6 sm:grid-cols-2" [attr.aria-label]="t('dashboard.home.stats.label')">
         <div data-testid="stat-income" class="flex flex-col gap-2 border-l border-ig-border pl-6">
           <h2 class="m-0 text-[14px] font-normal text-ig-muted">{{ t('dashboard.home.stats.income') }}</h2>
-          <p class="m-0 text-[28px] font-bold tracking-[-0.03em] tabular-nums">{{ money(data.income) }}</p>
-          @if (averages(); as avg) {
-            @if (data.income >= avg.income) {
-              <p class="m-0 text-[13px] font-medium text-ig-accent-text">{{ t('dashboard.home.stats.aboveAverage', { pct: percent(data.income / avg.income - 1), count: avg.months }) }}</p>
+          <p class="m-0 text-[28px] font-bold tracking-[-0.03em] tabular-nums">{{ heroMoney(figures.income) }}</p>
+          @if (avg && avg.income > 0) {
+            @if (figures.income >= avg.income) {
+              <p class="m-0 text-[13px] font-medium text-ig-accent-text">{{ t('dashboard.home.stats.aboveAverage', { pct: percent(figures.income / avg.income - 1), count: avg.months }) }}</p>
             } @else {
-              <p class="m-0 text-[13px] text-ig-muted">{{ t('dashboard.home.stats.belowAverage', { pct: percent(1 - data.income / avg.income), count: avg.months }) }}</p>
+              <p class="m-0 text-[13px] text-ig-muted">{{ t('dashboard.home.stats.belowAverage', { pct: percent(1 - figures.income / avg.income), count: avg.months }) }}</p>
             }
           } @else {
             <p class="m-0 text-[13px] text-ig-muted">{{ t('dashboard.home.stats.noAverage') }}</p>
@@ -213,88 +214,88 @@
 
         <div data-testid="stat-expenses" class="flex flex-col gap-2 border-l border-ig-border pl-6">
           <h2 class="m-0 text-[14px] font-normal text-ig-muted">{{ t('dashboard.home.stats.expenses') }}</h2>
-          <p class="m-0 text-[28px] font-bold tracking-[-0.03em] tabular-nums">{{ money(data.expenses) }}</p>
-          @if (averages(); as avg) {
-            @if (month.daysLeft > 1) {
-              <p class="m-0 text-[13px] text-ig-muted">{{ t('dashboard.home.stats.ofAverageDays', { pct: percent(data.expenses / avg.expenses), days: month.daysLeft }) }}</p>
+          <p class="m-0 text-[28px] font-bold tracking-[-0.03em] tabular-nums">{{ heroMoney(figures.spent) }}</p>
+          @let daysLeft = outlook()?.daysLeft ?? 0;
+          @if (avg && avg.expenses > 0) {
+            @if (daysLeft > 1) {
+              <p class="m-0 text-[13px] text-ig-muted">{{ t('dashboard.home.stats.ofAverageDays', { pct: percent(figures.spent / avg.expenses), days: daysLeft }) }}</p>
             } @else {
-              <p class="m-0 text-[13px] text-ig-muted">{{ t('dashboard.home.stats.ofAverage', { pct: percent(data.expenses / avg.expenses) }) }}</p>
+              <p class="m-0 text-[13px] text-ig-muted">{{ t('dashboard.home.stats.ofAverage', { pct: percent(figures.spent / avg.expenses) }) }}</p>
             }
           } @else {
             <p class="m-0 text-[13px] text-ig-muted">{{ t('dashboard.home.stats.noAverage') }}</p>
           }
         </div>
+      </section>
 
-        <div data-testid="stat-savings" class="flex flex-col gap-2 border-l border-ig-border pl-6">
-          <h2 class="m-0 text-[14px] font-normal text-ig-muted">{{ t('dashboard.home.stats.savings') }}</h2>
-          @let rate = savingsRate();
-          @if (rate !== null) {
-            <p class="m-0 text-[28px] font-bold tracking-[-0.03em] tabular-nums">{{ percent(rate) }}</p>
-            @if (rate >= data.goals.savingsRate) {
-              <p class="m-0 text-[13px] font-medium text-ig-accent-text">{{ t('dashboard.home.stats.aboveGoal', { goal: percent(data.goals.savingsRate) }) }}</p>
-            } @else {
-              <p class="m-0 text-[13px] text-ig-muted">{{ t('dashboard.home.stats.belowGoal', { goal: percent(data.goals.savingsRate) }) }}</p>
+      <div class="grid items-start gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <section data-testid="cash-flow" class="min-w-0 rounded-lg border border-ig-border bg-ig-surface p-4 sm:p-6">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <h2 class="m-0 text-[16px] font-bold">
+              {{ t('dashboard.home.cashFlow.title') }}
+              <span class="font-normal text-ig-muted">· {{ t(bars().length === 1 ? 'dashboard.home.cashFlow.periodOne' : 'dashboard.home.cashFlow.period', { count: bars().length }) }}</span>
+            </h2>
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] text-ig-muted">
+              <span class="inline-flex items-center gap-2"><span class="size-2 rounded-sm bg-ig-accent" aria-hidden="true"></span>{{ t('dashboard.home.cashFlow.income') }}</span>
+              <span class="inline-flex items-center gap-2"><span class="size-2 rounded-sm bg-ig-muted" aria-hidden="true"></span>{{ t('dashboard.home.cashFlow.expenses') }}</span>
+              @if (avg && avg.income > 0) {
+                <span data-testid="chart-average" class="inline-flex items-center gap-2 font-medium text-ig-accent-text">
+                  <span class="w-4 border-t-2 border-dashed border-ig-accent-text" aria-hidden="true"></span>
+                  {{ t('dashboard.home.cashFlow.average', { amount: compactMoney(avg.income) }) }}
+                </span>
+              }
+            </div>
+          </div>
+
+          <div class="mt-6 overflow-x-auto">
+            <div class="min-w-[560px]">
+              <app-cash-flow-chart
+                [bars]="bars()"
+                [chartLabel]="t('dashboard.home.cashFlow.chartLabel')"
+                [formatTick]="formatTick()"
+                [average]="avg && avg.income > 0 ? avg.income : null"
+              />
+            </div>
+          </div>
+        </section>
+
+        <section data-testid="categories" class="min-w-0 rounded-lg border border-ig-border bg-ig-surface p-4 sm:p-6" aria-labelledby="categories-title">
+          <h2 id="categories-title" class="m-0 text-[16px] font-bold">{{ t('dashboard.home.categories.title') }}</h2>
+
+          @let shares = categoryShares();
+          @if (shares.length) {
+            <!-- Después de 5 categorías la lista se desplaza; el difuminado inferior avisa que hay más. -->
+            <div
+              data-testid="categories-scroll"
+              class="mt-6"
+              [class.categories-scroll]="shares.length > visibleCategories"
+              [attr.tabindex]="shares.length > visibleCategories ? 0 : null"
+              [attr.role]="shares.length > visibleCategories ? 'region' : null"
+              [attr.aria-label]="shares.length > visibleCategories ? t('dashboard.home.categories.scrollLabel', { count: shares.length }) : null"
+            >
+              <ul class="m-0 flex list-none flex-col gap-4 p-0">
+                @for (category of shares; track category.categoryId) {
+                  <li data-testid="category-row" class="flex flex-col gap-2">
+                    <div class="flex items-baseline justify-between gap-4 text-[14px]">
+                      <span class="min-w-0 truncate">{{ category.name }}</span>
+                      <span class="shrink-0 text-ig-muted tabular-nums">{{ heroMoney(category.spent) }} · {{ percent(category.share) }}</span>
+                    </div>
+                    <div class="h-1.5 overflow-hidden rounded-full bg-ig-surface-raised">
+                      <span class="block h-full rounded-full bg-ig-accent" [style.width.%]="category.share * 100"></span>
+                    </div>
+                  </li>
+                }
+              </ul>
+            </div>
+            @if (shares.length > visibleCategories) {
+              <p data-testid="categories-more" class="m-0 mt-4 text-[13px] text-ig-muted">{{ t(shares.length - visibleCategories === 1 ? 'dashboard.home.categories.moreOne' : 'dashboard.home.categories.more', { count: shares.length - visibleCategories }) }}</p>
             }
           } @else {
-            <p class="m-0 text-[28px] font-bold tracking-[-0.03em]">—</p>
+            <p class="m-0 mt-6 text-[14px] text-ig-muted">{{ t('dashboard.home.categories.empty') }}</p>
           }
-        </div>
-      </section>
+        </section>
+      </div>
     }
-
-    <div class="grid items-start gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-      <section class="min-w-0 rounded-lg border border-ig-border bg-ig-surface p-4 sm:p-6">
-        <div class="flex flex-wrap items-center justify-between gap-4">
-          <h2 class="m-0 text-[16px] font-bold">
-            {{ t('dashboard.home.cashFlow.title') }}
-            <span class="font-normal text-ig-muted">· {{ t('dashboard.home.cashFlow.period', { count: data.cashFlow.length }) }}</span>
-          </h2>
-          <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] text-ig-muted">
-            <span class="inline-flex items-center gap-2"><span class="size-2 rounded-sm bg-ig-accent" aria-hidden="true"></span>{{ t('dashboard.home.cashFlow.income') }}</span>
-            <span class="inline-flex items-center gap-2"><span class="size-2 rounded-sm bg-ig-muted" aria-hidden="true"></span>{{ t('dashboard.home.cashFlow.expenses') }}</span>
-            @if (averages(); as avg) {
-              <span data-testid="chart-average" class="inline-flex items-center gap-2 font-medium text-ig-accent-text">
-                <span class="w-4 border-t-2 border-dashed border-ig-accent-text" aria-hidden="true"></span>
-                {{ t('dashboard.home.cashFlow.average', { amount: money(avg.income, true) }) }}
-              </span>
-            }
-          </div>
-        </div>
-
-        <div class="mt-6 overflow-x-auto">
-          <div class="min-w-[560px]">
-            <app-cash-flow-chart
-              [bars]="bars()"
-              [chartLabel]="t('dashboard.home.cashFlow.chartLabel')"
-              [formatTick]="formatTick()"
-              [average]="averages()?.income ?? null"
-            />
-          </div>
-        </div>
-      </section>
-
-      <section class="min-w-0 rounded-lg border border-ig-border bg-ig-surface p-4 sm:p-6">
-        <h2 class="m-0 text-[16px] font-bold">{{ t('dashboard.home.categories.title') }}</h2>
-
-        @if (data.categories.length) {
-          <ul class="m-0 mt-6 flex list-none flex-col gap-4 p-0">
-            @for (category of data.categories; track category.key) {
-              <li class="flex flex-col gap-2">
-                <div class="flex items-baseline justify-between gap-4 text-[14px]">
-                  <span class="min-w-0 truncate">{{ t('dashboard.categories.' + category.key) }}</span>
-                  <span class="shrink-0 text-ig-muted tabular-nums">{{ money(category.amount) }} · {{ percent(category.share) }}</span>
-                </div>
-                <div class="h-1.5 overflow-hidden rounded-full bg-ig-surface-raised">
-                  <span class="block h-full rounded-full bg-ig-accent" [style.width.%]="category.share * 100"></span>
-                </div>
-              </li>
-            }
-          </ul>
-        } @else {
-          <p class="m-0 mt-6 text-[14px] text-ig-muted">{{ t('dashboard.home.categories.empty') }}</p>
-        }
-      </section>
-    </div>
 
     <section class="flex flex-col gap-2" aria-labelledby="recent-title">
       <h2 id="recent-title" class="m-0 text-[16px] font-bold">{{ t('dashboard.home.recent.title') }}</h2>
