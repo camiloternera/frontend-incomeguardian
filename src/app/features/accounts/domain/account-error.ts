@@ -11,6 +11,8 @@ export const AccountErrorCode = {
   CurrencyLocked: 'ACCOUNT_CURRENCY_LOCKED',
   OpeningDateRequired: 'ACCOUNT_OPENING_DATE_REQUIRED',
   OpeningDateFuture: 'ACCOUNT_OPENING_DATE_FUTURE',
+  /** Cambiar saldo inicial o moneda cuando ya hay meses cerrados desde la apertura. */
+  LockedByClosedPeriod: 'ACCOUNT_LOCKED_BY_CLOSED_PERIOD',
 } as const;
 
 export type AccountErrorCode = (typeof AccountErrorCode)[keyof typeof AccountErrorCode];
