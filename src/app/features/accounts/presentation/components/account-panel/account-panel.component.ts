@@ -107,6 +107,9 @@ export class AccountPanelComponent {
   /** La cuenta tal como llegó del backend, para desactivarla y para el resumen de solo lectura. */
   protected readonly account = signal<Account | null>(null);
 
+  /** Con movimientos la cuenta ya no admite cambiar el nombre ni la moneda. */
+  protected readonly identityLocked = computed(() => this.account()?.hasTransactions === true);
+
   protected readonly status = signal<PanelStatus>('ready');
   protected readonly loadError = signal('');
   protected readonly isSubmitting = signal(false);
@@ -325,6 +328,8 @@ export class AccountPanelComponent {
       openingDay: now.day,
       openingTime: now.time,
     });
+    this.accountForm.controls.name.enable({ emitEvent: false });
+    this.accountForm.controls.currency.enable({ emitEvent: false });
 
     if (id === null) {
       this.status.set('ready');
@@ -349,6 +354,11 @@ export class AccountPanelComponent {
           openingDay: opening.day,
           openingTime: opening.time,
         });
+        // Con movimientos el backend ya no deja cambiar nombre ni moneda; se envían igual al guardar.
+        if (account.hasTransactions) {
+          this.accountForm.controls.name.disable({ emitEvent: false });
+          this.accountForm.controls.currency.disable({ emitEvent: false });
+        }
         // Una cuenta desactivada o en una moneda que ya no se admite (EUR) solo se consulta.
         this.status.set(account.isActive && isSelectableCurrency(account.currency) ? 'ready' : 'readOnly');
       },

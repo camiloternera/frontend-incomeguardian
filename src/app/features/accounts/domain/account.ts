@@ -37,6 +37,8 @@ export interface Account {
   currency: Currency;
   /** Las cuentas desactivadas se pueden consultar, pero no editar ni usar en movimientos nuevos. */
   isActive: boolean;
+  /** Con movimientos (incluso eliminados) ya no se puede cambiar el nombre ni la moneda. */
+  hasTransactions: boolean;
   /** Fecha y hora en que el usuario abrió la cuenta, en ISO 8601 UTC. */
   openingDate: string;
   /** Auditoría del servidor, distinta de la fecha de apertura. */

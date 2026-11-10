@@ -7,6 +7,7 @@ export interface CategoryDto {
   transactionTypeId: number;
   transactionTypeName: string;
   isActive: boolean;
+  hasTransactions?: boolean | null;
   createdAt: string;
   updatedAt: string | null;
 }

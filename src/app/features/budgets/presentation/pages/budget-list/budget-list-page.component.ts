@@ -5,7 +5,7 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { LucideChevronLeft, LucideChevronRight, LucideLock, LucidePlus, LucideRepeat } from '@lucide/angular';
-import { Subscription, catchError, of } from 'rxjs';
+import { Subscription, catchError, map, of, switchMap } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { LanguageService } from '@core/i18n/language.service';
 import { ThemeService } from '@core/theme/theme.service';
@@ -132,7 +132,15 @@ export class BudgetListPageComponent {
   /** Filtro de moneda; refleja `activeCurrency` y al cambiar escribe la URL. */
   protected readonly currencyFilter = new FormControl<string | null>(null);
 
-  private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
+  /**
+   * Idioma activo, emitido cuando el scope `budgets` ya cargó en ese idioma: las etiquetas que se
+   * arman con `translate()` (tipo de categoría, notas) no deben calcularse antes, o saldrían las claves.
+   */
+  private readonly lang = toSignal(
+    this.transloco.langChanges$.pipe(
+      switchMap((lang) => this.transloco.selectTranslation(`budgets/${lang}`).pipe(map(() => lang))),
+    ),
+  );
 
   protected readonly isCurrentMonth = computed(() => compareMonths(this.month(), this.currentMonth) === 0);
   protected readonly monthTitle = computed(() => monthLabel(this.month(), this.locale()));

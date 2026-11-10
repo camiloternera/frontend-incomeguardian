@@ -144,7 +144,7 @@
             <span id="category-name-count" class="text-[12px] tabular-nums text-ig-muted" [class.text-ig-text]="nameLength() > nameMax">{{ nameLength() }} / {{ nameMax }}</span>
           </div>
           <input
-            class="min-h-12 w-full rounded-lg border bg-ig-surface px-3 text-[16px] text-ig-text outline-none placeholder:text-ig-muted focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 lg:min-h-11 lg:text-[14px]"
+            class="min-h-12 w-full rounded-lg border bg-ig-surface px-3 text-[16px] text-ig-text outline-none placeholder:text-ig-muted focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 lg:min-h-11 lg:text-[14px] disabled:cursor-not-allowed disabled:text-ig-muted"
             [class]="nameError() ? 'border-ig-text' : 'border-ig-border'"
             id="category-name"
             data-testid="category-name"
@@ -158,7 +158,7 @@
           @if (nameError(); as code) {
             <p id="category-name-error" data-testid="name-error" class="m-0 text-[13px] leading-snug text-ig-text" role="alert">{{ t('categories.errors.' + code, limits) }}</p>
           } @else {
-            <p id="category-name-hint" class="m-0 text-[12px] text-ig-muted">{{ t('categories.form.nameHint') }}</p>
+            <p id="category-name-hint" [attr.data-testid]="nameLocked() ? 'name-locked' : null" class="m-0 text-[12px] text-ig-muted">{{ t(nameLocked() ? 'categories.form.nameLocked' : 'categories.form.nameHint') }}</p>
           }
         </div>
 

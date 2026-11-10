@@ -27,6 +27,7 @@ function toAccount(dto: AccountDto): Account {
     currentBalance: dto.currentBalance ?? dto.initialBalance,
     currency: dto.currency,
     isActive: dto.isActive,
+    hasTransactions: dto.hasTransactions ?? false,
     openingDate: dto.openingDate,
     createdAt: dto.createdAt,
     updatedAt: dto.updatedAt,

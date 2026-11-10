@@ -30,8 +30,8 @@ describe('CategoryListPageComponent', () => {
     localStorage.clear();
     fake = new FakeCategoryRepository();
     fake.categories.push(
-      { id: 2, name: 'Alimentación', description: 'Mercado y comidas fuera', type: 'expense', isActive: true, createdAt: '2026-10-01T00:00:00Z', updatedAt: null },
-      { id: 10, name: 'Coworking', description: 'Escritorio y café', type: 'transfer', isActive: true, createdAt: '2026-10-02T00:00:00Z', updatedAt: '2026-10-14T00:00:00Z' },
+      { id: 2, name: 'Alimentación', description: 'Mercado y comidas fuera', type: 'expense', isActive: true, hasTransactions: false, createdAt: '2026-10-01T00:00:00Z', updatedAt: null },
+      { id: 10, name: 'Coworking', description: 'Escritorio y café', type: 'transfer', isActive: true, hasTransactions: false, createdAt: '2026-10-02T00:00:00Z', updatedAt: '2026-10-14T00:00:00Z' },
     );
     await TestBed.configureTestingModule({
       imports: [translocoTesting()],
@@ -60,7 +60,7 @@ describe('CategoryListPageComponent', () => {
 
   it('lists the deactivated categories in their own tab, ordered by type, and reactivates them', async () => {
     fake.categories.push(
-      { id: 11, name: 'Bonos', description: 'Extras', type: 'income', isActive: false, createdAt: '2026-09-01T00:00:00Z', updatedAt: null },
+      { id: 11, name: 'Bonos', description: 'Extras', type: 'income', isActive: false, hasTransactions: false, createdAt: '2026-09-01T00:00:00Z', updatedAt: null },
     );
     const { harness, element } = await open();
 
@@ -113,6 +113,7 @@ describe('CategoryListPageComponent', () => {
         description: 'Generada para el test',
         type: 'expense' as const,
         isActive: true,
+        hasTransactions: false,
         createdAt: '2026-10-20T00:00:00Z',
         updatedAt: null,
       })),
