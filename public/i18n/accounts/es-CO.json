@@ -59,6 +59,7 @@
     "readOnlyCurrency": "Esta cuenta está en una moneda que ya no se admite: puedes consultarla, pero no editarla ni registrar movimientos nuevos en ella.",
     "loading": "Cargando la cuenta…",
     "nameLabel": "Nombre",
+    "identityLocked": "Esta cuenta ya tiene movimientos: su nombre y su moneda no se pueden cambiar.",
     "namePlaceholder": "Por ejemplo, Bancolombia ahorros",
     "currencyLabel": "Moneda",
     "currency": {
@@ -85,6 +86,7 @@
   "errors": {
     "ACCOUNT_NAME_REQUIRED": "Escribe un nombre para la cuenta.",
     "ACCOUNT_NAME_MAX_LENGTH": "El nombre puede tener hasta {{nameMax}} caracteres.",
+    "ACCOUNT_NAME_LOCKED": "La cuenta ya tiene movimientos, así que su nombre no se puede cambiar.",
     "ACCOUNT_NOT_FOUND": "No encontramos esta cuenta.",
     "ACCOUNT_CURRENCY_REQUIRED": "Elige la moneda de la cuenta.",
     "ACCOUNT_CURRENCY_INVALID": "Esa moneda no está disponible. Elige una de la lista.",

@@ -59,6 +59,7 @@
     "readOnlyCurrency": "This account uses a currency that is no longer supported: you can look it up, but you cannot edit it or record new transactions in it.",
     "loading": "Loading the account…",
     "nameLabel": "Name",
+    "identityLocked": "This account already has transactions, so its name and currency cannot change.",
     "namePlaceholder": "For example, Chase savings",
     "currencyLabel": "Currency",
     "currency": {
@@ -85,6 +86,7 @@
   "errors": {
     "ACCOUNT_NAME_REQUIRED": "Enter a name for the account.",
     "ACCOUNT_NAME_MAX_LENGTH": "The name can be up to {{nameMax}} characters.",
+    "ACCOUNT_NAME_LOCKED": "The account already has transactions, so its name cannot change.",
     "ACCOUNT_NOT_FOUND": "We could not find this account.",
     "ACCOUNT_CURRENCY_REQUIRED": "Pick the account's currency.",
     "ACCOUNT_CURRENCY_INVALID": "That currency is not available. Pick one from the list.",
