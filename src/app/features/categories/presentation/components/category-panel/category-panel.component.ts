@@ -110,6 +110,8 @@ export class CategoryPanelComponent {
   private readonly formValue = toSignal(this.categoryForm.valueChanges, { initialValue: this.categoryForm.getRawValue() });
 
   protected readonly nameLength = computed(() => this.formValue().name?.length ?? 0);
+  /** El nombre no se puede cambiar porque la categoría ya tiene movimientos. */
+  protected readonly nameLocked = computed(() => this.loaded()?.hasTransactions === true);
   protected readonly descriptionLength = computed(() => this.formValue().description?.length ?? 0);
 
   constructor() {
@@ -236,6 +238,7 @@ export class CategoryPanelComponent {
     this.typeServerError.set(null);
     this.categoryForm.reset({ name: '', description: '', type: this.initialType() });
     this.categoryForm.controls.type.enable({ emitEvent: false });
+    this.categoryForm.controls.name.enable({ emitEvent: false });
 
     if (id === null) {
       this.status.set('ready');
@@ -255,6 +258,10 @@ export class CategoryPanelComponent {
       next: (category) => {
         this.loaded.set(category);
         this.categoryForm.reset({ name: category.name, description: category.description, type: category.type });
+        // Con movimientos el backend ya no deja renombrarla; el nombre se envía igual al guardar.
+        if (category.hasTransactions) {
+          this.categoryForm.controls.name.disable({ emitEvent: false });
+        }
         // El backend solo edita categorías activas: una desactivada se consulta y se puede reactivar.
         this.status.set(category.isActive ? 'ready' : 'readOnly');
       },
