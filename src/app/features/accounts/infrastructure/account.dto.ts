@@ -7,6 +7,7 @@ export interface AccountDto {
   currentBalance: number | null;
   currency: string;
   isActive: boolean;
+  hasTransactions?: boolean | null;
   /** Fecha y hora de apertura, en UTC. */
   openingDate: string;
   createdAt: string;

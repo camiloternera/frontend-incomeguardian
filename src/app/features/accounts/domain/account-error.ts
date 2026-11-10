@@ -5,6 +5,8 @@
 export const AccountErrorCode = {
   NameRequired: 'ACCOUNT_NAME_REQUIRED',
   NameMaxLength: 'ACCOUNT_NAME_MAX_LENGTH',
+  /** Cambiar el nombre de una cuenta que ya tiene movimientos. */
+  NameLocked: 'ACCOUNT_NAME_LOCKED',
   NotFound: 'ACCOUNT_NOT_FOUND',
   CurrencyRequired: 'ACCOUNT_CURRENCY_REQUIRED',
   CurrencyInvalid: 'ACCOUNT_CURRENCY_INVALID',
@@ -25,7 +27,11 @@ export function isAccountErrorCode(code: string | undefined): code is AccountErr
 }
 
 /** Códigos que pertenecen a un campo del formulario, para mostrarlos junto a él. */
-export const NAME_ERROR_CODES: readonly AccountErrorCode[] = [AccountErrorCode.NameRequired, AccountErrorCode.NameMaxLength];
+export const NAME_ERROR_CODES: readonly AccountErrorCode[] = [
+  AccountErrorCode.NameRequired,
+  AccountErrorCode.NameMaxLength,
+  AccountErrorCode.NameLocked,
+];
 
 export const CURRENCY_ERROR_CODES: readonly AccountErrorCode[] = [
   AccountErrorCode.CurrencyRequired,
