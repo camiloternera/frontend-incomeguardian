@@ -6,6 +6,8 @@ export const CategoryErrorCode = {
   NameRequired: 'CATEGORY_NAME_REQUIRED',
   NameMaxLength: 'CATEGORY_NAME_MAX_LENGTH',
   NameAlreadyExists: 'CATEGORY_NAME_ALREADY_EXISTS',
+  /** Cambiar el nombre de una categoría que ya tiene movimientos. */
+  NameLocked: 'CATEGORY_NAME_LOCKED',
   DescriptionRequired: 'CATEGORY_DESCRIPTION_REQUIRED',
   DescriptionMaxLength: 'CATEGORY_DESCRIPTION_MAX_LENGTH',
   TransactionTypeRequired: 'CATEGORY_TRANSACTION_TYPE_REQUIRED',
@@ -30,6 +32,7 @@ export const NAME_ERROR_CODES: readonly CategoryErrorCode[] = [
   CategoryErrorCode.NameRequired,
   CategoryErrorCode.NameMaxLength,
   CategoryErrorCode.NameAlreadyExists,
+  CategoryErrorCode.NameLocked,
 ];
 
 export const DESCRIPTION_ERROR_CODES: readonly CategoryErrorCode[] = [
