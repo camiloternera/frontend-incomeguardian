@@ -54,11 +54,31 @@ describe('CategoryHttpRepository', () => {
         description: 'Comida y veterinario',
         type: 'expense',
         isActive: true,
+        // Sin el campo en la respuesta, la categoría se toma como sin movimientos.
+        hasTransactions: false,
         createdAt: '2026-10-29T12:00:00+00:00',
         updatedAt: null,
       },
       expect.objectContaining({ id: 8, isActive: false }),
     ]);
+  });
+
+  it('maps whether the category has transactions', () => {
+    let result: { hasTransactions: boolean }[] | undefined;
+    repository.list().subscribe((value) => (result = value));
+
+    http.expectOne(`${URL}?status=all`).flush({
+      data: [
+        { ...DTO, id: 7, hasTransactions: true },
+        { ...DTO, id: 8, hasTransactions: false },
+        { ...DTO, id: 9, hasTransactions: null },
+      ],
+      isSuccess: true,
+      message: 'ok',
+      errors: [],
+    });
+
+    expect(result!.map((category) => category.hasTransactions)).toEqual([true, false, false]);
   });
 
   it('skips categories of an unknown type', () => {
@@ -123,6 +143,21 @@ describe('CategoryHttpRepository', () => {
     expect(error).toBeInstanceOf(CategoryError);
     expect((error as CategoryError).code).toBe(CategoryErrorCode.NameAlreadyExists);
     expect((error as CategoryError).message).toBe('A category with that name already exists.');
+  });
+
+  it('keeps the locked name code and translates it in both languages', () => {
+    let error: unknown;
+    repository.update(7, { name: 'Mascota', description: 'x' }).subscribe({ error: (value) => (error = value) });
+    http.expectOne(`${URL}/7`).flush(failure(CategoryErrorCode.NameLocked), { status: 409, statusText: 'Conflict' });
+
+    expect((error as CategoryError).code).toBe(CategoryErrorCode.NameLocked);
+    expect((error as CategoryError).message).toBe('The category already has transactions, so its name cannot change.');
+
+    TestBed.inject(TranslocoService).setActiveLang('es-CO');
+    repository.update(7, { name: 'Mascota', description: 'x' }).subscribe({ error: (value) => (error = value) });
+    http.expectOne(`${URL}/7`).flush(failure(CategoryErrorCode.NameLocked), { status: 409, statusText: 'Conflict' });
+
+    expect((error as CategoryError).message).toBe('La categoría ya tiene movimientos, así que su nombre no se puede cambiar.');
   });
 
   it('interpolates the length limits in the active language', () => {
