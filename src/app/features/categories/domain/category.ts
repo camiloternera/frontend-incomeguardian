@@ -21,6 +21,8 @@ export interface Category {
   type: CategoryType;
   /** Las desactivadas se pueden consultar y reactivar, pero no editar ni usar en movimientos nuevos. */
   isActive: boolean;
+  /** Con movimientos (incluso eliminados) ya no se puede cambiar el nombre. */
+  hasTransactions: boolean;
   createdAt: string;
   updatedAt: string | null;
 }

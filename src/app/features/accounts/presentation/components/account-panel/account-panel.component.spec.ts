@@ -111,7 +111,7 @@ describe('AccountPanelComponent', () => {
   });
 
   it('shows a locked currency beside the currency field', async () => {
-    const { harness, element } = await open('/accounts/5/edit');
+    const { harness, element } = await open('/accounts/2/edit');
     fake.failWith = new AccountError(
       'The account already has transactions.',
       AccountErrorCode.CurrencyLocked,
@@ -197,13 +197,13 @@ describe('AccountPanelComponent', () => {
   });
 
   it('closes with Escape only while there are no unsaved changes', async () => {
-    const { harness, element } = await open('/accounts/5/edit');
+    const { harness, element } = await open('/accounts/2/edit');
     const panel = element.querySelector('[data-testid="account-panel"]')!;
 
     type(element, 'account-name', 'Visa nueva');
     panel.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     await harness.fixture.whenStable();
-    expect(TestBed.inject(Router).url).toBe('/accounts/5/edit');
+    expect(TestBed.inject(Router).url).toBe('/accounts/2/edit');
   });
 
   it('opens a deactivated account read-only', async () => {
@@ -222,5 +222,99 @@ describe('AccountPanelComponent', () => {
 
     expect(element.querySelector('h2')?.textContent).toContain('Account unavailable');
     expect(element.querySelector('[data-testid="account-not-found"]')).toBeTruthy();
+  });
+
+  describe('an account with transactions', () => {
+    function field(element: HTMLElement, testId: string): HTMLInputElement {
+      return element.querySelector<HTMLInputElement>(`[data-testid="${testId}"]`)!;
+    }
+
+    function expectIdentityEditable(element: HTMLElement): void {
+      expect(field(element, 'account-name').disabled).toBe(false);
+      expect(field(element, 'currency-COP').disabled).toBe(false);
+      expect(field(element, 'currency-USD').disabled).toBe(false);
+      expect(element.querySelector('[data-testid="account-locked"]')).toBeNull();
+    }
+
+    it('locks the name and the currency and explains why', async () => {
+      const { element } = await open('/accounts/5/edit');
+
+      expect(field(element, 'account-name').disabled).toBe(true);
+      expect(field(element, 'account-name').value).toBe('Visa 4417');
+      expect(field(element, 'currency-COP').disabled).toBe(true);
+      expect(field(element, 'currency-COP').checked).toBe(true);
+      expect(field(element, 'currency-USD').disabled).toBe(true);
+      expect(element.querySelector('[data-testid="account-locked"]')?.textContent?.trim()).toBe(
+        'This account already has transactions, so its name and currency cannot change.',
+      );
+      expect(field(element, 'account-name').getAttribute('aria-describedby')).toBe(
+        'account-locked account-name-count',
+      );
+      // El saldo sigue siendo editable.
+      expect(field(element, 'account-balance').disabled).toBe(false);
+    });
+
+    it('explains the lock in Spanish', async () => {
+      TestBed.inject(LanguageService).setLanguage('es-CO');
+      const { element } = await open('/accounts/5/edit');
+
+      expect(element.querySelector('[data-testid="account-locked"]')?.textContent?.trim()).toBe(
+        'Esta cuenta ya tiene movimientos: su nombre y su moneda no se pueden cambiar.',
+      );
+    });
+
+    it('leaves an account without transactions editable', async () => {
+      const { element } = await open('/accounts/2/edit');
+
+      expectIdentityEditable(element);
+      expect(field(element, 'account-name').getAttribute('aria-describedby')).toBe('account-name-count');
+    });
+
+    it('unlocks the fields when switching to an account without transactions', async () => {
+      const { harness, element } = await open('/accounts/5/edit');
+
+      await harness.navigateByUrl('/accounts/2/edit');
+
+      expectIdentityEditable(element);
+      expect(field(element, 'account-name').value).toBe('Bancolombia');
+    });
+
+    it('unlocks the fields when creating an account after editing a locked one', async () => {
+      const { harness, element } = await open('/accounts/5/edit');
+
+      await harness.navigateByUrl('/accounts/new');
+
+      expectIdentityEditable(element);
+      expect(field(element, 'account-name').value).toBe('');
+    });
+
+    it('sends the original name and currency when saving', async () => {
+      const { harness, element } = await open('/accounts/5/edit');
+
+      type(element, 'account-balance', '-300000');
+      submit(element);
+      await harness.fixture.whenStable();
+
+      expect(fake.lastDraft).toEqual(
+        expect.objectContaining({ name: 'Visa 4417', currency: 'COP', initialBalance: -300000 }),
+      );
+    });
+
+    it('shows a locked name from the backend beside the name field', async () => {
+      const { harness, element } = await open('/accounts/2/edit');
+      fake.failWith = new AccountError(
+        'The account already has transactions.',
+        AccountErrorCode.NameLocked,
+      );
+
+      type(element, 'account-name', 'Bancolombia nueva');
+      submit(element);
+      harness.detectChanges();
+
+      expect(element.querySelector('[data-testid="name-error"]')?.textContent).toContain(
+        'The account already has transactions, so its name cannot change.',
+      );
+      expect(element.querySelector('[data-testid="form-error"]')).toBeNull();
+    });
   });
 });

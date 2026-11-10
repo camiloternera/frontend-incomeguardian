@@ -57,11 +57,28 @@ describe('AccountHttpRepository', () => {
         currentBalance: -250000.5,
         currency: 'COP',
         isActive: true,
+        // Sin el campo en la respuesta, la cuenta se toma como sin movimientos.
+        hasTransactions: false,
         openingDate: '2026-01-15T14:30:00Z',
         createdAt: '2026-10-31T12:00:00+00:00',
         updatedAt: null,
       },
     ]);
+  });
+
+  it('maps whether the account has transactions', () => {
+    let result: { hasTransactions: boolean }[] | undefined;
+    repository.list().subscribe((value) => (result = value));
+
+    http.expectOne(URL).flush(
+      ok([
+        { ...DTO, id: 5, hasTransactions: true },
+        { ...DTO, id: 6, hasTransactions: false },
+        { ...DTO, id: 7, hasTransactions: null },
+      ]),
+    );
+
+    expect(result!.map((account) => account.hasTransactions)).toEqual([true, false, false]);
   });
 
   it('sends the draft with its currency on create and update', () => {
@@ -108,6 +125,19 @@ describe('AccountHttpRepository', () => {
     expect(error).toBeInstanceOf(AccountError);
     expect((error as AccountError).code).toBe(AccountErrorCode.CurrencyLocked);
     expect((error as AccountError).message).toBe('The account already has transactions, so its currency cannot change.');
+  });
+
+  it('keeps the locked name code and translates it', () => {
+    let error: unknown;
+    repository.update(5, { name: 'Visa nueva', initialBalance: 0, currency: 'COP', openingDate: '2026-01-15T09:30:00-05:00' }).subscribe({
+      error: (value) => (error = value),
+    });
+
+    http.expectOne(`${URL}/5`).flush(failure(AccountErrorCode.NameLocked), { status: 409, statusText: 'Conflict' });
+
+    expect(error).toBeInstanceOf(AccountError);
+    expect((error as AccountError).code).toBe(AccountErrorCode.NameLocked);
+    expect((error as AccountError).message).toBe('The account already has transactions, so its name cannot change.');
   });
 
   it('rejects a currency the app does not know', () => {

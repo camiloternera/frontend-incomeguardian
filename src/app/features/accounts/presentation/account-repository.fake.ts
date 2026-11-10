@@ -15,6 +15,7 @@ export class FakeAccountRepository extends AccountRepository {
       currentBalance: -250000,
       currency: 'COP',
       isActive: true,
+      hasTransactions: true,
       openingDate: '2026-10-20T00:00:00Z',
       createdAt: '2026-10-20T00:00:00Z',
       updatedAt: null,
@@ -26,6 +27,7 @@ export class FakeAccountRepository extends AccountRepository {
       currentBalance: 1250000,
       currency: 'COP',
       isActive: true,
+      hasTransactions: false,
       openingDate: '2026-10-01T00:00:00Z',
       createdAt: '2026-10-01T00:00:00Z',
       updatedAt: null,
@@ -37,6 +39,7 @@ export class FakeAccountRepository extends AccountRepository {
       currentBalance: 320.5,
       currency: 'USD',
       isActive: false,
+      hasTransactions: false,
       openingDate: '2026-09-01T00:00:00Z',
       createdAt: '2026-09-01T00:00:00Z',
       updatedAt: '2026-10-02T00:00:00Z',
@@ -58,6 +61,7 @@ export class FakeAccountRepository extends AccountRepository {
     return this.respond(() =>
       this.fromDraft(99, draft, {
         isActive: true,
+        hasTransactions: false,
         createdAt: '2026-10-31T00:00:00Z',
         updatedAt: null,
       }),
@@ -80,7 +84,7 @@ export class FakeAccountRepository extends AccountRepository {
   private fromDraft(
     id: number,
     draft: AccountDraft,
-    rest: Pick<Account, 'isActive' | 'createdAt' | 'updatedAt'>,
+    rest: Pick<Account, 'isActive' | 'hasTransactions' | 'createdAt' | 'updatedAt'>,
   ): Account {
     return {
       id,

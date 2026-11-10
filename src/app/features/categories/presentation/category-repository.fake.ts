@@ -8,10 +8,10 @@ import { CategoryRepository } from '../domain/category.repository';
 /** Repositorio en memoria para los tests de presentation; `failWith` fuerza el siguiente error. */
 export class FakeCategoryRepository extends CategoryRepository {
   categories: Category[] = [
-    { id: 1, name: 'Vivienda', description: 'Arriendo y servicios', type: 'expense', isActive: true, createdAt: '2026-10-01T00:00:00Z', updatedAt: null },
-    { id: 9, name: 'Mascotas', description: 'Comida y veterinario', type: 'expense', isActive: true, createdAt: '2026-10-20T00:00:00Z', updatedAt: null },
-    { id: 4, name: 'Salario', description: 'Pago mensual', type: 'income', isActive: true, createdAt: '2026-10-02T00:00:00Z', updatedAt: null },
-    { id: 6, name: 'Gimnasio', description: 'Mensualidad', type: 'expense', isActive: false, createdAt: '2026-09-01T00:00:00Z', updatedAt: '2026-10-05T00:00:00Z' },
+    { id: 1, name: 'Vivienda', description: 'Arriendo y servicios', type: 'expense', isActive: true, hasTransactions: true, createdAt: '2026-10-01T00:00:00Z', updatedAt: null },
+    { id: 9, name: 'Mascotas', description: 'Comida y veterinario', type: 'expense', isActive: true, hasTransactions: false, createdAt: '2026-10-20T00:00:00Z', updatedAt: null },
+    { id: 4, name: 'Salario', description: 'Pago mensual', type: 'income', isActive: true, hasTransactions: false, createdAt: '2026-10-02T00:00:00Z', updatedAt: null },
+    { id: 6, name: 'Gimnasio', description: 'Mensualidad', type: 'expense', isActive: false, hasTransactions: false, createdAt: '2026-09-01T00:00:00Z', updatedAt: '2026-10-05T00:00:00Z' },
   ];
   failWith: CategoryError | null = null;
   lastDraft: CategoryDraft | NewCategoryDraft | null = null;
@@ -26,7 +26,7 @@ export class FakeCategoryRepository extends CategoryRepository {
 
   create(draft: NewCategoryDraft): Observable<Category> {
     this.lastDraft = draft;
-    return this.respond(() => ({ id: 99, ...draft, isActive: true, createdAt: '2026-10-30T00:00:00Z', updatedAt: null }));
+    return this.respond(() => ({ id: 99, ...draft, isActive: true, hasTransactions: false, createdAt: '2026-10-30T00:00:00Z', updatedAt: null }));
   }
 
   update(id: number, draft: CategoryDraft): Observable<Category> {

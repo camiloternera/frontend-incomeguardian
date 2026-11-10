@@ -127,7 +127,7 @@
             >
           </div>
           <input
-            class="min-h-12 w-full rounded-lg border bg-ig-surface px-3 text-[16px] text-ig-text outline-none placeholder:text-ig-muted focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 lg:min-h-11 lg:text-[14px]"
+            class="min-h-12 w-full rounded-lg border bg-ig-surface px-3 text-[16px] text-ig-text outline-none placeholder:text-ig-muted focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 lg:min-h-11 lg:text-[14px] disabled:cursor-not-allowed disabled:text-ig-muted"
             [class]="nameError() ? 'border-ig-text' : 'border-ig-border'"
             id="account-name"
             data-testid="account-name"
@@ -137,7 +137,11 @@
             [placeholder]="t('accounts.form.namePlaceholder')"
             [attr.aria-invalid]="nameError() !== null"
             [attr.aria-describedby]="
-              nameError() ? 'account-name-error account-name-count' : 'account-name-count'
+              nameError()
+                ? 'account-name-error account-name-count'
+                : identityLocked()
+                  ? 'account-locked account-name-count'
+                  : 'account-name-count'
             "
           />
           @if (nameError(); as message) {
@@ -148,6 +152,10 @@
               role="alert"
             >
               {{ t(message.key, message.params) }}
+            </p>
+          } @else if (identityLocked()) {
+            <p id="account-locked" data-testid="account-locked" class="m-0 text-[12px] text-ig-muted">
+              {{ t('accounts.form.identityLocked') }}
             </p>
           }
         </div>
@@ -165,7 +173,7 @@
           >
             @for (code of currencies; track code) {
               <label
-                class="relative grid min-h-11 cursor-pointer place-items-center rounded-md text-[14px] text-ig-muted hover:text-ig-text has-checked:bg-ig-surface-raised has-checked:font-bold has-checked:text-ig-text has-focus-visible:outline-2 has-focus-visible:outline-ig-accent has-focus-visible:outline-offset-2"
+                class="relative grid min-h-11 cursor-pointer place-items-center rounded-md text-[14px] text-ig-muted hover:text-ig-text has-disabled:cursor-not-allowed has-disabled:hover:text-ig-muted has-checked:bg-ig-surface-raised has-checked:font-bold has-checked:text-ig-text has-focus-visible:outline-2 has-focus-visible:outline-ig-accent has-focus-visible:outline-offset-2"
               >
                 <input
                   class="sr-only"

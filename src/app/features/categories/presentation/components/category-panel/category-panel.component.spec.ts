@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { translocoTesting } from '@core/i18n/i18n.testing';
+import { LanguageService } from '@core/i18n/language.service';
 import { CategoryError, CategoryErrorCode } from '../../../domain/category-error';
 import { FakeCategoryRepository, fakeCategoriesRoutes } from '../../category-repository.fake';
 
@@ -150,7 +151,7 @@ describe('CategoryPanelComponent', () => {
   });
 
   it('switches to another category without closing', async () => {
-    fake.categories.push({ id: 10, name: 'Coworking', description: 'Escritorio', type: 'expense', isActive: true, createdAt: '2026-10-02T00:00:00Z', updatedAt: null });
+    fake.categories.push({ id: 10, name: 'Coworking', description: 'Escritorio', type: 'expense', isActive: true, hasTransactions: false, createdAt: '2026-10-02T00:00:00Z', updatedAt: null });
     const { harness, element } = await open('/categories/9/edit');
 
     await harness.navigateByUrl('/categories/10/edit');
@@ -211,5 +212,86 @@ describe('CategoryPanelComponent', () => {
 
     expect(panel(element).querySelector('h2')?.textContent).toContain('Category unavailable');
     expect(element.querySelector('[data-testid="category-not-found"]')).toBeTruthy();
+  });
+
+  describe('a category with transactions', () => {
+    function nameField(element: HTMLElement): HTMLInputElement {
+      return element.querySelector<HTMLInputElement>('[data-testid="category-name"]')!;
+    }
+
+    function expectNameEditable(element: HTMLElement): void {
+      expect(nameField(element).disabled).toBe(false);
+      expect(element.querySelector('[data-testid="name-locked"]')).toBeNull();
+      expect(element.querySelector('#category-name-hint')?.textContent).not.toContain('already has transactions');
+    }
+
+    it('locks the name, explains why and keeps the description editable', async () => {
+      const { element } = await open('/categories/1/edit');
+
+      expect(nameField(element).disabled).toBe(true);
+      expect(nameField(element).value).toBe('Vivienda');
+      expect(element.querySelector('[data-testid="name-locked"]')?.textContent?.trim()).toBe(
+        'This category already has transactions, so its name cannot change.',
+      );
+      expect(element.querySelector<HTMLTextAreaElement>('[data-testid="category-description"]')!.disabled).toBe(false);
+    });
+
+    it('explains the lock in Spanish', async () => {
+      TestBed.inject(LanguageService).setLanguage('es-CO');
+      const { element } = await open('/categories/1/edit');
+
+      expect(element.querySelector('[data-testid="name-locked"]')?.textContent?.trim()).toBe(
+        'Esta categoría ya tiene movimientos: su nombre no se puede cambiar.',
+      );
+    });
+
+    it('sends the same name with the new description', async () => {
+      const { harness, element } = await open('/categories/1/edit');
+
+      type(element, 'category-description', 'Arriendo y administración');
+      submit(element);
+      await harness.fixture.whenStable();
+
+      expect(fake.lastDraft).toEqual({ name: 'Vivienda', description: 'Arriendo y administración' });
+      expect(TestBed.inject(Router).url).toBe('/categories');
+    });
+
+    it('leaves a category without transactions editable', async () => {
+      const { element } = await open('/categories/9/edit');
+
+      expectNameEditable(element);
+    });
+
+    it('unlocks the name when switching to a category without transactions', async () => {
+      const { harness, element } = await open('/categories/1/edit');
+
+      await harness.navigateByUrl('/categories/9/edit');
+
+      expectNameEditable(element);
+      expect(nameField(element).value).toBe('Mascotas');
+    });
+
+    it('unlocks the name when creating a category after editing a locked one', async () => {
+      const { harness, element } = await open('/categories/1/edit');
+
+      await harness.navigateByUrl('/categories/new');
+
+      expectNameEditable(element);
+      expect(nameField(element).value).toBe('');
+    });
+
+    it('shows a locked name from the backend beside the name field', async () => {
+      const { harness, element } = await open('/categories/9/edit');
+      fake.failWith = new CategoryError('The category already has transactions.', CategoryErrorCode.NameLocked);
+
+      type(element, 'category-name', 'Mascota');
+      submit(element);
+      harness.detectChanges();
+
+      expect(element.querySelector('[data-testid="name-error"]')?.textContent).toContain(
+        'The category already has transactions, so its name cannot change.',
+      );
+      expect(element.querySelector('[data-testid="form-error"]')).toBeNull();
+    });
   });
 });
