@@ -315,11 +315,11 @@ describe('CardStatementPageComponent', () => {
       fake.statementResult = UPCOMING;
       const { element } = await open('/accounts/9/statement?month=2026-12');
 
-      expect(byTestId(element, 'statement-status')?.textContent).toContain('Upcoming · starts 16 Nov');
+      expect(byTestId(element, 'statement-status')?.textContent).toContain('Upcoming · starts Nov 16');
       expect(byTestId(element, 'statement-pay')).toBeNull();
       const note = byTestId(element, 'statement-upcoming-note')?.textContent ?? '';
-      expect(note).toContain("This statement hasn't started yet: its cycle begins 16 November");
-      expect(note).toContain('by 5 January');
+      expect(note).toContain("This statement hasn't started yet: its cycle begins November 16");
+      expect(note).toContain('by January 5');
       expect(element.textContent).not.toContain("This statement hasn't closed yet");
     });
 
@@ -334,8 +334,43 @@ describe('CardStatementPageComponent', () => {
       fake.statementResult = UPCOMING;
       const { element } = await open('/accounts/9/statement?month=2026-12');
 
-      expect(byTestId(element, 'statement-status')?.textContent).toContain('Próximo · empieza el');
-      expect(byTestId(element, 'statement-upcoming-note')?.textContent).toContain('Este extracto aún no empieza');
+      expect(byTestId(element, 'statement-status')?.textContent).toContain('Próximo · empieza el 16 nov');
+      const note = byTestId(element, 'statement-upcoming-note')?.textContent ?? '';
+      expect(note).toContain('Este extracto aún no empieza: su ciclo arranca el 16 de noviembre');
+      expect(note).toContain('hasta el 5 de enero');
+    });
+  });
+  describe('dates with the month in words', () => {
+    it('writes the period, the due date and the payments in English', async () => {
+      const { element } = await open('/accounts/9/statement?month=2026-10');
+
+      expect(element.textContent).toContain('Sep 16 – Oct 15, 2026 · closes on day 15');
+      expect(byTestId(element, 'statement-due-date')?.textContent?.trim()).toBe('Nov 5, 2026');
+      expect(byTestId(element, 'statement-payments')?.textContent).toContain('on Oct 28, 2026');
+    });
+
+    it('writes them in Spanish without numeric dates', async () => {
+      TestBed.inject(LanguageService).setLanguage('es-CO');
+      const { element } = await open('/accounts/9/statement?month=2026-10');
+
+      expect(byTestId(element, 'statement-due-date')?.textContent?.trim()).toBe('5 nov 2026');
+      expect(element.textContent).toContain('15 oct 2026');
+      expect(element.textContent).not.toMatch(/\d{1,2}\/\d{1,2}\/\d{4}/);
+    });
+
+    it('writes the day of the cut inside the open note', async () => {
+      fake.statementResult = { ...STATEMENT, status: 'open' };
+      const { element } = await open('/accounts/9/statement');
+
+      expect(element.textContent).toContain('purchases you make through October 15 are added here');
+    });
+
+    it('writes the day of the cut inside the open note in Spanish', async () => {
+      TestBed.inject(LanguageService).setLanguage('es-CO');
+      fake.statementResult = { ...STATEMENT, status: 'open' };
+      const { element } = await open('/accounts/9/statement');
+
+      expect(element.textContent).toContain('15 de octubre');
     });
   });
 });
