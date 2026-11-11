@@ -73,7 +73,7 @@
               · {{ t('transactions.detail.installmentsOf', { count: item.installments, amount: money(item.installmentAmount) }) }}
             }
             @if (item.annualInterestRate) {
-              · {{ t('transactions.detail.rate', { rate: item.annualInterestRate }) }}
+              · {{ t('transactions.detail.rate', { rate: (item.annualInterestRate | number: '1.0-2' : locale()) }) }}
             }
           </p>
         </div>

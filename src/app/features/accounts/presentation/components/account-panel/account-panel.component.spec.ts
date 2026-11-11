@@ -58,6 +58,14 @@ describe('AccountPanelComponent', () => {
     ).toMatch(/^\d{2}:\d{2}$/);
   });
 
+  it('explains the opening balance of a standard account without talking about cards', async () => {
+    const { element } = await open('/accounts/new');
+    const hint = element.querySelector('#account-balance-hint')?.textContent ?? '';
+
+    expect(hint).toContain('It can be negative if the account is overdrawn.');
+    expect(hint.toLowerCase()).not.toContain('card');
+  });
+
   it('validates the fields locally before calling the backend', async () => {
     const { harness, element } = await open('/accounts/new');
 
@@ -393,6 +401,32 @@ describe('AccountPanelComponent', () => {
       expect(preview).toContain('Next statement');
       expect(preview).toContain('Pay by');
       expect(preview).toContain('The payment falls in the month after the statement');
+    });
+
+    it('groups both dates and the note of the preview, with the month in words', async () => {
+      const { harness, element } = await open('/accounts/new');
+      await chooseCard(harness, element);
+      await pickDay(harness, element, 'account-statement-day', 15);
+      await pickDay(harness, element, 'account-payment-day', 5);
+
+      const preview = element.querySelector('[data-testid="card-preview"]')!;
+      expect(preview.tagName).toBe('DIV');
+      const dates = [...preview.querySelectorAll('dl dd')].map((item) => item.textContent?.trim() ?? '');
+      expect(dates).toHaveLength(2);
+      dates.forEach((date) => expect(date).toMatch(/^[A-Z][a-z]{2} \d{1,2}, \d{4}$/));
+      expect(preview.querySelector(':scope > p')?.textContent).toContain('The payment falls in the month after the statement');
+    });
+
+    it('writes the preview dates in Spanish without numbers for the month', async () => {
+      TestBed.inject(LanguageService).setLanguage('es-CO');
+      const { harness, element } = await open('/accounts/new');
+      await chooseCard(harness, element);
+      await pickDay(harness, element, 'account-statement-day', 15);
+      await pickDay(harness, element, 'account-payment-day', 5);
+
+      const dates = [...element.querySelectorAll('[data-testid="card-preview"] dl dd')].map((item) => item.textContent?.trim() ?? '');
+      expect(dates).toHaveLength(2);
+      dates.forEach((date) => expect(date).toMatch(/^\d{1,2} [a-z]{3,4}\.? \d{4}$/));
     });
 
     it('sends the debt written in positive as a negative opening balance', async () => {

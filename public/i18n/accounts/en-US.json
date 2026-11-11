@@ -85,7 +85,7 @@
       "EUR": "Euro (EUR)"
     },
     "balanceLabel": "Opening balance",
-    "balanceHint": "It can be negative, such as a card's debt. Up to {{decimals}} decimals.",
+    "balanceHint": "It can be negative if the account is overdrawn. Up to {{decimals}} decimals.",
     "balanceRequired": "Enter the opening balance; use 0 if the account starts empty.",
     "balanceInvalid": "Enter a number with up to {{decimals}} decimals.",
     "balanceTooLarge": "The balance cannot have more than {{digits}} whole digits.",

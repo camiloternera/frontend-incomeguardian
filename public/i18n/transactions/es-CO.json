@@ -79,6 +79,8 @@
     },
     "accountPlaceholder": "Elige una cuenta",
     "balance": "Saldo actual: {{amount}}",
+    "cardDebt": "Debes en la tarjeta: {{amount}}",
+    "cardCredit": "Saldo a favor en la tarjeta: {{amount}}",
     "fromLabel": "Desde",
     "toLabel": "Hacia",
     "fromRequired": "Elige la cuenta de origen.",

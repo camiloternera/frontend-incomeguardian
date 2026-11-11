@@ -79,6 +79,8 @@
     },
     "accountPlaceholder": "Pick an account",
     "balance": "Current balance: {{amount}}",
+    "cardDebt": "You owe on this card: {{amount}}",
+    "cardCredit": "Credit balance on this card: {{amount}}",
     "fromLabel": "From",
     "toLabel": "To",
     "fromRequired": "Pick the source account.",

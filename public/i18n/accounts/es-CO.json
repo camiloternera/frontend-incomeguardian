@@ -85,7 +85,7 @@
       "EUR": "Euro (EUR)"
     },
     "balanceLabel": "Saldo inicial",
-    "balanceHint": "Puede ser negativo, por ejemplo la deuda de una tarjeta. Hasta {{decimals}} decimales.",
+    "balanceHint": "Puede ser negativo si la cuenta está sobregirada. Hasta {{decimals}} decimales.",
     "balanceRequired": "Escribe el saldo inicial; usa 0 si la cuenta empieza vacía.",
     "balanceInvalid": "Escribe un número con hasta {{decimals}} decimales.",
     "balanceTooLarge": "El saldo no puede tener más de {{digits}} cifras enteras.",
