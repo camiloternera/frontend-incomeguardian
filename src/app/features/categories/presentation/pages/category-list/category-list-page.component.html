@@ -93,9 +93,24 @@
                     [class.text-ig-muted]="!category.isActive"
                     [routerLink]="[category.id, 'edit']"
                     [attr.aria-current]="selected ? 'true' : null"
-                    [attr.aria-label]="t(category.isActive ? 'categories.list.editNamed' : 'categories.list.viewNamed', { name: category.name })"
+                    [attr.aria-label]="
+                      t(category.isActive ? 'categories.list.editNamed' : 'categories.list.viewNamed', {
+                        name: category.code ? t('categories.systemNames.' + category.code) : category.name
+                      })
+                    "
                   >
-                    <span class="block break-words text-[15px] font-bold">{{ category.name }}</span>
+                    <span class="flex flex-wrap items-center gap-2">
+                      <span class="break-words text-[15px] font-bold">{{
+                        category.code ? t('categories.systemNames.' + category.code) : category.name
+                      }}</span>
+                      @if (category.code) {
+                        <span
+                          data-testid="system-category"
+                          class="rounded-full border border-ig-border px-2 py-0.5 text-[11px] font-medium text-ig-muted"
+                          >{{ t('categories.list.system') }}</span
+                        >
+                      }
+                    </span>
                     <span class="mt-1 block truncate text-[13px] text-ig-muted">{{ category.description }}</span>
                   </a>
                   <span class="hidden shrink-0 text-[13px] text-ig-muted sm:block">
@@ -137,6 +152,7 @@
                           <svg lucidePencil [size]="16" aria-hidden="true"></svg>
                           {{ t('categories.list.edit') }}
                         </a>
+                        @if (!category.code) {
                         <button
                           [attr.data-testid]="'deactivate-' + category.id"
                           class="flex min-h-11 items-center gap-3 rounded-md border-0 bg-transparent px-3 text-left text-[14px] text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:-outline-offset-2"
@@ -146,6 +162,7 @@
                           <svg lucideBan [size]="16" aria-hidden="true"></svg>
                           {{ t('categories.list.deactivate.action') }}
                         </button>
+                        }
                       } @else {
                         <button
                           [attr.data-testid]="'activate-' + category.id"

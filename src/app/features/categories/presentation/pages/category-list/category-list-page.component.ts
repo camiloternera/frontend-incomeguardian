@@ -7,6 +7,7 @@ import { Observable, finalize } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { LanguageService } from '@core/i18n/language.service';
 import { ThemeService } from '@core/theme/theme.service';
+import { matchesSearch } from '@shared/text/search-text';
 import { PaginationComponent } from '@shared/ui/pagination.component';
 import { ListCategoriesUseCase } from '../../../application/category-use-cases';
 import { CATEGORY_TABS, Category, CategoryTab, matchesCategory, sortByTypeThenName } from '../../../domain/category';
@@ -65,7 +66,18 @@ export class CategoryListPageComponent {
   protected readonly busyId = signal<number | null>(null);
   protected readonly actionError = signal('');
 
-  private readonly matching = computed(() => (this.categories() ?? []).filter((category) => matchesCategory(category, this.query())));
+  /** Coincide por nombre o descripción; una categoría de sistema también por su nombre traducido. */
+  private readonly matching = computed(() => {
+    const query = this.query();
+    this.locale();
+
+    return (this.categories() ?? []).filter(
+      (category) =>
+        matchesCategory(category, query) ||
+        (category.code !== null &&
+          matchesSearch(query, this.transloco.translate(`categories.systemNames.${category.code}`))),
+    );
+  });
 
   /** Cuántas categorías de cada pestaña coinciden con la búsqueda, para su contador. */
   protected readonly counts = computed(() => {
