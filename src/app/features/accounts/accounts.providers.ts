@@ -3,6 +3,7 @@ import {
   CreateAccountUseCase,
   DeactivateAccountUseCase,
   GetAccountUseCase,
+  GetCardStatementUseCase,
   ListAccountsUseCase,
   UpdateAccountUseCase,
 } from './application/account-use-cases';
@@ -21,5 +22,6 @@ export function provideAccounts(): Provider[] {
     CreateAccountUseCase,
     UpdateAccountUseCase,
     DeactivateAccountUseCase,
+    GetCardStatementUseCase,
   ];
 }
