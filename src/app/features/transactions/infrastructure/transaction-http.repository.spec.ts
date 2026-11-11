@@ -45,6 +45,9 @@ const TRANSFER_DTO = {
   exchangeRateDate: '2026-11-01',
 };
 
+/** Campos de cuotas de un movimiento de una sola cuota. */
+const SINGLE = { installments: 1, annualInterestRate: null, installmentAmount: null, schedule: [] };
+
 function ok(data: unknown) {
   return { data, isSuccess: true, message: 'ok', errors: [] };
 }
@@ -128,8 +131,13 @@ describe('TransactionHttpRepository', () => {
           destinationAmount: null,
           exchangeRate: null,
           exchangeRateDate: null,
+          // Sin los campos de cuotas, es una sola cuota sin plan.
+          installments: 1,
+          annualInterestRate: null,
+          installmentAmount: null,
+          schedule: [],
         },
-        TRANSFER_DTO,
+        { ...TRANSFER_DTO, ...SINGLE },
       ],
       page: 1,
       pageSize: 5,
@@ -202,7 +210,7 @@ describe('TransactionHttpRepository', () => {
     expect('destinationAmount' in request.request.body).toBe(false);
     request.flush(ok(TRANSFER_DTO), { status: 201, statusText: 'Created' });
 
-    expect(result).toEqual(TRANSFER_DTO);
+    expect(result).toEqual({ ...TRANSFER_DTO, ...SINGLE });
   });
 
   it('keeps a known backend code', () => {
@@ -277,7 +285,148 @@ describe('TransactionHttpRepository', () => {
     expect((error() as TransactionError).code).toBeNull();
     expect((error() as TransactionError).message).toBe(GENERIC);
   });
+  describe('installments', () => {
+    const SCHEDULE_DTO = [
+      { number: 1, year: 2026, month: 11, statementDate: '2026-11-15', principal: 15000, interest: 0, amount: 15000 },
+      // Un instante se lleva al día en hora de Colombia.
+      { number: 2, year: 2026, month: 12, statementDate: '2026-12-15T05:00:00Z', principal: 15000, interest: 0, amount: 15000 },
+    ];
+    const SCHEDULE = [
+      { number: 1, year: 2026, month: 11, statementDate: '2026-11-15', principal: 15000, interest: 0, amount: 15000 },
+      { number: 2, year: 2026, month: 12, statementDate: '2026-12-15', principal: 15000, interest: 0, amount: 15000 },
+    ];
+    const EXPENSE = {
+      type: 'expense' as const,
+      amount: 30000,
+      date: '2026-11-01T15:00:00.000Z',
+      fromAccountId: 9,
+      categoryId: null,
+      description: null,
+    };
+
+    it('gets one transaction with its plan', () => {
+      let result: unknown;
+      repository.get(9).subscribe((value) => (result = value));
+
+      const request = http.expectOne(`${URL}/9`);
+      expect(request.request.method).toBe('GET');
+      request.flush(
+        ok({ ...LEGACY_DTO, installments: 2, annualInterestRate: 24.5, installmentAmount: 15000, schedule: SCHEDULE_DTO }),
+      );
+
+      expect(result).toMatchObject({ id: 9, installments: 2, annualInterestRate: 24.5, installmentAmount: 15000, schedule: SCHEDULE });
+    });
+
+    it('previews the plan and omits the rate and the category when null', () => {
+      let result: unknown;
+      repository
+        .previewInstallments({
+          fromAccountId: 9,
+          amount: 30000,
+          date: '2026-11-01T15:00:00.000Z',
+          installments: 2,
+          annualInterestRate: null,
+          categoryId: null,
+        })
+        .subscribe((value) => (result = value));
+
+      const request = http.expectOne(`${URL}/installments/preview`);
+      expect(request.request.method).toBe('POST');
+      expect(request.request.body).toEqual({ fromAccountId: 9, amount: 30000, date: '2026-11-01T15:00:00.000Z', installments: 2 });
+      request.flush(
+        ok({
+          installmentAmount: 15000,
+          totalInterest: 0,
+          totalAmount: 30000,
+          schedule: SCHEDULE_DTO,
+          budgetAdjustments: [{ year: 2026, month: 12, categoryId: 4, currency: 'COP', newAmount: 15000 }],
+        }),
+      );
+
+      expect(result).toEqual({
+        installmentAmount: 15000,
+        totalInterest: 0,
+        totalAmount: 30000,
+        schedule: SCHEDULE,
+        budgetAdjustments: [{ year: 2026, month: 12, categoryId: 4, currency: 'COP', currentAmount: null, newAmount: 15000 }],
+      });
+    });
+
+    it('sends the rate and the category of the preview when set', () => {
+      repository
+        .previewInstallments({
+          fromAccountId: 9,
+          amount: 30000,
+          date: '2026-11-01T15:00:00.000Z',
+          installments: 3,
+          annualInterestRate: 0,
+          categoryId: 4,
+        })
+        .subscribe();
+
+      const request = http.expectOne(`${URL}/installments/preview`);
+      // Una tasa de 0 es un valor, no la ausencia de interés.
+      expect(request.request.body).toMatchObject({ annualInterestRate: 0, categoryId: 4 });
+      request.flush(ok({ installmentAmount: 10000, totalInterest: 0, totalAmount: 30000, schedule: [] }));
+    });
+
+    it('sends the installments and the rate only with more than one installment', () => {
+      repository.create({ ...EXPENSE, installments: 3, annualInterestRate: 24.5 }).subscribe();
+      expect(http.expectOne(URL).request.body).toMatchObject({ installments: 3, annualInterestRate: 24.5 });
+
+      repository.create({ ...EXPENSE, installments: 3, annualInterestRate: null }).subscribe();
+      const withoutRate = http.expectOne(URL).request.body;
+      expect(withoutRate.installments).toBe(3);
+      expect(withoutRate).not.toHaveProperty('annualInterestRate');
+
+      repository.create({ ...EXPENSE, installments: 1, annualInterestRate: 24.5 }).subscribe();
+      const single = http.expectOne(URL).request.body;
+      expect(single).not.toHaveProperty('installments');
+      expect(single).not.toHaveProperty('annualInterestRate');
+    });
+
+    it('keeps the closed month that PERIOD_CLOSED sends', () => {
+      const error = captureError((handlers) => repository.create({ ...EXPENSE, installments: 3 }).subscribe(handlers));
+
+      http.expectOne(URL).flush(
+        {
+          data: null,
+          isSuccess: false,
+          message: '',
+          errors: [{ code: TransactionErrorCode.PeriodClosed, message: 'Closed', data: { year: 2026, month: 12 } }],
+        },
+        { status: 409, statusText: 'Conflict' },
+      );
+
+      expect((error() as TransactionError).code).toBe(TransactionErrorCode.PeriodClosed);
+      expect((error() as TransactionError).closedMonth).toEqual({ year: 2026, month: 12 });
+    });
+
+    it('leaves the closed month null when the error brings no month', () => {
+      const error = captureError((handlers) => repository.create(EXPENSE).subscribe(handlers));
+
+      http.expectOne(URL).flush(failure(TransactionErrorCode.PeriodClosed), { status: 409, statusText: 'Conflict' });
+
+      expect((error() as TransactionError).closedMonth).toBeNull();
+    });
+
+    it.each([
+      TransactionErrorCode.InstallmentsNotAllowed,
+      TransactionErrorCode.InstallmentsOutOfRange,
+      TransactionErrorCode.InterestRateOutOfRange,
+    ])('translates %s', (code) => {
+      const error = captureError((handlers) => repository.get(9).subscribe(handlers));
+
+      http.expectOne(`${URL}/9`).flush(failure(code), { status: 400, statusText: 'Bad Request' });
+
+      expect((error() as TransactionError).code).toBe(code);
+      expect((error() as TransactionError).message).not.toBe('Backend message');
+      expect((error() as TransactionError).message).not.toContain('transactions.errors');
+    });
+  });
 });
+
+const NOT_A_CARD = { isCreditCard: false, availableCredit: null, nextStatementDate: null };
 
 describe('TransactionAccountOptionsHttpRepository', () => {
   let options: TransactionAccountOptionsHttpRepository;
@@ -308,9 +457,45 @@ describe('TransactionAccountOptionsHttpRepository', () => {
     );
 
     expect(result).toEqual([
-      { id: 1, name: 'Nequi', currency: 'COP', currentBalance: 2500, isActive: true },
-      { id: 2, name: 'Wise', currency: 'USD', currentBalance: 320.5, isActive: true },
-      { id: 3, name: 'Revolut', currency: 'EUR', currentBalance: 10, isActive: false },
+      { id: 1, name: 'Nequi', currency: 'COP', currentBalance: 2500, isActive: true, ...NOT_A_CARD },
+      { id: 2, name: 'Wise', currency: 'USD', currentBalance: 320.5, isActive: true, ...NOT_A_CARD },
+      { id: 3, name: 'Revolut', currency: 'EUR', currentBalance: 10, isActive: false, ...NOT_A_CARD },
+    ]);
+  });
+
+  it('maps a credit card with its available credit and next statement day', () => {
+    let result: unknown;
+    options.list().subscribe((value) => (result = value));
+
+    http.expectOne(ACCOUNTS_URL).flush(
+      ok([
+        {
+          id: 9,
+          name: 'Visa',
+          currency: 'COP',
+          initialBalance: 0,
+          currentBalance: -300000,
+          isActive: true,
+          kind: 'credit_card',
+          availableCredit: 1700000,
+          nextStatementDate: '2026-11-15T05:00:00Z',
+        },
+        { id: 1, name: 'Nequi', currency: 'COP', initialBalance: 0, currentBalance: 0, isActive: true, kind: 'standard' },
+      ]),
+    );
+
+    expect(result).toEqual([
+      {
+        id: 9,
+        name: 'Visa',
+        currency: 'COP',
+        currentBalance: -300000,
+        isActive: true,
+        isCreditCard: true,
+        availableCredit: 1700000,
+        nextStatementDate: '2026-11-15',
+      },
+      { id: 1, name: 'Nequi', currency: 'COP', currentBalance: 0, isActive: true, ...NOT_A_CARD },
     ]);
   });
 
@@ -365,11 +550,22 @@ describe('TransactionCategoryOptionsHttpRepository', () => {
     );
 
     expect(result).toEqual([
-      { id: 1, name: 'Salario', type: 'income', isActive: true },
-      { id: 2, name: 'Viejo', type: 'expense', isActive: false },
-      { id: 3, name: 'Ahorro', type: 'transfer', isActive: true },
-      { id: 4, name: 'Rara', type: null, isActive: true },
+      { id: 1, name: 'Salario', type: 'income', isActive: true, code: null },
+      { id: 2, name: 'Viejo', type: 'expense', isActive: false, code: null },
+      { id: 3, name: 'Ahorro', type: 'transfer', isActive: true, code: null },
+      { id: 4, name: 'Rara', type: null, isActive: true, code: null },
     ]);
+  });
+
+  it('keeps the code of a system category', () => {
+    let result: { code: string | null }[] | undefined;
+    options.list('transfer').subscribe((value) => (result = value));
+
+    http
+      .expectOne((req) => req.url === CATEGORIES_URL)
+      .flush(ok([{ ...base, id: 7, name: 'CARD_PAYMENT', isActive: true, transactionTypeId: 3, code: 'CARD_PAYMENT' }]));
+
+    expect(result?.[0].code).toBe('CARD_PAYMENT');
   });
 });
 

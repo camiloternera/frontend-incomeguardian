@@ -2,6 +2,8 @@ import { TestBed } from '@angular/core/testing';
 import { Observable, of } from 'rxjs';
 import {
   ExchangeRate,
+  InstallmentPreview,
+  InstallmentPreviewRequest,
   Transaction,
   TransactionAccountOption,
   TransactionCategoryOption,
@@ -22,6 +24,8 @@ import { TRANSACTION_USE_CASES } from '../transactions.providers';
 import {
   CreateTransactionUseCase,
   GetExchangeRateUseCase,
+  GetTransactionUseCase,
+  PreviewInstallmentsUseCase,
   SummarizeTransactionsUseCase,
   ListTransactionAccountOptionsUseCase,
   ListTransactionCategoryOptionsUseCase,
@@ -42,6 +46,18 @@ const TRANSACTION: Transaction = {
   destinationAmount: null,
   exchangeRate: null,
   exchangeRateDate: null,
+  installments: 1,
+  annualInterestRate: null,
+  installmentAmount: null,
+  schedule: [],
+};
+
+const PREVIEW: InstallmentPreview = {
+  installmentAmount: 15000,
+  totalInterest: 0,
+  totalAmount: 45000,
+  schedule: [],
+  budgetAdjustments: [],
 };
 
 const RATE: ExchangeRate = {
@@ -58,6 +74,8 @@ class MemoryTransactionRepository extends TransactionRepository {
   queries: TransactionQuery[] = [];
   drafts: TransactionDraft[] = [];
   ranges: TransactionRange[] = [];
+  ids: number[] = [];
+  previews: InstallmentPreviewRequest[] = [];
 
   list(query: TransactionQuery): Observable<TransactionPage> {
     this.queries.push(query);
@@ -73,6 +91,16 @@ class MemoryTransactionRepository extends TransactionRepository {
     this.drafts.push(draft);
     return of(TRANSACTION);
   }
+
+  get(id: number): Observable<Transaction> {
+    this.ids.push(id);
+    return of({ ...TRANSACTION, id });
+  }
+
+  previewInstallments(request: InstallmentPreviewRequest): Observable<InstallmentPreview> {
+    this.previews.push(request);
+    return of(PREVIEW);
+  }
 }
 
 class MemoryAccountOptionsRepository extends TransactionAccountOptionsRepository {
@@ -83,6 +111,9 @@ class MemoryAccountOptionsRepository extends TransactionAccountOptionsRepository
       currency: 'COP',
       currentBalance: 0,
       isActive: true,
+      isCreditCard: false,
+      availableCredit: null,
+      nextStatementDate: null,
     });
     return of([account(1, 'Wise'), account(2, 'ahorros'), account(3, 'Ávila'), account(4, 'Nequi')]);
   }
@@ -94,9 +125,9 @@ class MemoryCategoryOptionsRepository extends TransactionCategoryOptionsReposito
   list(type?: TransactionType): Observable<TransactionCategoryOption[]> {
     this.types.push(type);
     return of([
-      { id: 1, name: 'Salario', type: 'income', isActive: true },
-      { id: 2, name: 'arriendo', type: 'expense', isActive: true },
-      { id: 3, name: 'Éxtras', type: 'expense', isActive: true },
+      { id: 1, name: 'Salario', type: 'income', isActive: true, code: null },
+      { id: 2, name: 'arriendo', type: 'expense', isActive: true, code: null },
+      { id: 3, name: 'Éxtras', type: 'expense', isActive: true, code: null },
     ]);
   }
 }
@@ -210,5 +241,33 @@ describe('transaction use cases', () => {
 
     expect(rates.dates).toEqual(['2026-11-01', undefined]);
     expect(result).toEqual(RATE);
+  });
+
+  it('gets one transaction by id', () => {
+    let result: Transaction | undefined;
+    TestBed.inject(GetTransactionUseCase)
+      .execute(7)
+      .subscribe((value) => (result = value));
+
+    expect(transactions.ids).toEqual([7]);
+    expect(result?.id).toBe(7);
+  });
+
+  it('asks the backend for the installment plan', () => {
+    const request: InstallmentPreviewRequest = {
+      fromAccountId: 9,
+      amount: 45000,
+      date: '2026-11-01T15:00:00.000Z',
+      installments: 3,
+      annualInterestRate: null,
+      categoryId: 4,
+    };
+    let result: InstallmentPreview | undefined;
+    TestBed.inject(PreviewInstallmentsUseCase)
+      .execute(request)
+      .subscribe((value) => (result = value));
+
+    expect(transactions.previews).toEqual([request]);
+    expect(result).toEqual(PREVIEW);
   });
 });
