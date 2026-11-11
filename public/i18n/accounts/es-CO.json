@@ -1,7 +1,7 @@
 {
   "list": {
     "title": "Cuentas",
-    "subtitle": "Dónde está tu dinero: bancos, tarjetas, billeteras y efectivo.",
+    "subtitle": "Dónde está tu dinero, y lo que debes en tus tarjetas.",
     "create": "Nueva cuenta",
     "loading": "Cargando tus cuentas…",
     "retry": "Intentar de nuevo",
@@ -47,6 +47,23 @@
       "updated": "Guardaste los cambios de «{{name}}».",
       "deactivated": "Desactivaste la cuenta «{{name}}».",
       "dismiss": "Cerrar"
+    },
+    "positions": {
+      "assets": "Tienes en cuentas ({{currency}})",
+      "debt": "Debes en tarjetas ({{currency}})",
+      "net": "Neto en {{currency}}"
+    },
+    "card": {
+      "kind": "Tarjeta de crédito",
+      "statement": "Corte {{date}}",
+      "payment": "Pago {{date}}",
+      "owes": "Debes",
+      "credit": "Saldo a favor",
+      "usage": "Cupo usado: {{percent}} %",
+      "available": "Disponible {{available}} de {{limit}}",
+      "overLimit": "Pasaste el cupo por {{amount}}",
+      "noLimit": "Sin cupo registrado.",
+      "viewStatement": "Ver extracto"
     }
   },
   "form": {
@@ -59,7 +76,7 @@
     "readOnlyCurrency": "Esta cuenta está en una moneda que ya no se admite: puedes consultarla, pero no editarla ni registrar movimientos nuevos en ella.",
     "loading": "Cargando la cuenta…",
     "nameLabel": "Nombre",
-    "identityLocked": "Esta cuenta ya tiene movimientos: su nombre y su moneda no se pueden cambiar.",
+    "identityLocked": "Esta cuenta ya tiene movimientos: su nombre, su moneda y su tipo no se pueden cambiar.",
     "namePlaceholder": "Por ejemplo, Bancolombia ahorros",
     "currencyLabel": "Moneda",
     "currency": {
@@ -81,7 +98,33 @@
     "openingLabel": "Fecha de apertura",
     "openingDay": "Día de apertura",
     "openingTime": "Hora de apertura",
-    "openingHint": "Desde cuándo existe la cuenta; no puede ser posterior a este momento."
+    "openingHint": "Desde cuándo existe la cuenta; no puede ser posterior a este momento.",
+    "kindLabel": "Tipo",
+    "kind": {
+      "standard": "Cuenta normal",
+      "credit_card": "Tarjeta de crédito"
+    },
+    "kindLocked": "El tipo ya no se puede cambiar: la cuenta tiene movimientos.",
+    "card": {
+      "create": "Crear tarjeta",
+      "createSubtitle": "Una tarjeta con cupo, día de corte y día de pago.",
+      "debtLabel": "Deuda actual",
+      "initialDebtLabel": "Deuda inicial",
+      "debtHint": "Lo que debes hoy, según tu banco. Así no tienes que registrar compras viejas.",
+      "debtNegative": "Escribe la deuda en positivo; usa 0 si la tarjeta no tiene deuda.",
+      "limitLabel": "Cupo total",
+      "optional": "(opcional)",
+      "limitHint": "Con el cupo te mostramos cuánto te queda disponible.",
+      "statementDayLabel": "Día de corte",
+      "paymentDayLabel": "Día de pago",
+      "dayPlaceholder": "Elige un día",
+      "nextStatement": "Próximo corte",
+      "payBy": "Pagas hasta",
+      "paysNextMonth": "El pago cae en el mes siguiente al corte porque el día de pago no es posterior al de corte.",
+      "paysSameMonth": "El pago cae en el mismo mes del corte.",
+      "shortMonths": "Si un mes tiene menos días, usamos el último.",
+      "daysChangeNote": "Si cambias el corte o el pago, solo aplica a las compras nuevas. Las cuotas ya registradas se quedan en sus meses."
+    }
   },
   "errors": {
     "ACCOUNT_NAME_REQUIRED": "Escribe un nombre para la cuenta.",
@@ -93,6 +136,61 @@
     "ACCOUNT_CURRENCY_LOCKED": "La cuenta ya tiene movimientos, así que su moneda no se puede cambiar.",
     "ACCOUNT_OPENING_DATE_REQUIRED": "Indica el día y la hora en que abriste la cuenta.",
     "ACCOUNT_OPENING_DATE_FUTURE": "La fecha de apertura no puede ser posterior a este momento.",
-    "ACCOUNT_LOCKED_BY_CLOSED_PERIOD": "No puedes cambiar el saldo inicial ni la moneda: hay meses cerrados desde la apertura de esta cuenta. Reábrelos primero."
+    "ACCOUNT_LOCKED_BY_CLOSED_PERIOD": "No puedes cambiar el saldo inicial ni la moneda: hay meses cerrados desde la apertura de esta cuenta. Reábrelos primero.",
+    "ACCOUNT_KIND_INVALID": "Elige si es una cuenta normal o una tarjeta de crédito.",
+    "ACCOUNT_KIND_LOCKED": "La cuenta ya tiene movimientos, así que su tipo no se puede cambiar.",
+    "ACCOUNT_STATEMENT_DAY_REQUIRED": "Elige el día de corte de la tarjeta.",
+    "ACCOUNT_STATEMENT_DAY_INVALID": "El día de corte debe estar entre 1 y 31.",
+    "ACCOUNT_PAYMENT_DAY_REQUIRED": "Elige el día de pago de la tarjeta.",
+    "ACCOUNT_PAYMENT_DAY_INVALID": "El día de pago debe estar entre 1 y 31.",
+    "ACCOUNT_CREDIT_LIMIT_INVALID": "El cupo debe ser mayor que 0. Déjalo vacío si no lo conoces.",
+    "CREDIT_CARD_INITIAL_BALANCE_POSITIVE": "La deuda de una tarjeta no puede quedar como saldo a favor. Escríbela en positivo.",
+    "ACCOUNT_NOT_CREDIT_CARD": "Esta cuenta no es una tarjeta de crédito."
+  },
+  "statement": {
+    "breadcrumb": "Ruta",
+    "loading": "Cargando el extracto…",
+    "notFoundTitle": "Extracto no disponible",
+    "notFoundBody": "No encontramos esta tarjeta, o la cuenta no es una tarjeta de crédito.",
+    "title": "Extracto de {{name}}",
+    "period": "{{start}} – {{end}} · corte el día {{day}}",
+    "monthNav": "Mes del extracto",
+    "previous": "Extracto anterior",
+    "next": "Extracto siguiente",
+    "summary": "Resumen del extracto",
+    "balanceDue": "Por pagar",
+    "total": "Total del extracto",
+    "paid": "Ya pagaste",
+    "dueDate": "Fecha límite",
+    "pay": "Pagar {{amount}}",
+    "status": {
+      "upcoming": "Próximo · empieza el {{start}}",
+      "open": "Abierto · corta el {{cut}}",
+      "due": "Por pagar · vence el {{due}}",
+      "partial": "Pago parcial · vence el {{due}}",
+      "paid": "Pagado",
+      "overdue": "Vencido desde el {{due}}"
+    },
+    "openNote": "Este extracto aún no ha cortado: las compras que hagas hasta el {{cut}} se suman aquí.",
+    "upcomingNote": "Este extracto aún no empieza: su ciclo arranca el {{start}}. Muestra las cuotas ya programadas; las pagas cuando corte, hasta el {{due}}.",
+    "itemsCaption": "Cuotas que cobra este extracto",
+    "columns": {
+      "date": "Compra",
+      "description": "Descripción",
+      "category": "Categoría",
+      "installment": "Cuota",
+      "principal": "Capital",
+      "interest": "Interés",
+      "amount": "Valor"
+    },
+    "installmentOf": "{{number}} de {{total}}",
+    "noDescription": "Sin descripción",
+    "openingDebt": "Saldo anterior",
+    "openingDebtHint": "La deuda que tenía la tarjeta cuando la registraste.",
+    "empty": "Este extracto no tiene compras.",
+    "paymentsTitle": "Pagos",
+    "paymentLine": "Transferencia desde {{account}} el {{date}}",
+    "paymentSplit": "(de un pago de {{amount}})",
+    "transferNote": "Pagar la tarjeta es una transferencia desde tu banco. No cuenta como gasto: cada cuota ya cuenta en el presupuesto de su mes."
   }
 }

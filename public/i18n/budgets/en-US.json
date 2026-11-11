@@ -16,7 +16,8 @@
       "lastDay": "Today is the last day of the month",
       "ended": "This month is over",
       "closed": "Month closed",
-      "closedNotice": "This month is closed: its limits stay as a reference and cannot be changed."
+      "closedNotice": "This month is closed: its limits stay as a reference and cannot be changed.",
+      "future": "Future month: view only"
     },
     "currency": {
       "label": "Currency",
@@ -30,7 +31,8 @@
       "spent": "Spent",
       "available": "Available",
       "usedBefore": "You used",
-      "usedAfter": "of your plan"
+      "usedAfter": "of your plan",
+      "installmentsSpent": "Of that, on installment purchases: {{amount}}"
     },
     "mobile": {
       "availableOf": "Available of {{budget}}",
@@ -53,7 +55,8 @@
       "recurring": "Every month",
       "month": "This month only",
       "none": "No limit",
-      "paused": "Paused this month only"
+      "paused": "Paused this month only",
+      "raisedByInstallments": "This month's budget · raised by installments"
     },
     "usage": {
       "paused": "Paused this month",
@@ -77,14 +80,18 @@
       "title": "You have no limits yet",
       "body": "Set how much you want to spend in each category. The limit repeats every month and you can adjust it for a single month.",
       "action": "Add your first limit",
-      "closedTitle": "There were no limits in {{month}}"
+      "closedTitle": "There were no limits in {{month}}",
+      "futureTitle": "No limits or installments in {{month}} yet",
+      "futureBody": "Future months are view only. Here you will see the card installments that fall in this month."
     },
     "notice": {
       "saved": "You saved the limit for {{name}}.",
       "removed": "You removed the limit for {{name}}.",
       "reset": "{{name}} is back on its recurring limit.",
       "dismiss": "Dismiss"
-    }
+    },
+    "installmentsChip": "{{count}} in installments",
+    "view": "View the {{name}} limit"
   },
   "form": {
     "newTitle": "New limit",
@@ -96,7 +103,8 @@
     "backToList": "Back to the budget",
     "readOnly": {
       "closed": "This month is closed: its limits cannot be changed. Reopen it to edit them.",
-      "inactive": "This category is deactivated. Reactivate it in Categories to change its limit."
+      "inactive": "This category is deactivated. Reactivate it in Categories to change its limit.",
+      "future": "This month hasn't started yet: you can see its limit and the installments already falling in it, but not change it."
     },
     "currency": "Currency",
     "currencyHelp": "Only spending from accounts in this currency counts.",
@@ -138,5 +146,17 @@
     "BUDGET_CATEGORY_REQUIRED": "Pick a category.",
     "PERIOD_INVALID": "That month is not valid.",
     "PERIOD_CLOSED": "This month is closed: its limits cannot be changed."
+  },
+  "detail": {
+    "capTitle": "{{month}} budget",
+    "capRecurring": "Recurring budget",
+    "capInstallment": "Installment {{number}}/{{total}} of {{description}}",
+    "capTotal": "This month's budget",
+    "spentTitle": "What counts this month",
+    "loading": "Loading this month's spending…",
+    "installmentMeta": "Installment {{number}} of {{total}} · {{account}}",
+    "singleMeta": "1 installment · {{account}}",
+    "noDescription": "No description",
+    "nothingSpent": "No spending in this category this month yet."
   }
 }

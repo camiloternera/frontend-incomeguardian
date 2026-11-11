@@ -55,7 +55,8 @@
       "body": "Create one to group your transactions of this type.",
       "inactive": "You have no deactivated categories",
       "inactiveBody": "When you deactivate a category it shows up here, grouped by type, so you can look it up or reactivate it."
-    }
+    },
+    "system": "System"
   },
   "form": {
     "createTitle": "New category",
@@ -80,7 +81,8 @@
     "typeLabel": "Transaction type",
     "typeHint": "You can only use it on transactions of this type; it cannot be changed later.",
     "typeLocked": "The type cannot be changed.",
-    "readOnly": "This category is deactivated: you can look it up and reactivate it, but you cannot edit it or use it in new transactions."
+    "readOnly": "This category is deactivated: you can look it up and reactivate it, but you cannot edit it or use it in new transactions.",
+    "systemLocked": "This is a system category for card payments: it can't be renamed or deactivated. You can change its description."
   },
   "errors": {
     "CATEGORY_NAME_REQUIRED": "Enter a name for the category.",
@@ -94,11 +96,15 @@
     "CATEGORY_TRANSACTION_TYPE_INVALID": "That transaction type is not valid. Choose another one.",
     "CATEGORY_STATUS_INVALID": "We could not filter the categories by status. Try again.",
     "CATEGORY_ALREADY_ACTIVE": "This category was already active.",
-    "CATEGORY_ALREADY_INACTIVE": "This category was already deactivated."
+    "CATEGORY_ALREADY_INACTIVE": "This category was already deactivated.",
+    "CATEGORY_SYSTEM_LOCKED": "This is a system category: it can't be renamed, deactivated or deleted."
   },
   "types": {
     "income": "Income",
     "expense": "Expense",
     "transfer": "Transfer"
+  },
+  "systemNames": {
+    "CARD_PAYMENT": "Card payment"
   }
 }
