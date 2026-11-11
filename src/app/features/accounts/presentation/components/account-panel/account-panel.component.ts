@@ -17,6 +17,7 @@ import { LucideBan, LucideX } from '@lucide/angular';
 import { Observable, finalize } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { LanguageService } from '@core/i18n/language.service';
+import { dayPattern } from '@shared/dates/date-patterns';
 import { notBlank } from '@shared/forms/not-blank.validator';
 import { DatePickerComponent } from '@shared/ui/date-picker/date-picker.component';
 import { SelectComponent, SelectOption } from '@shared/ui/select/select.component';
@@ -109,6 +110,8 @@ export class AccountPanelComponent {
 
   protected readonly listUrl = LIST_URL;
   protected readonly locale = inject(LanguageService).language;
+  /** Patrón de fecha del idioma activo, con el mes en letras. */
+  protected readonly day = computed(() => dayPattern(this.locale()));
   protected readonly currencies = SELECTABLE_CURRENCIES;
   protected readonly kinds = ACCOUNT_KINDS;
   protected readonly nameMax = ACCOUNT_NAME_MAX_LENGTH;

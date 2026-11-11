@@ -11,7 +11,7 @@ import {
   LucideChevronRight,
   LucidePlus,
 } from '@lucide/angular';
-import { Subscription, catchError, map, of } from 'rxjs';
+import { Subscription, catchError, of } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { LanguageService } from '@core/i18n/language.service';
 import { ThemeService } from '@core/theme/theme.service';
@@ -28,6 +28,7 @@ import {
   TRANSACTION_PAGE_SIZE,
   Transaction,
   TransactionAccountOption,
+  TransactionCategoryOption,
   TransactionMonth,
   TransactionPage,
   TransactionSummary,
@@ -44,6 +45,7 @@ import {
 import { TransactionError } from '../../../domain/transaction-error';
 import { moneyDigits } from '@shared/money/money-format';
 import { formatMoney } from '../../money-format';
+import { injectTransactionsTranslations } from '../../transactions-translations';
 import { TransactionWorkspace } from '../../transaction-workspace';
 
 /** Texto ya resuelto para la fila de un movimiento. */
@@ -150,22 +152,22 @@ export class TransactionListPageComponent {
     this.listAccounts.execute().pipe(catchError(() => of<TransactionAccountOption[]>([]))),
     { initialValue: [] },
   );
-  private readonly categoryNames = toSignal(
-    this.listCategories.execute().pipe(
-      // Las categorías de sistema (como la de pago de tarjeta) se nombran por su código.
-      map(
-        (categories) =>
-          new Map(
-            categories.map((category) => [
-              category.id,
-              category.code ? this.transloco.translate(`transactions.systemCategories.${category.code}`) : category.name,
-            ]),
-          ),
-      ),
-      catchError(() => of(new Map<number, string>())),
-    ),
-    { initialValue: new Map<number, string>() },
+  private readonly translations = injectTransactionsTranslations();
+  private readonly categoryOptions = toSignal(
+    this.listCategories.execute().pipe(catchError(() => of<TransactionCategoryOption[]>([]))),
+    { initialValue: [] },
   );
+  /** Nombre de cada categoría; las del sistema se nombran por su código cuando el scope ya cargó. */
+  private readonly categoryNames = computed(() => {
+    const ready = this.translations() !== null;
+
+    return new Map(
+      this.categoryOptions().map((category) => [
+        category.id,
+        category.code && ready ? this.transloco.translate(`transactions.systemCategories.${category.code}`) : category.name,
+      ]),
+    );
+  });
   private readonly accountsById = computed(
     () => new Map(this.accounts().map((account) => [account.id, account])),
   );

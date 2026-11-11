@@ -187,5 +187,6 @@ describe('TransactionDetailComponent', () => {
 
     expect(text(element, 'installment-1')).not.toContain('Billed');
     expect(text(element, 'detail-remaining')).toContain('2');
+    expect(query(element, 'transaction-detail')?.textContent).toContain('24,5 % EA');
   });
 });

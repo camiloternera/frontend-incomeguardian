@@ -50,8 +50,8 @@
                 <p class="m-0 text-[15px] text-ig-muted">
                   {{
                     t('accounts.statement.period', {
-                      start: (s.periodStart | date: 'd MMM' : 'UTC' : locale()),
-                      end: (s.periodEnd | date: 'mediumDate' : 'UTC' : locale()),
+                      start: (s.periodStart | date: shortDay() : 'UTC' : locale()),
+                      end: (s.periodEnd | date: day() : 'UTC' : locale()),
                       day: s.statementDay
                     })
                   }}
@@ -109,9 +109,9 @@
                 >
                   {{
                     t('accounts.statement.status.' + s.status, {
-                      start: (s.periodStart | date: 'd MMM' : 'UTC' : locale()),
-                      cut: (s.periodEnd | date: 'd MMM' : 'UTC' : locale()),
-                      due: (s.paymentDueDate | date: 'd MMM' : 'UTC' : locale())
+                      start: (s.periodStart | date: shortDay() : 'UTC' : locale()),
+                      cut: (s.periodEnd | date: shortDay() : 'UTC' : locale()),
+                      due: (s.paymentDueDate | date: shortDay() : 'UTC' : locale())
                     })
                   }}
                 </span>
@@ -132,7 +132,7 @@
                 <div class="flex flex-col gap-1">
                   <p class="m-0 text-[13px] text-ig-muted">{{ t('accounts.statement.dueDate') }}</p>
                   <p data-testid="statement-due-date" class="m-0 text-[20px] font-bold tabular-nums">
-                    {{ s.paymentDueDate | date: 'mediumDate' : 'UTC' : locale() }}
+                    {{ s.paymentDueDate | date: day() : 'UTC' : locale() }}
                   </p>
                 </div>
                 @if (canPay()) {
@@ -154,7 +154,7 @@
 
             @if (s.status === 'open') {
               <p class="m-0 rounded-lg border border-ig-border bg-ig-surface px-4 py-3 text-[14px] text-ig-muted">
-                {{ t('accounts.statement.openNote', { cut: (s.periodEnd | date: 'd MMMM' : 'UTC' : locale()) }) }}
+                {{ t('accounts.statement.openNote', { cut: (s.periodEnd | date: longDay() : 'UTC' : locale()) }) }}
               </p>
             } @else if (s.status === 'upcoming') {
               <p
@@ -163,8 +163,8 @@
               >
                 {{
                   t('accounts.statement.upcomingNote', {
-                    start: (s.periodStart | date: 'd MMMM' : 'UTC' : locale()),
-                    due: (s.paymentDueDate | date: 'd MMMM' : 'UTC' : locale())
+                    start: (s.periodStart | date: longDay() : 'UTC' : locale()),
+                    due: (s.paymentDueDate | date: longDay() : 'UTC' : locale())
                   })
                 }}
               </p>
@@ -200,7 +200,7 @@
                     }
                     @for (item of s.items; track item.transactionId + '-' + item.number) {
                       <tr class="border-b border-ig-border">
-                        <td class="whitespace-nowrap px-4 py-3 text-ig-muted">{{ item.purchaseDate | date: 'd MMM' : 'UTC' : locale() }}</td>
+                        <td class="whitespace-nowrap px-4 py-3 text-ig-muted">{{ item.purchaseDate | date: shortDay() : 'UTC' : locale() }}</td>
                         <td class="px-4 py-3">
                           <a
                             class="text-ig-text underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
@@ -254,7 +254,7 @@
                         {{
                           t('accounts.statement.paymentLine', {
                             account: payment.fromAccountName,
-                            date: (payment.date | date: 'mediumDate' : undefined : locale())
+                            date: (payment.date | date: day() : undefined : locale())
                           })
                         }}
                         @if (payment.appliedAmount !== payment.paymentAmount) {

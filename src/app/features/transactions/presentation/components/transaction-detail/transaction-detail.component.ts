@@ -1,10 +1,10 @@
-import { DatePipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, ElementRef, afterNextRender, computed, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { LucideX } from '@lucide/angular';
-import { catchError, map, of } from 'rxjs';
+import { catchError, of } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { LanguageService } from '@core/i18n/language.service';
 import { ClosedMonthBadgeComponent, PeriodOverlaysComponent } from '@features/periods';
@@ -17,10 +17,12 @@ import {
   InstallmentScheduleItem,
   Transaction,
   TransactionAccountOption,
+  TransactionCategoryOption,
   dayOf,
 } from '../../../domain/transaction';
 import { TransactionError, TransactionErrorCode } from '../../../domain/transaction-error';
 import { formatMoney } from '../../money-format';
+import { injectTransactionsTranslations } from '../../transactions-translations';
 
 /** Estado del detalle: cargando, listo, error al cargar o movimiento inexistente. */
 type DetailStatus = 'loading' | 'ready' | 'error' | 'notFound';
@@ -59,7 +61,7 @@ export function installmentState(item: InstallmentScheduleItem, nextStatementDat
  */
 @Component({
   selector: 'app-transaction-detail',
-  imports: [DatePipe, RouterLink, TranslocoDirective, LucideX, ClosedMonthBadgeComponent, PeriodOverlaysComponent],
+  imports: [DatePipe, DecimalPipe, RouterLink, TranslocoDirective, LucideX, ClosedMonthBadgeComponent, PeriodOverlaysComponent],
   templateUrl: './transaction-detail.component.html',
 })
 export class TransactionDetailComponent {
@@ -81,25 +83,24 @@ export class TransactionDetailComponent {
       .pipe(catchError(() => of<TransactionAccountOption[]>([]))),
     { initialValue: [] },
   );
-  private readonly categoryNames = toSignal(
+  private readonly translations = injectTransactionsTranslations();
+  private readonly categoryOptions = toSignal(
     inject(ListTransactionCategoryOptionsUseCase)
       .execute()
-      .pipe(
-        map(
-          (categories) =>
-            new Map(
-              categories.map((category) => [
-                category.id,
-                category.code
-                  ? this.transloco.translate(`transactions.systemCategories.${category.code}`)
-                  : category.name,
-              ]),
-            ),
-        ),
-        catchError(() => of(new Map<number, string>())),
-      ),
-    { initialValue: new Map<number, string>() },
+      .pipe(catchError(() => of<TransactionCategoryOption[]>([]))),
+    { initialValue: [] },
   );
+  /** Nombre de cada categoría; las del sistema se nombran por su código cuando el scope ya cargó. */
+  private readonly categoryNames = computed(() => {
+    const ready = this.translations() !== null;
+
+    return new Map(
+      this.categoryOptions().map((category) => [
+        category.id,
+        category.code && ready ? this.transloco.translate(`transactions.systemCategories.${category.code}`) : category.name,
+      ]),
+    );
+  });
 
   /** Cuenta de la que salió el gasto (la tarjeta, en una compra a cuotas). */
   protected readonly account = computed(() => {

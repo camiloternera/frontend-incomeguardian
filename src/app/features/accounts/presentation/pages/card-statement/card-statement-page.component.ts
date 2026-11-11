@@ -8,6 +8,7 @@ import { combineLatest, finalize } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { LanguageService } from '@core/i18n/language.service';
 import { ThemeService } from '@core/theme/theme.service';
+import { dayPattern, longDayPattern, shortDayPattern } from '@shared/dates/date-patterns';
 import { moneyDigits } from '@shared/money/money-format';
 import { GetAccountUseCase, GetCardStatementUseCase } from '../../../application/account-use-cases';
 import { Account, isCreditCard } from '../../../domain/account';
@@ -41,6 +42,10 @@ export class CardStatementPageComponent {
   protected readonly theme = inject(ThemeService).theme;
   protected readonly locale = inject(LanguageService).language;
   protected readonly moneyDigits = moneyDigits;
+  /** Patrones de fecha del idioma activo: corto, con año y dentro de una frase. */
+  protected readonly shortDay = computed(() => shortDayPattern(this.locale()));
+  protected readonly day = computed(() => dayPattern(this.locale()));
+  protected readonly longDay = computed(() => longDayPattern(this.locale()));
 
   protected readonly status = signal<PageStatus>('loading');
   protected readonly loadError = signal('');
