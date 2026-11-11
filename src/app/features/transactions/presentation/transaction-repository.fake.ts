@@ -4,6 +4,8 @@ import { Observable, of, throwError } from 'rxjs';
 import {
   CurrencySummary,
   ExchangeRate,
+  InstallmentPreview,
+  InstallmentPreviewRequest,
   Transaction,
   TransactionAccountOption,
   TransactionCategoryOption,
@@ -22,6 +24,7 @@ import {
   TransactionCategoryOptionsRepository,
   TransactionRepository,
 } from '../domain/transaction.repository';
+import { TransactionError, TransactionErrorCode } from '../domain/transaction-error';
 import { transactionsRoutes } from '../transactions.routes';
 
 /** Devuelve el error pendiente (una sola vez) o el valor calculado. */
@@ -43,11 +46,11 @@ function respond<T>(owner: { failWith: unknown }, value: () => T): Observable<T>
 /** Cuentas en memoria: dos en pesos, una en dólares, una en euros y una desactivada. */
 export class FakeTransactionAccountOptionsRepository extends TransactionAccountOptionsRepository {
   accounts: TransactionAccountOption[] = [
-    { id: 2, name: 'Bancolombia', currency: 'COP', currentBalance: 1250000, isActive: true },
-    { id: 3, name: 'Nequi', currency: 'COP', currentBalance: 85000, isActive: true },
-    { id: 8, name: 'Wise', currency: 'USD', currentBalance: 320.5, isActive: true },
-    { id: 9, name: 'Revolut', currency: 'EUR', currentBalance: 40, isActive: true },
-    { id: 10, name: 'Davivienda', currency: 'COP', currentBalance: 0, isActive: false },
+    { id: 2, name: 'Bancolombia', currency: 'COP', currentBalance: 1250000, isActive: true, isCreditCard: false, availableCredit: null, nextStatementDate: null },
+    { id: 3, name: 'Nequi', currency: 'COP', currentBalance: 85000, isActive: true, isCreditCard: false, availableCredit: null, nextStatementDate: null },
+    { id: 8, name: 'Wise', currency: 'USD', currentBalance: 320.5, isActive: true, isCreditCard: false, availableCredit: null, nextStatementDate: null },
+    { id: 9, name: 'Revolut', currency: 'EUR', currentBalance: 40, isActive: true, isCreditCard: false, availableCredit: null, nextStatementDate: null },
+    { id: 10, name: 'Davivienda', currency: 'COP', currentBalance: 0, isActive: false, isCreditCard: false, availableCredit: null, nextStatementDate: null },
   ];
   failWith: unknown = null;
 
@@ -59,11 +62,11 @@ export class FakeTransactionAccountOptionsRepository extends TransactionAccountO
 /** Categorías en memoria de cada tipo; recuerda el último tipo pedido. */
 export class FakeTransactionCategoryOptionsRepository extends TransactionCategoryOptionsRepository {
   categories: TransactionCategoryOption[] = [
-    { id: 1, name: 'Mercado', type: 'expense', isActive: true },
-    { id: 2, name: 'Salario', type: 'income', isActive: true },
-    { id: 3, name: 'Transporte', type: 'expense', isActive: true },
-    { id: 4, name: 'Ahorro', type: 'transfer', isActive: true },
-    { id: 5, name: 'Arriendo viejo', type: 'expense', isActive: false },
+    { id: 1, name: 'Mercado', type: 'expense', isActive: true, code: null },
+    { id: 2, name: 'Salario', type: 'income', isActive: true, code: null },
+    { id: 3, name: 'Transporte', type: 'expense', isActive: true, code: null },
+    { id: 4, name: 'Ahorro', type: 'transfer', isActive: true, code: null },
+    { id: 5, name: 'Arriendo viejo', type: 'expense', isActive: false, code: null },
   ];
   failWith: unknown = null;
   lastType: TransactionType | undefined = undefined;
@@ -223,6 +226,50 @@ export class FakeTransactionRepository extends TransactionRepository {
     });
   }
 
+  get(id: number): Observable<Transaction> {
+    return respond(this, () => {
+      const found = this.transactions.find((item) => item.id === id);
+
+      if (!found) {
+        throw new TransactionError('Not found', TransactionErrorCode.NotFound);
+      }
+
+      return found;
+    });
+  }
+
+  /** Último pedido de plan de cuotas y la respuesta que devuelve; por defecto, cuotas iguales sin interés. */
+  lastPreview: InstallmentPreviewRequest | null = null;
+  previewResult: InstallmentPreview | null = null;
+
+  previewInstallments(request: InstallmentPreviewRequest): Observable<InstallmentPreview> {
+    this.lastPreview = request;
+
+    return respond(this, () => {
+      if (this.previewResult) {
+        return this.previewResult;
+      }
+
+      const amount = Math.round((request.amount / request.installments) * 100) / 100;
+      const schedule = Array.from({ length: request.installments }, (_, index) => {
+        const month = ((10 + index) % 12) + 1;
+        const year = 2026 + Math.floor((10 + index) / 12);
+
+        return {
+          number: index + 1,
+          year,
+          month,
+          statementDate: `${year}-${String(month).padStart(2, '0')}-15`,
+          principal: amount,
+          interest: 0,
+          amount,
+        };
+      });
+
+      return { installmentAmount: amount, totalInterest: 0, totalAmount: request.amount, schedule, budgetAdjustments: [] };
+    });
+  }
+
   private currencyOf(id: number | null): string | null {
     return id === null ? null : (this.accounts?.accounts.find((item) => item.id === id)?.currency ?? 'COP');
   }
@@ -249,6 +296,10 @@ export function transaction(
     destinationAmount: null,
     exchangeRate: null,
     exchangeRateDate: null,
+    installments: 1,
+    annualInterestRate: null,
+    installmentAmount: null,
+    schedule: [],
     ...overrides,
   };
 }
