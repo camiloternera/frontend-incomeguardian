@@ -1,0 +1,176 @@
+<section
+  *transloco="let t"
+  data-testid="transaction-detail"
+  class="flex flex-col gap-6 lg:rounded-lg lg:border lg:border-ig-border lg:bg-ig-surface lg:p-6"
+  aria-labelledby="transaction-detail-title"
+>
+  <div class="flex items-start justify-between gap-4">
+    <div class="flex min-w-0 flex-col gap-1">
+      @if (transaction(); as item) {
+        <p class="m-0 text-[13px] text-ig-muted">
+          {{ t('transactions.types.' + item.type) }}
+          @if (categoryName(); as category) {
+            · {{ category }}
+          }
+          · {{ item.date | date: 'mediumDate' : undefined : locale() }}
+        </p>
+      }
+      <h2
+        #heading
+        id="transaction-detail-title"
+        tabindex="-1"
+        class="m-0 break-words text-[20px] font-bold tracking-[-0.02em] outline-none"
+      >
+        @if (transaction(); as item) {
+          {{ item.description || t('transactions.types.' + item.type) }}
+        } @else {
+          {{ t('transactions.detail.title') }}
+        }
+      </h2>
+    </div>
+    <a
+      data-testid="close-detail"
+      class="-mr-2 -mt-2 inline-grid size-11 shrink-0 place-items-center rounded-lg text-ig-muted hover:bg-ig-surface-raised hover:text-ig-text focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+      [routerLink]="listUrl"
+      queryParamsHandling="preserve"
+      [attr.aria-label]="t('transactions.form.close')"
+    >
+      <svg lucideX [size]="18" aria-hidden="true"></svg>
+    </a>
+  </div>
+
+  @switch (status()) {
+    @case ('loading') {
+      <p class="m-0 text-[14px] text-ig-muted" role="status">{{ t('transactions.detail.loading') }}</p>
+    }
+    @case ('notFound') {
+      <p data-testid="detail-not-found" class="m-0 text-[14px] text-ig-muted">{{ t('transactions.errors.TRANSACTION_NOT_FOUND') }}</p>
+    }
+    @case ('error') {
+      <div class="flex flex-col items-start gap-4">
+        <p data-testid="detail-error" class="m-0 text-[14px]" role="alert">{{ loadError() }}</p>
+        <button
+          class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-border bg-transparent px-5 text-[14px] font-bold text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+          type="button"
+          (click)="load()"
+        >
+          {{ t('transactions.list.retry') }}
+        </button>
+      </div>
+    }
+    @default {
+      @if (transaction(); as item) {
+        <div class="flex flex-col gap-1">
+          <p data-testid="detail-amount" class="m-0 text-[28px] font-bold tabular-nums tracking-[-0.03em]">
+            @if (item.type === 'expense') {
+              <span aria-hidden="true">− </span>
+            }
+            {{ money(item.amount) }}
+          </p>
+          <p class="m-0 text-[14px] text-ig-muted">
+            {{ account()?.name }}
+            @if (item.installments > 1 && item.installmentAmount !== null) {
+              · {{ t('transactions.detail.installmentsOf', { count: item.installments, amount: money(item.installmentAmount) }) }}
+            }
+            @if (item.annualInterestRate) {
+              · {{ t('transactions.detail.rate', { rate: item.annualInterestRate }) }}
+            }
+          </p>
+        </div>
+
+        @if (rows().length > 1) {
+          <dl class="m-0 grid grid-cols-1 gap-4 border-y border-ig-border py-4 text-[14px] tabular-nums sm:grid-cols-3">
+            <div class="flex flex-col gap-1">
+              <dt class="text-[13px] text-ig-muted">{{ t('transactions.detail.interest') }}</dt>
+              <dd class="m-0 font-bold">{{ money(totals().interest) }}</dd>
+            </div>
+            <div class="flex flex-col gap-1">
+              <dt class="text-[13px] text-ig-muted">{{ t('transactions.detail.total') }}</dt>
+              <dd class="m-0 font-bold">{{ money(totals().total) }}</dd>
+            </div>
+            <div class="flex flex-col gap-1">
+              <dt class="text-[13px] text-ig-muted">{{ t('transactions.detail.remaining') }}</dt>
+              <dd data-testid="detail-remaining" class="m-0 font-bold">
+                {{ t('transactions.detail.remainingValue', { count: totals().remainingCount, amount: money(totals().remainingAmount) }) }}
+              </dd>
+            </div>
+          </dl>
+
+          <section class="flex flex-col gap-3" aria-labelledby="detail-plan-title">
+            <h3 id="detail-plan-title" class="m-0 text-[15px] font-bold">{{ t('transactions.detail.plan') }}</h3>
+            @if (firstAfterCut(); as first) {
+              <p class="m-0 text-[13px] text-ig-muted">
+                {{ t('transactions.detail.afterCut', { month: (monthDate(first) | date: 'MMMM' : 'UTC' : locale()) }) }}
+              </p>
+            }
+            <div class="overflow-x-auto rounded-lg border border-ig-border">
+              <table data-testid="detail-schedule" class="w-full min-w-[480px] border-collapse text-[13px] tabular-nums">
+                <thead>
+                  <tr class="border-b border-ig-border text-left text-[12px] text-ig-muted">
+                    <th scope="col" class="px-3 py-2 font-medium">{{ t('transactions.detail.columns.number') }}</th>
+                    <th scope="col" class="px-3 py-2 font-medium">{{ t('transactions.detail.columns.month') }}</th>
+                    <th scope="col" class="px-3 py-2 text-right font-medium">{{ t('transactions.detail.columns.principal') }}</th>
+                    <th scope="col" class="px-3 py-2 text-right font-medium">{{ t('transactions.detail.columns.interest') }}</th>
+                    <th scope="col" class="px-3 py-2 text-right font-medium">{{ t('transactions.detail.columns.amount') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of rows(); track row.item.number) {
+                    <tr
+                      class="border-b border-ig-border last:border-b-0"
+                      [class.bg-ig-accent/10]="row.state === 'current'"
+                      [attr.data-testid]="'installment-' + row.item.number"
+                    >
+                      <td class="px-3 py-2 text-ig-muted">{{ row.item.number }}/{{ rows().length }}</td>
+                      <td class="px-3 py-2">
+                        <span class="block">{{ monthDate(row.item) | date: 'MMM y' : 'UTC' : locale() }}</span>
+                        <span class="flex flex-wrap items-center gap-1.5">
+                          <span
+                            class="text-[12px]"
+                            [class]="row.state === 'current' ? 'font-bold text-ig-accent-text' : 'text-ig-muted'"
+                            >{{ t('transactions.detail.state.' + row.state) }}</span
+                          >
+                          <app-closed-month-badge [date]="row.item.statementDate" />
+                        </span>
+                      </td>
+                      <td class="px-3 py-2 text-right">{{ money(row.item.principal) }}</td>
+                      <td class="px-3 py-2 text-right text-ig-muted">{{ row.item.interest > 0 ? money(row.item.interest) : '—' }}</td>
+                      <td class="px-3 py-2 text-right font-bold">{{ money(row.item.amount) }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            @if (currentRow(); as current) {
+              @if (account(); as card) {
+                <a
+                  data-testid="detail-statement-link"
+                  class="self-start text-[13px] font-medium text-ig-accent-text focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                  [routerLink]="['/accounts', card.id, 'statement']"
+                  [queryParams]="{ month: monthKey(current.item) }"
+                >
+                  {{ t('transactions.detail.viewStatement', { month: (monthDate(current.item) | date: 'MMMM' : 'UTC' : locale()) }) }}
+                </a>
+              }
+            }
+          </section>
+
+          <section class="flex flex-col gap-2 rounded-lg border border-ig-border bg-ig-surface-raised p-4" aria-labelledby="detail-budget-title">
+            <h3 id="detail-budget-title" class="m-0 text-[14px] font-bold">
+              {{ t('transactions.detail.budgetTitle', { category: categoryName() ?? '' }) }}
+            </h3>
+            <p class="m-0 text-[13px] text-ig-muted">{{ t('transactions.detail.budgetBody') }}</p>
+            <a
+              class="self-start text-[13px] font-medium text-ig-accent-text focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+              routerLink="/budgets"
+              [queryParams]="budgetQuery()"
+              >{{ t('transactions.detail.viewBudget') }}</a
+            >
+          </section>
+        }
+      }
+    }
+  }
+
+  <app-period-overlays />
+</section>
