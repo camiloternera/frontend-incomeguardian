@@ -4,10 +4,17 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { environment } from '@env/environment';
 import { translocoTesting } from '@core/i18n/i18n.testing';
 import { BudgetError, BudgetErrorCode } from '../domain/budget-error';
-import { BudgetCategoryOptionsHttpRepository, BudgetHttpRepository } from './budget-http.repository';
+import { BudgetSummary } from '../domain/budget';
+import {
+  BudgetCategoryOptionsHttpRepository,
+  BudgetHttpRepository,
+  BudgetMovementsHttpRepository,
+} from './budget-http.repository';
 
 const URL = `${environment.apiUrl}/api/v1/budgets`;
 const CATEGORIES_URL = `${environment.apiUrl}/api/v1/categories`;
+const TRANSACTIONS_URL = `${environment.apiUrl}/api/v1/transactions`;
+const ACCOUNTS_URL = `${environment.apiUrl}/api/v1/accounts`;
 const NOVEMBER = { year: 2026, month: 11 };
 
 const ROW_DTO = {
@@ -79,11 +86,68 @@ describe('BudgetHttpRepository', () => {
           percentUsed: 3.5,
           recurringAmount: 800000,
           source: 'month',
+          // Sin los campos de tarjetas (backend anterior) quedan neutros.
+          monthAmount: null,
+          installmentsRaise: 0,
+          installmentsSpent: 0,
+          installments: [],
         },
         expect.objectContaining({ categoryId: 9, categoryType: 'transfer', source: 'none', percentUsed: null }),
       ],
-      totals: [{ currency: 'COP', budget: 850000, spent: 30000, available: 820000 }],
+      totals: [{ currency: 'COP', budget: 850000, spent: 30000, available: 820000, installmentsSpent: 0 }],
     });
+  });
+
+  it('maps the installments that raise the limit and count this month', () => {
+    let result: BudgetSummary | undefined;
+    repository.summary(NOVEMBER).subscribe((value) => (result = value));
+
+    http.expectOne((req) => req.url === `${URL}/summary`).flush(
+      ok({
+        year: 2026,
+        month: 11,
+        isClosed: false,
+        rows: [
+          {
+            ...ROW_DTO,
+            monthAmount: 900000,
+            installmentsRaise: 100000,
+            installmentsSpent: 150000,
+            installments: [
+              {
+                transactionId: 41,
+                description: null,
+                number: 2,
+                installments: 6,
+                accountId: 9,
+                accountName: 'Visa',
+                // Un instante se lleva al día en hora de Colombia.
+                purchaseDate: '2026-10-01T03:00:00Z',
+                amount: 50000,
+                budgetAdjustment: null,
+              },
+            ],
+          },
+        ],
+        totals: [{ currency: 'COP', budget: 950000, spent: 180000, available: 770000, installmentsSpent: 150000 }],
+      }),
+    );
+
+    expect(result?.rows[0]).toMatchObject({ monthAmount: 900000, installmentsRaise: 100000, installmentsSpent: 150000 });
+    expect(result?.rows[0].installments).toEqual([
+      {
+        transactionId: 41,
+        description: null,
+        number: 2,
+        installments: 6,
+        accountId: 9,
+        accountName: 'Visa',
+        purchaseDate: '2026-09-30',
+        amount: 50000,
+        budgetAdjustment: 0,
+      },
+    ]);
+    expect(result?.totals[0].installmentsSpent).toBe(150000);
   });
 
   it('rejects a source the app does not know', () => {
@@ -177,5 +241,69 @@ describe('BudgetCategoryOptionsHttpRepository', () => {
       { id: 3, name: 'Salario', type: null, isActive: true },
     ]);
     http.verify();
+  });
+});
+
+describe('BudgetMovementsHttpRepository', () => {
+  let http: HttpTestingController;
+  let repository: BudgetMovementsHttpRepository;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [translocoTesting()],
+      providers: [provideHttpClient(), provideHttpClientTesting(), BudgetMovementsHttpRepository],
+    });
+    http = TestBed.inject(HttpTestingController);
+    repository = TestBed.inject(BudgetMovementsHttpRepository);
+  });
+
+  afterEach(() => http.verify());
+
+  it('asks the month of the category and keeps only standard accounts in that currency', () => {
+    let result: unknown;
+    repository.list(NOVEMBER, { categoryId: 4, currency: 'COP' }, 'expense').subscribe((value) => (result = value));
+
+    const transactions = http.expectOne((req) => req.url === TRANSACTIONS_URL);
+    expect(transactions.request.params.get('categoryId')).toBe('4');
+    expect(transactions.request.params.get('type')).toBe('expense');
+    expect(transactions.request.params.get('fromDate')).toBe('2026-11-01T05:00:00.000Z');
+    expect(transactions.request.params.get('toDate')).toBe('2026-12-01T04:59:59.999Z');
+    expect(transactions.request.params.get('page')).toBe('1');
+    transactions.flush(
+      ok({
+        items: [
+          { id: 1, amount: 30000, date: '2026-11-03T15:00:00Z', fromAccountId: 2, description: 'Mercado' },
+          { id: 2, amount: 90000, date: '2026-11-04T15:00:00Z', fromAccountId: 9, description: 'Con tarjeta' },
+          { id: 3, amount: 20, date: '2026-11-05T15:00:00Z', fromAccountId: 8, description: 'En dólares' },
+          { id: 4, amount: 5000, date: '2026-11-06T15:00:00Z', fromAccountId: null, description: null },
+          { id: 5, amount: 7000, date: '2026-11-07T15:00:00Z', fromAccountId: 3, description: null },
+        ],
+      }),
+    );
+    http.expectOne(ACCOUNTS_URL).flush(
+      ok([
+        { id: 2, name: 'Bancolombia', currency: 'COP', kind: 'standard' },
+        { id: 9, name: 'Visa', currency: 'COP', kind: 'credit_card' },
+        { id: 8, name: 'Wise', currency: 'USD', kind: 'standard' },
+        // Sin `kind` (backend anterior) la cuenta es normal.
+        { id: 3, name: 'Nequi', currency: 'COP' },
+      ]),
+    );
+
+    expect(result).toEqual([
+      { transactionId: 1, description: 'Mercado', accountName: 'Bancolombia', date: '2026-11-03T15:00:00Z', amount: 30000 },
+      { transactionId: 5, description: null, accountName: 'Nequi', date: '2026-11-07T15:00:00Z', amount: 7000 },
+    ]);
+  });
+
+  it('translates a backend failure', () => {
+    let error: unknown;
+    repository.list(NOVEMBER, { categoryId: 4, currency: 'COP' }, 'expense').subscribe({ error: (value) => (error = value) });
+
+    http.expectOne((req) => req.url === TRANSACTIONS_URL).flush(failure('SOMETHING_ELSE'), { status: 500, statusText: 'Error' });
+    // forkJoin cancela la otra petición al fallar la primera.
+    http.match(ACCOUNTS_URL);
+
+    expect(error).toBeInstanceOf(BudgetError);
   });
 });
