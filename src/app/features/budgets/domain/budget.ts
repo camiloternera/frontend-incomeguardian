@@ -48,6 +48,45 @@ export interface BudgetRow {
   /** Tope recurrente vigente en el mes, aunque el mes use uno propio. */
   recurringAmount: number | null;
   source: BudgetSource;
+  /** Tope propio del mes; null si el mes usa el recurrente o no tiene tope. */
+  monthAmount: number | null;
+  /** Cuánto subieron el tope las cuotas de compras de meses anteriores; > 0 = «subido por cuotas». */
+  installmentsRaise: number;
+  /** Lo gastado en compras de más de una cuota. */
+  installmentsSpent: number;
+  /** Cuotas con tarjeta que cuentan este mes, incluidas las compras de una sola cuota. */
+  installments: BudgetInstallment[];
+}
+
+/** Una cuota de una compra con tarjeta que cuenta en el mes. */
+export interface BudgetInstallment {
+  transactionId: number;
+  description: string | null;
+  /** Número de la cuota y total de cuotas de la compra. */
+  number: number;
+  installments: number;
+  accountId: number;
+  accountName: string;
+  /** Día de la compra, `YYYY-MM-DD`. */
+  purchaseDate: string;
+  amount: number;
+  /** Cuánto subió esta cuota el tope del mes; 0 si no lo subió (por ejemplo, en el mes de la compra). */
+  budgetAdjustment: number;
+}
+
+/** Compras de más de una cuota que cuentan en el mes, para el chip «N cuotas». */
+export function installmentPurchases(row: Pick<BudgetRow, 'installments'>): BudgetInstallment[] {
+  return row.installments.filter((item) => item.installments > 1);
+}
+
+/** Un gasto de una cuenta normal que cuenta en el mes de una categoría. */
+export interface BudgetMovement {
+  transactionId: number;
+  description: string | null;
+  accountName: string;
+  /** Instante ISO 8601 en UTC. */
+  date: string;
+  amount: number;
 }
 
 /** Totales del mes en una moneda; COP y USD nunca se mezclan. */
@@ -56,6 +95,8 @@ export interface BudgetTotal {
   budget: number;
   spent: number;
   available: number;
+  /** De lo gastado, lo que fue en compras de más de una cuota. */
+  installmentsSpent: number;
 }
 
 export interface BudgetSummary {
@@ -159,7 +200,13 @@ export function blocksOf(summary: BudgetSummary): BudgetCurrencyBlock[] {
     .sort((a, b) => rank(a) - rank(b) || a.localeCompare(b))
     .map((currency) => ({
       currency,
-      total: summary.totals.find((total) => total.currency === currency) ?? { currency, budget: 0, spent: 0, available: 0 },
+      total: summary.totals.find((total) => total.currency === currency) ?? {
+          currency,
+          budget: 0,
+          spent: 0,
+          available: 0,
+          installmentsSpent: 0,
+        },
       rows: summary.rows.filter((row) => row.currency === currency),
     }));
 }
@@ -169,6 +216,17 @@ export function hasBudget(summary: BudgetSummary, key: BudgetKey): boolean {
   return summary.rows.some(
     (row) => row.categoryId === key.categoryId && row.currency === key.currency && row.source !== 'none',
   );
+}
+
+/**
+ * Meses hacia adelante que se pueden consultar, en solo lectura: alcanza para ver todas las cuotas de la
+ * compra más larga que permite una tarjeta.
+ */
+export const BUDGET_FUTURE_MONTHS_MAX = 48;
+
+/** Último mes que se puede consultar a partir del mes en curso. */
+export function lastViewableMonth(current: BudgetMonth): BudgetMonth {
+  return shiftMonth(current, BUDGET_FUTURE_MONTHS_MAX);
 }
 
 /** Mes desplazado `delta` meses (negativo hacia atrás). */
