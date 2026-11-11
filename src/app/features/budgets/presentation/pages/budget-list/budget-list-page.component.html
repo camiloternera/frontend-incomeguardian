@@ -57,7 +57,7 @@
           class="grid size-11 shrink-0 place-items-center rounded-lg border border-ig-border bg-transparent text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
           type="button"
           [attr.aria-label]="t('budgets.list.month.next')"
-          [disabled]="isCurrentMonth()"
+          [disabled]="isLastViewableMonth()"
           (click)="nextMonth()"
         >
           <svg lucideChevronRight [size]="16" aria-hidden="true"></svg>
@@ -171,6 +171,11 @@
                   <div class="h-2 overflow-hidden rounded-full bg-ig-border" aria-hidden="true">
                     <div class="h-full rounded-full bg-ig-accent" [style.width.%]="block.bar"></div>
                   </div>
+                  @if (block.installmentsSpent) {
+                    <p data-testid="block-installments" class="m-0 text-[13px] text-ig-muted">
+                      {{ t('budgets.list.block.installmentsSpent', { amount: block.installmentsSpent }) }}
+                    </p>
+                  }
                 </div>
 
                 <div class="flex flex-col gap-2 sm:hidden">
@@ -223,7 +228,7 @@
                                 class="self-start truncate text-[15px] font-bold text-ig-text no-underline hover:underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
                                 [routerLink]="editLink(view.row)"
                                 [queryParams]="monthQuery()"
-                                [attr.aria-label]="t('budgets.list.edit', { name: view.row.categoryName })"
+                                [attr.aria-label]="t(view.viewOnly ? 'budgets.list.view' : 'budgets.list.edit', { name: view.row.categoryName })"
                               >
                                 {{ view.row.categoryName }}
                               </a>
@@ -232,6 +237,13 @@
                             }
                             <span class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-ig-muted">
                               <span data-testid="row-kind">{{ view.kind }}</span>
+                              @if (view.installmentsChip; as chip) {
+                                <span
+                                  data-testid="row-installments"
+                                  class="rounded-full border border-ig-border px-2 py-0.5 text-[11px] font-medium text-ig-muted"
+                                  >{{ t(chip.key, chip.params) }}</span
+                                >
+                              }
                               <span aria-hidden="true">·</span>
                               <span
                                 data-testid="row-source"
@@ -282,7 +294,7 @@
                             class="flex flex-col gap-1.5 py-3 text-ig-text no-underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 sm:hidden"
                             [routerLink]="editLink(view.row)"
                             [queryParams]="monthQuery()"
-                            [attr.aria-label]="t('budgets.list.edit', { name: view.row.categoryName })"
+                            [attr.aria-label]="t(view.viewOnly ? 'budgets.list.view' : 'budgets.list.edit', { name: view.row.categoryName })"
                           >
                             <ng-container *ngTemplateOutlet="mobileRow; context: { $implicit: view }" />
                           </a>
@@ -307,12 +319,15 @@
               <div class="flex flex-col gap-2">
                 @if (current.isClosed) {
                   <h3 class="m-0 text-[15px] font-bold">{{ t('budgets.list.empty.closedTitle', { month: monthWord() }) }}</h3>
+                } @else if (isFutureMonth()) {
+                  <h3 class="m-0 text-[15px] font-bold">{{ t('budgets.list.empty.futureTitle', { month: monthWord() }) }}</h3>
+                  <p class="m-0 max-w-[560px] text-[14px] text-ig-muted">{{ t('budgets.list.empty.futureBody') }}</p>
                 } @else {
                   <h3 class="m-0 text-[15px] font-bold">{{ t('budgets.list.empty.title') }}</h3>
                   <p class="m-0 max-w-[560px] text-[14px] text-ig-muted">{{ t('budgets.list.empty.body') }}</p>
                 }
               </div>
-              @if (!current.isClosed) {
+              @if (editable()) {
                 <a
                   data-testid="new-first-budget"
                   class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-ig-accent bg-ig-accent px-5 text-[14px] font-bold text-ig-on-accent no-underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"

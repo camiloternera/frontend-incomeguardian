@@ -22,11 +22,13 @@ import {
   compareMonths,
   daysLeftInMonth,
   formatMonthKey,
+  lastViewableMonth,
   monthOfDay,
   parseMonth,
   shiftMonth,
   todayInBudgetZone,
   totalPercent,
+  installmentPurchases,
   usageOf,
 } from '../../../domain/budget';
 import { BudgetError } from '../../../domain/budget-error';
@@ -60,8 +62,12 @@ interface RowView {
   spent: string;
   available: string;
   tone: Tone;
-  /** Se puede abrir en el panel: mes abierto y categoría activa. */
+  /** Se puede abrir en el panel: mes abierto o futuro y categoría activa. */
   editable: boolean;
+  /** El panel se abre solo para consultar (mes futuro): cambia la etiqueta del enlace. */
+  viewOnly: boolean;
+  /** «N cuotas»: compras de más de una cuota que cuentan este mes; null si no hay. */
+  installmentsChip: Copy | null;
 }
 
 /** Una moneda del resumen con sus totales ya formateados. */
@@ -73,6 +79,8 @@ interface BlockView {
   tone: Tone;
   /** Porcentaje usado del total; null si no hay tope en esa moneda. */
   percent: number | null;
+  /** «De eso, en compras a cuotas»; null si no hubo. */
+  installmentsSpent: string | null;
   bar: number;
   rows: RowView[];
 }
@@ -143,6 +151,12 @@ export class BudgetListPageComponent {
   );
 
   protected readonly isCurrentMonth = computed(() => compareMonths(this.month(), this.currentMonth) === 0);
+  /** Un mes futuro se consulta en solo lectura: muestra los topes y las cuotas ya programadas. */
+  protected readonly isFutureMonth = computed(() => compareMonths(this.month(), this.currentMonth) > 0);
+  /** Hasta dónde se puede avanzar: el último mes con cuotas posibles. */
+  protected readonly isLastViewableMonth = computed(
+    () => compareMonths(this.month(), lastViewableMonth(this.currentMonth)) >= 0,
+  );
   protected readonly monthTitle = computed(() => monthLabel(this.month(), this.locale()));
   protected readonly monthWord = computed(() => monthName(this.month(), this.locale()));
   /** Mes y moneda de la URL, para que el panel y sus enlaces los conserven. */
@@ -160,13 +174,17 @@ export class BudgetListPageComponent {
 
     return query;
   });
-  /** Un mes cerrado no se puede editar. */
-  protected readonly editable = computed(() => this.summary()?.isClosed === false);
+  /** Un mes cerrado no se puede editar, y uno futuro solo se consulta. */
+  protected readonly editable = computed(() => this.summary()?.isClosed === false && !this.isFutureMonth());
 
   /** «Quedan 21 días del mes», o que el mes ya terminó; nada en un mes cerrado. */
   protected readonly timeNote = computed<Copy | null>(() => {
     if (this.summary()?.isClosed) {
       return null;
+    }
+
+    if (this.isFutureMonth()) {
+      return { key: 'budgets.list.month.future' };
     }
 
     if (!this.isCurrentMonth()) {
@@ -206,8 +224,9 @@ export class BudgetListPageComponent {
         available: formatMoney(total.available, currency, locale),
         tone: toneOf(total.available),
         percent,
+        installmentsSpent: total.installmentsSpent > 0 ? formatMoney(total.installmentsSpent, currency, locale) : null,
         bar: percent === null ? 0 : Math.min(100, percent),
-        rows: rows.map((row) => this.toView(row, !summary.isClosed)),
+        rows: rows.map((row) => this.toView(row, !summary.isClosed, this.isFutureMonth())),
       };
     });
   });
@@ -293,7 +312,7 @@ export class BudgetListPageComponent {
   }
 
   protected nextMonth(): void {
-    if (!this.isCurrentMonth()) {
+    if (!this.isLastViewableMonth()) {
       this.goToMonth(shiftMonth(this.month(), 1));
     }
   }
@@ -342,14 +361,14 @@ export class BudgetListPageComponent {
     void this.router.navigate([], { queryParams: { currency: value }, queryParamsHandling: 'merge' });
   }
 
-  /** Mes de la URL; uno inválido o futuro cae al mes en curso. */
+  /** Mes de la URL; uno inválido o más allá del último consultable cae al mes en curso. */
   private readMonth(value: string | null): BudgetMonth {
     const month = parseMonth(value);
 
-    return month && compareMonths(month, this.currentMonth) <= 0 ? month : this.currentMonth;
+    return month && compareMonths(month, lastViewableMonth(this.currentMonth)) <= 0 ? month : this.currentMonth;
   }
 
-  private toView(row: BudgetRow, openMonth: boolean): RowView {
+  private toView(row: BudgetRow, openMonth: boolean, futureMonth: boolean): RowView {
     const locale = this.locale();
     const category = this.categoriesById().get(row.categoryId);
     const inactive = category?.isActive === false;
@@ -358,7 +377,15 @@ export class BudgetListPageComponent {
     const type = this.transloco.translate(`budgets.list.type.${row.categoryType ?? 'unknown'}`);
     const percent = `${Math.round(row.percentUsed ?? (row.budgetAmount > 0 ? (row.spentAmount / row.budgetAmount) * 100 : 0))} %`;
 
-    const source: Copy = { key: `budgets.list.source.${usage === 'paused' ? 'paused' : row.source}` };
+    const source: Copy = {
+      key:
+        usage === 'paused'
+          ? 'budgets.list.source.paused'
+          : row.installmentsRaise > 0
+            ? 'budgets.list.source.raisedByInstallments'
+            : `budgets.list.source.${row.source}`,
+    };
+    const purchases = installmentPurchases(row).length;
     const note: Copy =
       usage === 'unbudgeted'
         ? { key: 'budgets.list.usage.unbudgeted', params: { spent: money(row.spentAmount) } }
@@ -396,6 +423,8 @@ export class BudgetListPageComponent {
       available: money(row.availableAmount),
       tone: toneOf(row.availableAmount),
       editable: openMonth && !inactive && row.categoryType !== null,
+      viewOnly: futureMonth,
+      installmentsChip: purchases > 0 ? { key: 'budgets.list.installmentsChip', params: { count: purchases } } : null,
     };
   }
 
