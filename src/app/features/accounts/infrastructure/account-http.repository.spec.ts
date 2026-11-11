@@ -20,6 +20,9 @@ const DTO = {
   updatedAt: null,
 };
 
+/** Campos de tarjeta de una cuenta normal. */
+const NO_CARD = { kind: 'standard' as const, creditLimit: null, statementDay: null, paymentDay: null };
+
 function ok(data: unknown) {
   return { data, isSuccess: true, message: 'ok', errors: [] };
 }
@@ -53,6 +56,8 @@ describe('AccountHttpRepository', () => {
       {
         id: 5,
         name: 'Visa 4417',
+        // Sin `kind` (backend anterior a las tarjetas) la cuenta es normal.
+        kind: 'standard',
         initialBalance: -250000.5,
         currentBalance: -250000.5,
         currency: 'COP',
@@ -60,6 +65,12 @@ describe('AccountHttpRepository', () => {
         // Sin el campo en la respuesta, la cuenta se toma como sin movimientos.
         hasTransactions: false,
         openingDate: '2026-01-15T14:30:00Z',
+        creditLimit: null,
+        statementDay: null,
+        paymentDay: null,
+        availableCredit: null,
+        nextStatementDate: null,
+        nextPaymentDueDate: null,
         createdAt: '2026-10-31T12:00:00+00:00',
         updatedAt: null,
       },
@@ -87,8 +98,16 @@ describe('AccountHttpRepository', () => {
       initialBalance: 320.5,
       currency: 'USD' as const,
       openingDate: '2026-01-15T09:30:00-05:00',
+      ...NO_CARD,
     };
-    const body = { name: 'Wise', initialBalance: 320.5, currency: 'USD', openingDate: '2026-01-15T09:30:00-05:00' };
+    // Una cuenta normal manda `kind` y ningún campo de tarjeta.
+    const body = {
+      name: 'Wise',
+      kind: 'standard',
+      initialBalance: 320.5,
+      currency: 'USD',
+      openingDate: '2026-01-15T09:30:00-05:00',
+    };
 
     repository.create(draft).subscribe();
     const create = http.expectOne(URL);
@@ -116,7 +135,7 @@ describe('AccountHttpRepository', () => {
 
   it('keeps the backend code and translates it', () => {
     let error: unknown;
-    repository.update(5, { name: 'Wise', initialBalance: 0, currency: 'EUR', openingDate: '2026-01-15T09:30:00-05:00' }).subscribe({
+    repository.update(5, { name: 'Wise', initialBalance: 0, currency: 'EUR', openingDate: '2026-01-15T09:30:00-05:00', ...NO_CARD }).subscribe({
       error: (value) => (error = value),
     });
 
@@ -129,7 +148,7 @@ describe('AccountHttpRepository', () => {
 
   it('keeps the locked name code and translates it', () => {
     let error: unknown;
-    repository.update(5, { name: 'Visa nueva', initialBalance: 0, currency: 'COP', openingDate: '2026-01-15T09:30:00-05:00' }).subscribe({
+    repository.update(5, { name: 'Visa nueva', initialBalance: 0, currency: 'COP', openingDate: '2026-01-15T09:30:00-05:00', ...NO_CARD }).subscribe({
       error: (value) => (error = value),
     });
 
@@ -148,5 +167,214 @@ describe('AccountHttpRepository', () => {
 
     expect(error).toBeInstanceOf(AccountError);
     expect((error as AccountError).code).toBeNull();
+  });
+  it('maps a credit card with its limit, days and calendar dates as days', () => {
+    let result: unknown;
+    repository.get(5).subscribe((value) => (result = value));
+
+    http.expectOne(`${URL}/5`).flush(
+      ok({
+        ...DTO,
+        kind: 'credit_card',
+        currentBalance: -300000,
+        creditLimit: 2000000,
+        statementDay: 15,
+        paymentDay: 5,
+        availableCredit: 1700000,
+        nextStatementDate: '2026-11-15',
+        // Un instante se lleva al día en hora de Colombia.
+        nextPaymentDueDate: '2026-12-05T04:00:00Z',
+      }),
+    );
+
+    expect(result).toMatchObject({
+      kind: 'credit_card',
+      currentBalance: -300000,
+      creditLimit: 2000000,
+      statementDay: 15,
+      paymentDay: 5,
+      availableCredit: 1700000,
+      nextStatementDate: '2026-11-15',
+      nextPaymentDueDate: '2026-12-04',
+    });
+  });
+
+  it('rejects a kind the app does not know', () => {
+    let error: unknown;
+    repository.get(5).subscribe({ error: (value) => (error = value) });
+
+    http.expectOne(`${URL}/5`).flush(ok({ ...DTO, kind: 'loan' }));
+
+    expect(error).toBeInstanceOf(AccountError);
+    expect((error as AccountError).code).toBeNull();
+  });
+
+  it('sends the card fields only for a credit card, and the limit only when set', () => {
+    const card = {
+      name: 'Visa',
+      kind: 'credit_card' as const,
+      initialBalance: -150000,
+      currency: 'COP' as const,
+      openingDate: '2026-01-15T09:30:00-05:00',
+      creditLimit: 2000000,
+      statementDay: 15,
+      paymentDay: 5,
+    };
+
+    repository.create(card).subscribe();
+    expect(http.expectOne(URL).request.body).toEqual({
+      name: 'Visa',
+      kind: 'credit_card',
+      initialBalance: -150000,
+      currency: 'COP',
+      openingDate: '2026-01-15T09:30:00-05:00',
+      creditLimit: 2000000,
+      statementDay: 15,
+      paymentDay: 5,
+    });
+
+    repository.create({ ...card, creditLimit: null }).subscribe();
+    expect(http.expectOne(URL).request.body).not.toHaveProperty('creditLimit');
+
+    // Si el borrador cambia a cuenta normal, los días que traiga no se envían.
+    repository.update(5, { ...card, kind: 'standard' }).subscribe();
+    const body = http.expectOne(`${URL}/5`).request.body;
+    expect(body.kind).toBe('standard');
+    expect(body).not.toHaveProperty('creditLimit');
+    expect(body).not.toHaveProperty('statementDay');
+    expect(body).not.toHaveProperty('paymentDay');
+  });
+
+  it.each([
+    AccountErrorCode.CardInitialBalancePositive,
+    AccountErrorCode.StatementDayRequired,
+    AccountErrorCode.StatementDayInvalid,
+    AccountErrorCode.PaymentDayRequired,
+    AccountErrorCode.PaymentDayInvalid,
+    AccountErrorCode.CreditLimitInvalid,
+    AccountErrorCode.KindInvalid,
+    AccountErrorCode.KindLocked,
+    AccountErrorCode.NotCreditCard,
+  ])('keeps the card code %s with its own copy', (code) => {
+    let error: unknown;
+    repository.get(5).subscribe({ error: (value) => (error = value) });
+
+    http.expectOne(`${URL}/5`).flush(failure(code), { status: 400, statusText: 'Bad Request' });
+
+    expect((error as AccountError).code).toBe(code);
+    expect((error as AccountError).message).not.toBe('Backend message');
+    expect((error as AccountError).message).not.toContain('accounts.errors');
+  });
+
+  describe('statement', () => {
+    const STATEMENT = {
+      accountId: 5,
+      year: 2026,
+      month: 11,
+      statementDay: 15,
+      periodStart: '2026-10-16',
+      periodEnd: '2026-11-15',
+      paymentDueDate: '2026-12-05T04:00:00Z',
+      total: 400000,
+      paymentsTotal: 100000,
+      balanceDue: 300000,
+      status: 'partial',
+      openingDebt: null,
+      items: [
+        {
+          transactionId: 41,
+          description: null,
+          categoryName: 'Mercado',
+          purchaseDate: '2026-10-20T15:00:00Z',
+          number: 2,
+          installments: 6,
+          principal: 50000,
+          interest: 1500,
+          amount: 51500,
+        },
+      ],
+      payments: null,
+      previous: { year: 2026, month: 10 },
+      next: null,
+    };
+
+    it('asks for the next statement without a month', () => {
+      repository.statement(5).subscribe();
+
+      const request = http.expectOne((req) => req.url === `${URL}/5/statement`);
+      expect(request.request.method).toBe('GET');
+      expect(request.request.params.keys()).toEqual([]);
+      request.flush(ok(STATEMENT));
+    });
+
+    it('asks for the given month and maps the statement', () => {
+      let result: unknown;
+      repository.statement(5, { year: 2026, month: 11 }).subscribe((value) => (result = value));
+
+      const request = http.expectOne((req) => req.url === `${URL}/5/statement`);
+      expect(request.request.params.get('year')).toBe('2026');
+      expect(request.request.params.get('month')).toBe('11');
+      request.flush(ok(STATEMENT));
+
+      expect(result).toEqual({
+        accountId: 5,
+        month: { year: 2026, month: 11 },
+        statementDay: 15,
+        periodStart: '2026-10-16',
+        periodEnd: '2026-11-15',
+        paymentDueDate: '2026-12-04',
+        total: 400000,
+        paymentsTotal: 100000,
+        balanceDue: 300000,
+        status: 'partial',
+        openingDebt: 0,
+        items: [
+          {
+            transactionId: 41,
+            description: null,
+            categoryName: 'Mercado',
+            purchaseDate: '2026-10-20',
+            number: 2,
+            installments: 6,
+            principal: 50000,
+            interest: 1500,
+            amount: 51500,
+          },
+        ],
+        payments: [],
+        previous: { year: 2026, month: 10 },
+        next: null,
+      });
+    });
+
+    it('maps an upcoming statement', () => {
+      let status: string | undefined;
+      repository.statement(5).subscribe((value) => (status = value.status));
+
+      http.expectOne((req) => req.url === `${URL}/5/statement`).flush(ok({ ...STATEMENT, status: 'upcoming' }));
+
+      expect(status).toBe('upcoming');
+    });
+
+    it('rejects a status the app does not know', () => {
+      let error: unknown;
+      repository.statement(5).subscribe({ error: (value) => (error = value) });
+
+      http.expectOne((req) => req.url === `${URL}/5/statement`).flush(ok({ ...STATEMENT, status: 'frozen' }));
+
+      expect(error).toBeInstanceOf(AccountError);
+      expect((error as AccountError).code).toBeNull();
+    });
+
+    it('keeps ACCOUNT_NOT_CREDIT_CARD', () => {
+      let error: unknown;
+      repository.statement(2).subscribe({ error: (value) => (error = value) });
+
+      http
+        .expectOne((req) => req.url === `${URL}/2/statement`)
+        .flush(failure(AccountErrorCode.NotCreditCard), { status: 400, statusText: 'Bad Request' });
+
+      expect((error as AccountError).code).toBe(AccountErrorCode.NotCreditCard);
+    });
   });
 });
