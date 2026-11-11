@@ -33,9 +33,12 @@ import {
   BudgetCurrency,
   BudgetRow,
   BudgetScope,
+  compareMonths,
   formatMonthKey,
   hasBudget,
   isBudgetCurrency,
+  monthOfDay,
+  todayInBudgetZone,
 } from '../../../domain/budget';
 import {
   AMOUNT_ERROR_CODES,
@@ -46,12 +49,13 @@ import {
 } from '../../../domain/budget-error';
 import { capitalized, currencySymbol, formatAmountInput, formatMoney, monthInSentence } from '../../budget-format';
 import { BudgetWorkspace, rowKey } from '../../budget-workspace';
+import { BudgetMonthDetailComponent } from '../budget-month-detail/budget-month-detail.component';
 
 /** Estado del panel: cargando el resumen, listo, sin esa fila o de solo lectura. */
 type PanelStatus = 'loading' | 'ready' | 'notFound' | 'readOnly';
 
 /** Por qué el panel es de solo lectura. */
-type ReadOnlyReason = 'closed' | 'inactive';
+type ReadOnlyReason = 'closed' | 'future' | 'inactive';
 
 /** Texto traducible: clave y parámetros. */
 interface Copy {
@@ -95,7 +99,15 @@ function budgetAmountValidator(control: AbstractControl<string>): ValidationErro
  */
 @Component({
   selector: 'app-budget-panel',
-  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective, SelectComponent, LucidePlus, LucideX],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    TranslocoDirective,
+    SelectComponent,
+    BudgetMonthDetailComponent,
+    LucidePlus,
+    LucideX,
+  ],
   templateUrl: './budget-panel.component.html',
 })
 export class BudgetPanelComponent {
@@ -161,6 +173,14 @@ export class BudgetPanelComponent {
   private readonly readOnlyReason = computed<ReadOnlyReason | null>(() => {
     if (this.workspace.summary()?.isClosed) {
       return 'closed';
+    }
+
+    // Un mes futuro solo se consulta: muestra el tope y las cuotas que ya caen en él. Una fila que no
+    // existe en ese mes sigue siendo «no encontrada».
+    const future = compareMonths(this.month(), monthOfDay(todayInBudgetZone())) > 0;
+
+    if (this.workspace.summary() && future && (this.isNew() || this.row())) {
+      return 'future';
     }
 
     const row = this.row();

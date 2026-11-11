@@ -158,7 +158,7 @@
           @if (nameError(); as code) {
             <p id="category-name-error" data-testid="name-error" class="m-0 text-[13px] leading-snug text-ig-text" role="alert">{{ t('categories.errors.' + code, limits) }}</p>
           } @else {
-            <p id="category-name-hint" [attr.data-testid]="nameLocked() ? 'name-locked' : null" class="m-0 text-[12px] text-ig-muted">{{ t(nameLocked() ? 'categories.form.nameLocked' : 'categories.form.nameHint') }}</p>
+            <p id="category-name-hint" [attr.data-testid]="nameLocked() ? 'name-locked' : null" class="m-0 text-[12px] text-ig-muted">{{ t(isSystem() ? 'categories.form.systemLocked' : nameLocked() ? 'categories.form.nameLocked' : 'categories.form.nameHint') }}</p>
           }
         </div>
 
@@ -214,7 +214,7 @@
           </div>
         } @else {
           <div class="flex flex-wrap items-center justify-between gap-4 border-t border-ig-border pt-6">
-            @if (isEdit()) {
+            @if (isEdit() && !isSystem()) {
               <button
                 data-testid="panel-deactivate"
                 class="-ml-3 inline-flex min-h-11 items-center gap-2 rounded-lg border border-transparent bg-transparent px-3 text-[14px] font-medium text-ig-muted hover:text-ig-text focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"

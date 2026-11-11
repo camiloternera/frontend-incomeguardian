@@ -2,6 +2,8 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { Account, AccountDraft, sortAccounts } from '../domain/account';
 import { AccountRepository } from '../domain/account.repository';
+import { CardStatement } from '../domain/card-statement';
+import { CardMonth } from '../domain/credit-card-calendar';
 
 function trimmed(draft: AccountDraft): AccountDraft {
   return { ...draft, name: draft.name.trim() };
@@ -49,5 +51,15 @@ export class DeactivateAccountUseCase {
 
   execute(id: number): Observable<void> {
     return this.repository.deactivate(id);
+  }
+}
+
+@Injectable()
+export class GetCardStatementUseCase {
+  private readonly repository = inject(AccountRepository);
+
+  /** Extracto del mes de corte indicado; sin mes, el del próximo corte. */
+  execute(accountId: number, month?: CardMonth): Observable<CardStatement> {
+    return this.repository.statement(accountId, month);
   }
 }

@@ -3,8 +3,11 @@ import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { translocoTesting } from '@core/i18n/i18n.testing';
 import { LanguageService } from '@core/i18n/language.service';
+import { Category } from '../../../domain/category';
 import { CategoryError, CategoryErrorCode } from '../../../domain/category-error';
 import { FakeCategoryRepository, fakeCategoriesRoutes } from '../../category-repository.fake';
+
+const SYSTEM_CATEGORY: Category = { id: 30, name: 'Pago tarjeta', description: 'Pagos de tus tarjetas', type: 'transfer', isActive: true, hasTransactions: false, code: 'CARD_PAYMENT', createdAt: '2026-10-01T00:00:00Z', updatedAt: null };
 
 describe('CategoryPanelComponent', () => {
   let fake: FakeCategoryRepository;
@@ -151,7 +154,7 @@ describe('CategoryPanelComponent', () => {
   });
 
   it('switches to another category without closing', async () => {
-    fake.categories.push({ id: 10, name: 'Coworking', description: 'Escritorio', type: 'expense', isActive: true, hasTransactions: false, createdAt: '2026-10-02T00:00:00Z', updatedAt: null });
+    fake.categories.push({ id: 10, name: 'Coworking', description: 'Escritorio', type: 'expense', isActive: true, hasTransactions: false, code: null, createdAt: '2026-10-02T00:00:00Z', updatedAt: null });
     const { harness, element } = await open('/categories/9/edit');
 
     await harness.navigateByUrl('/categories/10/edit');
@@ -292,6 +295,70 @@ describe('CategoryPanelComponent', () => {
         'The category already has transactions, so its name cannot change.',
       );
       expect(element.querySelector('[data-testid="form-error"]')).toBeNull();
+    });
+  });
+  describe('a system category', () => {
+    beforeEach(() => {
+      fake.categories.push(SYSTEM_CATEGORY);
+    });
+
+    it('locks the name, explains why and keeps the description editable', async () => {
+      const { element } = await open('/categories/30/edit');
+
+      expect(element.querySelector<HTMLInputElement>('[data-testid="category-name"]')!.disabled).toBe(true);
+      expect(element.querySelector('#category-name-hint')?.textContent?.trim()).toBe(
+        "This is a system category for card payments: it can't be renamed or deactivated. You can change its description.",
+      );
+      expect(element.querySelector<HTMLTextAreaElement>('[data-testid="category-description"]')!.disabled).toBe(false);
+    });
+
+    it('explains the lock in Spanish', async () => {
+      TestBed.inject(LanguageService).setLanguage('es-CO');
+      const { element } = await open('/categories/30/edit');
+
+      expect(element.querySelector('#category-name-hint')?.textContent?.trim()).toBe(
+        'Es una categoría del sistema, para los pagos de tarjeta: no se puede renombrar ni desactivar. Puedes cambiar su descripción.',
+      );
+    });
+
+    it('does not offer to deactivate it', async () => {
+      const { element } = await open('/categories/30/edit');
+
+      expect(element.querySelector('[data-testid="panel-deactivate"]')).toBeNull();
+    });
+
+    it('saves the new description with the same name', async () => {
+      const { harness, element } = await open('/categories/30/edit');
+
+      type(element, 'category-description', 'Abonos a las tarjetas');
+      submit(element);
+      await harness.fixture.whenStable();
+
+      expect(fake.lastDraft).toEqual({ name: 'Pago tarjeta', description: 'Abonos a las tarjetas' });
+    });
+
+    it('shows CATEGORY_SYSTEM_LOCKED from the backend', async () => {
+      const { harness, element } = await open('/categories/30/edit');
+      fake.failWith = new CategoryError(
+        "This is a system category: it can't be renamed, deactivated or deleted.",
+        CategoryErrorCode.SystemLocked,
+      );
+
+      type(element, 'category-description', 'Otra');
+      submit(element);
+      await harness.fixture.whenStable();
+      harness.detectChanges();
+
+      expect(panel(element).textContent).toContain("This is a system category: it can't be renamed, deactivated or deleted.");
+    });
+
+    it('unlocks the name when switching to a user category', async () => {
+      const { harness, element } = await open('/categories/30/edit');
+
+      await harness.navigateByUrl('/categories/9/edit');
+
+      expect(element.querySelector<HTMLInputElement>('[data-testid="category-name"]')!.disabled).toBe(false);
+      expect(element.querySelector('[data-testid="panel-deactivate"]')).toBeTruthy();
     });
   });
 });

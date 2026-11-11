@@ -55,7 +55,8 @@
       "body": "Crea una para agrupar tus movimientos de este tipo.",
       "inactive": "No tienes categorías desactivadas",
       "inactiveBody": "Cuando desactives una categoría aparecerá aquí, agrupada por tipo, para consultarla o reactivarla."
-    }
+    },
+    "system": "Del sistema"
   },
   "form": {
     "createTitle": "Nueva categoría",
@@ -80,7 +81,8 @@
     "typeLabel": "Tipo de movimiento",
     "typeHint": "Solo podrás usarla en movimientos de este tipo; no se puede cambiar después.",
     "typeLocked": "El tipo no se puede cambiar.",
-    "readOnly": "Esta categoría está desactivada: puedes consultarla y reactivarla, pero no editarla ni usarla en movimientos nuevos."
+    "readOnly": "Esta categoría está desactivada: puedes consultarla y reactivarla, pero no editarla ni usarla en movimientos nuevos.",
+    "systemLocked": "Es una categoría del sistema, para los pagos de tarjeta: no se puede renombrar ni desactivar. Puedes cambiar su descripción."
   },
   "errors": {
     "CATEGORY_NAME_REQUIRED": "Escribe un nombre para la categoría.",
@@ -94,11 +96,15 @@
     "CATEGORY_TRANSACTION_TYPE_INVALID": "Ese tipo de movimiento no es válido. Elige otro.",
     "CATEGORY_STATUS_INVALID": "No pudimos filtrar las categorías por estado. Intenta de nuevo.",
     "CATEGORY_ALREADY_ACTIVE": "Esta categoría ya estaba activa.",
-    "CATEGORY_ALREADY_INACTIVE": "Esta categoría ya estaba desactivada."
+    "CATEGORY_ALREADY_INACTIVE": "Esta categoría ya estaba desactivada.",
+    "CATEGORY_SYSTEM_LOCKED": "Esta categoría es del sistema: no se puede renombrar, desactivar ni borrar."
   },
   "types": {
     "income": "Ingreso",
     "expense": "Gasto",
     "transfer": "Transferencia"
+  },
+  "systemNames": {
+    "CARD_PAYMENT": "Pago de tarjeta"
   }
 }

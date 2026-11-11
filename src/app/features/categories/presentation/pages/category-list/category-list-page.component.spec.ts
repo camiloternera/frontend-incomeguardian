@@ -3,8 +3,11 @@ import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { translocoTesting } from '@core/i18n/i18n.testing';
 import { LanguageService } from '@core/i18n/language.service';
+import { Category } from '../../../domain/category';
 import { CategoryError, CategoryErrorCode } from '../../../domain/category-error';
 import { FakeCategoryRepository, fakeCategoriesRoutes } from '../../category-repository.fake';
+
+const SYSTEM_CATEGORY: Category = { id: 30, name: 'Pago tarjeta', description: 'Pagos de tus tarjetas', type: 'transfer', isActive: true, hasTransactions: false, code: 'CARD_PAYMENT', createdAt: '2026-10-01T00:00:00Z', updatedAt: null };
 
 describe('CategoryListPageComponent', () => {
   let fake: FakeCategoryRepository;
@@ -30,8 +33,8 @@ describe('CategoryListPageComponent', () => {
     localStorage.clear();
     fake = new FakeCategoryRepository();
     fake.categories.push(
-      { id: 2, name: 'Alimentación', description: 'Mercado y comidas fuera', type: 'expense', isActive: true, hasTransactions: false, createdAt: '2026-10-01T00:00:00Z', updatedAt: null },
-      { id: 10, name: 'Coworking', description: 'Escritorio y café', type: 'transfer', isActive: true, hasTransactions: false, createdAt: '2026-10-02T00:00:00Z', updatedAt: '2026-10-14T00:00:00Z' },
+      { id: 2, name: 'Alimentación', description: 'Mercado y comidas fuera', type: 'expense', isActive: true, hasTransactions: false, code: null, createdAt: '2026-10-01T00:00:00Z', updatedAt: null },
+      { id: 10, name: 'Coworking', description: 'Escritorio y café', type: 'transfer', isActive: true, hasTransactions: false, code: null, createdAt: '2026-10-02T00:00:00Z', updatedAt: '2026-10-14T00:00:00Z' },
     );
     await TestBed.configureTestingModule({
       imports: [translocoTesting()],
@@ -60,7 +63,7 @@ describe('CategoryListPageComponent', () => {
 
   it('lists the deactivated categories in their own tab, ordered by type, and reactivates them', async () => {
     fake.categories.push(
-      { id: 11, name: 'Bonos', description: 'Extras', type: 'income', isActive: false, hasTransactions: false, createdAt: '2026-09-01T00:00:00Z', updatedAt: null },
+      { id: 11, name: 'Bonos', description: 'Extras', type: 'income', isActive: false, hasTransactions: false, code: null, createdAt: '2026-09-01T00:00:00Z', updatedAt: null },
     );
     const { harness, element } = await open();
 
@@ -114,6 +117,7 @@ describe('CategoryListPageComponent', () => {
         type: 'expense' as const,
         isActive: true,
         hasTransactions: false,
+        code: null,
         createdAt: '2026-10-20T00:00:00Z',
         updatedAt: null,
       })),
@@ -283,5 +287,78 @@ describe('CategoryListPageComponent', () => {
     expect(element.textContent).toContain('Transferencias');
     expect(element.textContent).toContain('Desactivadas');
     expect(element.textContent).toContain('Nueva categoría');
+  });
+  describe('a system category', () => {
+    beforeEach(() => {
+      fake.categories.push(SYSTEM_CATEGORY);
+    });
+
+    it('shows its translated name with a system badge', async () => {
+      const { harness, element } = await open();
+      click(element, 'tab-transfer');
+      harness.detectChanges();
+
+      const row = element.querySelector('[data-testid="category-30"]')!;
+      expect(row.textContent).toContain('Card payment');
+      expect(row.textContent).not.toContain('Pago tarjeta');
+      expect(row.querySelector('[data-testid="system-category"]')?.textContent?.trim()).toBe('System');
+      expect(row.querySelector('a')?.getAttribute('aria-label')).toContain('Card payment');
+      // Una categoría del usuario no lleva el badge.
+      expect(element.querySelector('[data-testid="category-10"] [data-testid="system-category"]')).toBeNull();
+    });
+
+    it('translates the name and the badge into Spanish', async () => {
+      TestBed.inject(LanguageService).setLanguage('es-CO');
+      const { harness, element } = await open();
+      click(element, 'tab-transfer');
+      harness.detectChanges();
+
+      const row = element.querySelector('[data-testid="category-30"]')!;
+      expect(row.textContent).toContain('Pago de tarjeta');
+      expect(row.querySelector('[data-testid="system-category"]')?.textContent?.trim()).toBe('Del sistema');
+    });
+
+    it('finds it by its translated name', async () => {
+      const { harness, element } = await open();
+      const input = element.querySelector<HTMLInputElement>('[data-testid="category-search"]')!;
+      input.value = 'card pay';
+      input.dispatchEvent(new Event('input'));
+      harness.detectChanges();
+      click(element, 'tab-transfer');
+      harness.detectChanges();
+
+      expect(element.querySelector('[data-testid="category-30"]')).toBeTruthy();
+      expect(element.querySelector('[data-testid="category-10"]')).toBeNull();
+    });
+
+    it('finds it by its Spanish name', async () => {
+      TestBed.inject(LanguageService).setLanguage('es-CO');
+      const { harness, element } = await open();
+      const input = element.querySelector<HTMLInputElement>('[data-testid="category-search"]')!;
+      input.value = 'pago de tarjeta';
+      input.dispatchEvent(new Event('input'));
+      harness.detectChanges();
+      click(element, 'tab-transfer');
+      harness.detectChanges();
+
+      expect(element.querySelector('[data-testid="category-30"]')).toBeTruthy();
+    });
+
+    it('can be edited but not deactivated', async () => {
+      const { harness, element } = await open();
+      click(element, 'tab-transfer');
+      harness.detectChanges();
+
+      expect(element.querySelector('[data-testid="category-30"] a[href="/categories/30/edit"]')).toBeTruthy();
+      click(element, 'menu-30');
+      harness.detectChanges();
+
+      expect(element.querySelector('#category-menu-30')).toBeTruthy();
+      expect(element.querySelector('[data-testid="deactivate-30"]')).toBeNull();
+
+      click(element, 'menu-10');
+      harness.detectChanges();
+      expect(element.querySelector('[data-testid="deactivate-10"]')).toBeTruthy();
+    });
   });
 });

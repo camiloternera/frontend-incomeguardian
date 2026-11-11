@@ -9,14 +9,26 @@ const loadPanel = () =>
     (m) => m.AccountPanelComponent,
   );
 
+/** El extracto de una tarjeta es una vista propia, con su mes en `?month=YYYY-MM`. */
+const loadStatement = () =>
+  import('./presentation/pages/card-statement/card-statement-page.component').then(
+    (m) => m.CardStatementPageComponent,
+  );
+
 export const accountsRoutes: Routes = [
   {
     path: '',
     providers: [provideTranslocoScope('accounts'), provideAccounts()],
-    component: AccountListPageComponent,
     children: [
-      { path: 'new', loadComponent: loadPanel },
-      { path: ':id/edit', loadComponent: loadPanel },
+      {
+        path: '',
+        component: AccountListPageComponent,
+        children: [
+          { path: 'new', loadComponent: loadPanel },
+          { path: ':id/edit', loadComponent: loadPanel },
+        ],
+      },
+      { path: ':id/statement', loadComponent: loadStatement },
     ],
   },
 ];

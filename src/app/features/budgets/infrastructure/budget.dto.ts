@@ -13,6 +13,23 @@ export interface BudgetRowDto {
   percentUsed: number | null;
   recurringAmount: number | null;
   source: string;
+  /** Campos de tarjetas: opcionales mientras el backend desplegado no los envíe. */
+  monthAmount?: number | null;
+  installmentsRaise?: number | null;
+  installmentsSpent?: number | null;
+  installments?: BudgetInstallmentDto[] | null;
+}
+
+export interface BudgetInstallmentDto {
+  transactionId: number;
+  description: string | null;
+  number: number;
+  installments: number;
+  accountId: number;
+  accountName: string;
+  purchaseDate: string;
+  amount: number;
+  budgetAdjustment: number;
 }
 
 export interface BudgetTotalDto {
@@ -20,6 +37,7 @@ export interface BudgetTotalDto {
   budget: number;
   spent: number;
   available: number;
+  installmentsSpent?: number | null;
 }
 
 /** Respuesta de `GET /api/v1/budgets/summary?year=&month=`. */
@@ -54,4 +72,25 @@ export interface BudgetCategoryOptionDto {
   isActive: boolean;
   /** 1 Ingreso, 2 Gasto, 3 Transferencia. */
   transactionTypeId: number;
+}
+
+/** Lo que este dominio lee de `GET /api/v1/accounts`; ignora el resto de campos. */
+export interface BudgetAccountDto {
+  id: number;
+  name: string;
+  currency: string;
+  kind?: string | null;
+}
+
+/** Lo que este dominio lee de un movimiento de `GET /api/v1/transactions`. */
+export interface BudgetTransactionDto {
+  id: number;
+  amount: number;
+  date: string;
+  fromAccountId: number | null;
+  description: string | null;
+}
+
+export interface BudgetTransactionPageDto {
+  items: BudgetTransactionDto[];
 }

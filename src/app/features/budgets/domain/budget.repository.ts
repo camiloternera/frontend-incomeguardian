@@ -1,5 +1,13 @@
 import { Observable } from 'rxjs';
-import { BudgetCategoryOption, BudgetCurrency, BudgetKey, BudgetMonth, BudgetSummary } from './budget';
+import {
+  BudgetCategoryOption,
+  BudgetCategoryType,
+  BudgetCurrency,
+  BudgetKey,
+  BudgetMonth,
+  BudgetMovement,
+  BudgetSummary,
+} from './budget';
 
 /** Tope de una categoría en una moneda que admite topes. */
 export interface BudgetTarget extends BudgetKey {
@@ -33,4 +41,13 @@ export abstract class BudgetRepository {
  */
 export abstract class BudgetCategoryOptionsRepository {
   abstract list(): Observable<BudgetCategoryOption[]>;
+}
+
+/**
+ * Puerto: los gastos de cuentas normales (no tarjetas) de una categoría en un mes y una moneda, para
+ * «Lo que cuenta este mes». Las cuotas con tarjeta ya llegan en el resumen. Vive en este dominio
+ * porque un dominio no importa de otro; su adaptador consulta movimientos y cuentas.
+ */
+export abstract class BudgetMovementsRepository {
+  abstract list(month: BudgetMonth, key: BudgetKey, type: BudgetCategoryType): Observable<BudgetMovement[]>;
 }

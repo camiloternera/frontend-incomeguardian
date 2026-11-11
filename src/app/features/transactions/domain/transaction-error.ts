@@ -1,3 +1,5 @@
+import { TransactionMonth } from './transaction';
+
 /**
  * Códigos de negocio que envía el backend para movimientos, escritos tal cual los envía.
  * Comparar contra estas constantes en lugar de escribir los textos a mano.
@@ -23,6 +25,10 @@ export const TransactionErrorCode = {
   ExchangeRateDateInvalid: 'EXCHANGE_RATE_DATE_INVALID',
   /** La fecha cae en un mes cerrado; el formulario muestra la nota de fecha cerrada. */
   PeriodClosed: 'PERIOD_CLOSED',
+  /** Cuotas en un gasto que no es con tarjeta. */
+  InstallmentsNotAllowed: 'TRANSACTION_INSTALLMENTS_NOT_ALLOWED',
+  InstallmentsOutOfRange: 'TRANSACTION_INSTALLMENTS_OUT_OF_RANGE',
+  InterestRateOutOfRange: 'TRANSACTION_INTEREST_RATE_OUT_OF_RANGE',
 } as const;
 
 export type TransactionErrorCode = (typeof TransactionErrorCode)[keyof typeof TransactionErrorCode];
@@ -53,6 +59,12 @@ export const CATEGORY_ERROR_CODES: readonly TransactionErrorCode[] = [
 
 export const DESCRIPTION_ERROR_CODES: readonly TransactionErrorCode[] = [TransactionErrorCode.DescriptionMaxLength];
 
+export const INSTALLMENT_ERROR_CODES: readonly TransactionErrorCode[] = [
+  TransactionErrorCode.InstallmentsNotAllowed,
+  TransactionErrorCode.InstallmentsOutOfRange,
+  TransactionErrorCode.InterestRateOutOfRange,
+];
+
 /** Fallos de la TRM: la transferencia entre monedas no se puede calcular ni crear. */
 export const RATE_ERROR_CODES: readonly TransactionErrorCode[] = [
   TransactionErrorCode.ExchangeRateUnavailable,
@@ -67,6 +79,8 @@ export class TransactionError extends Error {
   constructor(
     message: string,
     readonly code: TransactionErrorCode | null = null,
+    /** Con `PERIOD_CLOSED`, el primer mes cerrado que bloquea (puede ser el de una cuota). */
+    readonly closedMonth: TransactionMonth | null = null,
   ) {
     super(message);
     this.name = 'TransactionError';

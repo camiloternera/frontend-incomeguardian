@@ -3,13 +3,20 @@ import { FakePeriodRepository, provideFakePeriods } from '@features/periods/test
 import { Observable, of, throwError } from 'rxjs';
 import {
   BudgetCategoryOption,
+  BudgetCategoryType,
   BudgetKey,
   BudgetMonth,
+  BudgetMovement,
   BudgetRow,
   BudgetSummary,
   formatMonthKey,
 } from '../domain/budget';
-import { BudgetCategoryOptionsRepository, BudgetRepository, BudgetTarget } from '../domain/budget.repository';
+import {
+  BudgetCategoryOptionsRepository,
+  BudgetMovementsRepository,
+  BudgetRepository,
+  BudgetTarget,
+} from '../domain/budget.repository';
 import { budgetsRoutes } from '../budgets.routes';
 
 /** Devuelve el error pendiente (una sola vez) o el valor calculado. */
@@ -34,6 +41,10 @@ export function budgetRow(overrides: Partial<BudgetRow> & Pick<BudgetRow, 'categ
     percentUsed: budgetAmount > 0 ? Math.round((spentAmount / budgetAmount) * 1000) / 10 : null,
     recurringAmount: null,
     source: 'recurring',
+    monthAmount: null,
+    installmentsRaise: 0,
+    installmentsSpent: 0,
+    installments: [],
     ...overrides,
   };
 }
@@ -53,8 +64,8 @@ export function sampleSummary(month: BudgetMonth): BudgetSummary {
       budgetRow({ categoryId: 8, categoryName: 'Software', currency: 'USD', budgetAmount: 40, spentAmount: 24 }),
     ],
     totals: [
-      { currency: 'COP', budget: 2790000, spent: 1968100, available: 821900 },
-      { currency: 'USD', budget: 40, spent: 24, available: 16 },
+      { currency: 'COP', budget: 2790000, spent: 1968100, available: 821900, installmentsSpent: 0 },
+      { currency: 'USD', budget: 40, spent: 24, available: 16, installmentsSpent: 0 },
     ],
   };
 }
@@ -121,10 +132,24 @@ export class FakeBudgetCategoryOptionsRepository extends BudgetCategoryOptionsRe
   }
 }
 
+/** Gastos de cuentas normales en memoria; devuelve `movements` y anota cada pedido. */
+export class FakeBudgetMovementsRepository extends BudgetMovementsRepository {
+  movements: BudgetMovement[] = [];
+  failWith: unknown = null;
+  requested: { month: BudgetMonth; key: BudgetKey; type: BudgetCategoryType }[] = [];
+
+  list(month: BudgetMonth, key: BudgetKey, type: BudgetCategoryType): Observable<BudgetMovement[]> {
+    this.requested.push({ month, key, type });
+
+    return respond(this, () => [...this.movements]);
+  }
+}
+
 /** Los puertos falsos del dominio y el cierre de períodos. */
 export class BudgetFakes {
   readonly budgets = new FakeBudgetRepository();
   readonly categories = new FakeBudgetCategoryOptionsRepository();
+  readonly movements = new FakeBudgetMovementsRepository();
   readonly periods = new FakePeriodRepository();
 }
 
@@ -142,6 +167,7 @@ export function fakeBudgetsRoutes(fakes = new BudgetFakes()): Routes {
             ...(root.providers ?? []),
             { provide: BudgetRepository, useValue: fakes.budgets },
             { provide: BudgetCategoryOptionsRepository, useValue: fakes.categories },
+            { provide: BudgetMovementsRepository, useValue: fakes.movements },
             ...provideFakePeriods(fakes.periods),
           ],
         },

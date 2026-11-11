@@ -10,7 +10,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { LucideBan, LucideX } from '@lucide/angular';
@@ -19,6 +19,7 @@ import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { LanguageService } from '@core/i18n/language.service';
 import { notBlank } from '@shared/forms/not-blank.validator';
 import { DatePickerComponent } from '@shared/ui/date-picker/date-picker.component';
+import { SelectComponent, SelectOption } from '@shared/ui/select/select.component';
 import {
   CreateAccountUseCase,
   GetAccountUseCase,
@@ -27,8 +28,12 @@ import {
 import {
   ACCOUNT_BALANCE_MAX_DECIMALS,
   ACCOUNT_BALANCE_MAX_INTEGER_DIGITS,
+  ACCOUNT_KINDS,
   ACCOUNT_NAME_MAX_LENGTH,
   Account,
+  AccountKind,
+  CARD_DAY_MAX,
+  CARD_DAY_MIN,
   Currency,
   SELECTABLE_CURRENCIES,
   isSelectableCurrency,
@@ -36,10 +41,21 @@ import {
 import {
   AccountError,
   AccountErrorCode,
+  CREDIT_LIMIT_ERROR_CODES,
   CURRENCY_ERROR_CODES,
+  KIND_ERROR_CODES,
   NAME_ERROR_CODES,
   OPENING_DATE_ERROR_CODES,
+  PAYMENT_DAY_ERROR_CODES,
+  STATEMENT_DAY_ERROR_CODES,
 } from '../../../domain/account-error';
+import {
+  cardDayOf,
+  nextStatementDate,
+  paymentDueDate,
+  statementMonthFor,
+} from '../../../domain/credit-card-calendar';
+import { cardFieldsValidator } from '../../validators/card-fields';
 import { AccountWorkspace } from '../../account-workspace';
 import { moneyDigits as balanceDigits } from '@shared/money/money-format';
 import { balanceValidator, parseBalance } from '../../validators/balance.validator';
@@ -75,6 +91,7 @@ const LIST_URL = '/accounts';
     ReactiveFormsModule,
     RouterLink,
     TranslocoDirective,
+    SelectComponent,
     LucideBan,
     LucideX,
   ],
@@ -93,6 +110,7 @@ export class AccountPanelComponent {
   protected readonly listUrl = LIST_URL;
   protected readonly locale = inject(LanguageService).language;
   protected readonly currencies = SELECTABLE_CURRENCIES;
+  protected readonly kinds = ACCOUNT_KINDS;
   protected readonly nameMax = ACCOUNT_NAME_MAX_LENGTH;
   protected readonly balanceDigits = balanceDigits;
   protected readonly balanceParams = {
@@ -107,7 +125,7 @@ export class AccountPanelComponent {
   /** La cuenta tal como llegó del backend, para desactivarla y para el resumen de solo lectura. */
   protected readonly account = signal<Account | null>(null);
 
-  /** Con movimientos la cuenta ya no admite cambiar el nombre ni la moneda. */
+  /** Con movimientos la cuenta ya no admite cambiar el nombre, la moneda ni el tipo. */
   protected readonly identityLocked = computed(() => this.account()?.hasTransactions === true);
 
   protected readonly status = signal<PanelStatus>('ready');
@@ -123,6 +141,11 @@ export class AccountPanelComponent {
   protected readonly nameServerError = signal<AccountErrorCode | null>(null);
   protected readonly currencyServerError = signal<AccountErrorCode | null>(null);
   protected readonly openingServerError = signal<AccountErrorCode | null>(null);
+  protected readonly kindServerError = signal<AccountErrorCode | null>(null);
+  protected readonly balanceServerError = signal<AccountErrorCode | null>(null);
+  protected readonly creditLimitServerError = signal<AccountErrorCode | null>(null);
+  protected readonly statementDayServerError = signal<AccountErrorCode | null>(null);
+  protected readonly paymentDayServerError = signal<AccountErrorCode | null>(null);
 
   /** Hoy en el navegador: tope del selector de fecha de apertura. Se renueva al abrir el panel. */
   protected readonly today = signal(toOpeningParts(new Date()).day);
@@ -130,12 +153,18 @@ export class AccountPanelComponent {
   protected readonly accountForm = this.formBuilder.group(
     {
       name: ['', [notBlank, Validators.maxLength(ACCOUNT_NAME_MAX_LENGTH)]],
+      kind: this.formBuilder.control<AccountKind>('standard'),
       currency: this.formBuilder.control<Currency>('COP', Validators.required),
+      /** En una tarjeta es la deuda, escrita en positivo; se envía en negativo. */
       initialBalance: ['0', balanceValidator],
+      /** Cupo opcional de la tarjeta; vacío si no se registra. */
+      creditLimit: ['', (control: AbstractControl<string>) => (control.value.trim() ? balanceValidator(control) : null)],
+      statementDay: this.formBuilder.control<number | null>(null),
+      paymentDay: this.formBuilder.control<number | null>(null),
       openingDay: ['', Validators.required],
       openingTime: ['', Validators.required],
     },
-    { validators: openingNotInFuture },
+    { validators: [openingNotInFuture, cardFieldsValidator] },
   );
 
   private readonly formValue = toSignal(this.accountForm.valueChanges, {
@@ -144,6 +173,38 @@ export class AccountPanelComponent {
 
   protected readonly nameLength = computed(() => this.formValue().name?.length ?? 0);
   protected readonly currency = computed(() => this.formValue().currency ?? 'COP');
+
+  /** El tipo, leído del control: `formValue` lo omite cuando el control está deshabilitado. */
+  private readonly kind = toSignal(this.accountForm.controls.kind.valueChanges, {
+    initialValue: this.accountForm.controls.kind.value,
+  });
+  protected readonly isCard = computed(() => this.kind() === 'credit_card');
+
+  /** Días del 1 al 31 para el corte y el pago; la etiqueta del campo ya dice de qué día se trata. */
+  protected readonly dayOptions: SelectOption<number>[] = Array.from(
+    { length: CARD_DAY_MAX - CARD_DAY_MIN + 1 },
+    (_, index) => ({ value: CARD_DAY_MIN + index, label: String(CARD_DAY_MIN + index) }),
+  );
+
+  /**
+   * Próximo corte y fecha límite de ESE corte, según los días elegidos (no la del último corte sin
+   * pagar). `paysNextMonth` indica que el pago cae en el mes siguiente al corte.
+   */
+  protected readonly cardPreview = computed(() => {
+    const { statementDay, paymentDay } = this.formValue();
+
+    if (!this.isCard() || !statementDay || !paymentDay) {
+      return null;
+    }
+
+    const today = cardDayOf(new Date());
+
+    return {
+      statementDate: nextStatementDate(today, statementDay),
+      paymentDueDate: paymentDueDate(statementMonthFor(today, statementDay), statementDay, paymentDay),
+      paysNextMonth: paymentDay <= statementDay,
+    };
+  });
 
   /** Símbolo de la moneda elegida para el prefijo del saldo; el código se añade solo si el símbolo no lo dice. */
   protected readonly currencySymbol = computed(() =>
@@ -156,6 +217,11 @@ export class AccountPanelComponent {
     controls.currency.valueChanges.subscribe(() => this.currencyServerError.set(null));
     controls.openingDay.valueChanges.subscribe(() => this.openingServerError.set(null));
     controls.openingTime.valueChanges.subscribe(() => this.openingServerError.set(null));
+    controls.kind.valueChanges.subscribe(() => this.kindServerError.set(null));
+    controls.initialBalance.valueChanges.subscribe(() => this.balanceServerError.set(null));
+    controls.creditLimit.valueChanges.subscribe(() => this.creditLimitServerError.set(null));
+    controls.statementDay.valueChanges.subscribe(() => this.statementDayServerError.set(null));
+    controls.paymentDay.valueChanges.subscribe(() => this.paymentDayServerError.set(null));
 
     // Al pasar de editar una fila a otra, Angular reutiliza el panel: se reinicia con cada id.
     inject(ActivatedRoute)
@@ -209,6 +275,15 @@ export class AccountPanelComponent {
 
   protected balanceError(): FieldMessage | null {
     const control = this.accountForm.controls.initialBalance;
+    const serverCode = this.balanceServerError();
+
+    if (serverCode) {
+      return this.codeMessage(serverCode);
+    }
+
+    if (control.touched && control.valid && this.isCard() && this.accountForm.hasError('debtNegative')) {
+      return { key: 'accounts.form.card.debtNegative' };
+    }
 
     if (!this.showsError(control)) {
       return null;
@@ -221,6 +296,55 @@ export class AccountPanelComponent {
     return control.hasError('balanceInvalid')
       ? { key: 'accounts.form.balanceInvalid', params: this.balanceParams }
       : { key: 'accounts.form.balanceRequired' };
+  }
+
+  protected kindError(): FieldMessage | null {
+    const code = this.kindServerError();
+
+    return code ? this.codeMessage(code) : null;
+  }
+
+  protected creditLimitError(): FieldMessage | null {
+    const code = this.creditLimitServerError();
+    const control = this.accountForm.controls.creditLimit;
+
+    if (code) {
+      return this.codeMessage(code);
+    }
+
+    if (!control.touched) {
+      return null;
+    }
+
+    if (!control.valid) {
+      return control.hasError('balanceTooLarge')
+        ? { key: 'accounts.form.balanceTooLarge', params: this.balanceParams }
+        : { key: 'accounts.form.balanceInvalid', params: this.balanceParams };
+    }
+
+    return this.accountForm.hasError('creditLimitInvalid')
+      ? this.codeMessage(AccountErrorCode.CreditLimitInvalid)
+      : null;
+  }
+
+  protected statementDayError(): FieldMessage | null {
+    const local =
+      this.accountForm.controls.statementDay.touched && this.accountForm.hasError('statementDayRequired')
+        ? AccountErrorCode.StatementDayRequired
+        : null;
+    const code = this.statementDayServerError() ?? local;
+
+    return code ? this.codeMessage(code) : null;
+  }
+
+  protected paymentDayError(): FieldMessage | null {
+    const local =
+      this.accountForm.controls.paymentDay.touched && this.accountForm.hasError('paymentDayRequired')
+        ? AccountErrorCode.PaymentDayRequired
+        : null;
+    const code = this.paymentDayServerError() ?? local;
+
+    return code ? this.codeMessage(code) : null;
   }
 
   protected retry(): void {
@@ -252,12 +376,20 @@ export class AccountPanelComponent {
 
     const id = this.accountId();
     const value = this.accountForm.getRawValue();
+    const isCard = value.kind === 'credit_card';
+    const balance = parseBalance(value.initialBalance);
+    const limit = value.creditLimit.trim();
     const draft = {
       name: value.name,
+      kind: value.kind,
       currency: value.currency,
-      initialBalance: parseBalance(value.initialBalance),
+      // La deuda se escribe en positivo y el backend la guarda en negativo; `|| 0` evita enviar -0.
+      initialBalance: isCard ? -balance || 0 : balance,
       // El formulario es válido, así que el día y la hora forman un instante.
       openingDate: toOffsetIso(openingInstant(value.openingDay, value.openingTime)!),
+      creditLimit: isCard && limit ? parseBalance(limit) : null,
+      statementDay: isCard ? value.statementDay : null,
+      paymentDay: isCard ? value.paymentDay : null,
     };
     const request: Observable<Account> =
       id === null ? this.createAccount.execute(draft) : this.updateAccount.execute(id, draft);
@@ -317,19 +449,29 @@ export class AccountPanelComponent {
     this.nameServerError.set(null);
     this.currencyServerError.set(null);
     this.openingServerError.set(null);
+    this.kindServerError.set(null);
+    this.balanceServerError.set(null);
+    this.creditLimitServerError.set(null);
+    this.statementDayServerError.set(null);
+    this.paymentDayServerError.set(null);
 
     // Una cuenta nueva abre por defecto ahora mismo.
     const now = toOpeningParts(new Date());
     this.today.set(now.day);
     this.accountForm.reset({
       name: '',
+      kind: 'standard',
       currency: 'COP',
       initialBalance: '0',
+      creditLimit: '',
+      statementDay: null,
+      paymentDay: null,
       openingDay: now.day,
       openingTime: now.time,
     });
     this.accountForm.controls.name.enable({ emitEvent: false });
     this.accountForm.controls.currency.enable({ emitEvent: false });
+    this.accountForm.controls.kind.enable({ emitEvent: false });
 
     if (id === null) {
       this.status.set('ready');
@@ -347,17 +489,24 @@ export class AccountPanelComponent {
       next: (account) => {
         this.account.set(account);
         const opening = toOpeningParts(new Date(account.openingDate));
+        const isCard = account.kind === 'credit_card';
         this.accountForm.reset({
           name: account.name,
+          kind: account.kind,
           currency: account.currency,
-          initialBalance: String(account.initialBalance),
+          // En una tarjeta se edita la deuda en positivo; `|| 0` evita mostrar -0.
+          initialBalance: String(isCard ? -account.initialBalance || 0 : account.initialBalance),
+          creditLimit: account.creditLimit === null ? '' : String(account.creditLimit),
+          statementDay: account.statementDay,
+          paymentDay: account.paymentDay,
           openingDay: opening.day,
           openingTime: opening.time,
         });
-        // Con movimientos el backend ya no deja cambiar nombre ni moneda; se envían igual al guardar.
+        // Con movimientos el backend ya no deja cambiar nombre, moneda ni tipo; se envían igual al guardar.
         if (account.hasTransactions) {
           this.accountForm.controls.name.disable({ emitEvent: false });
           this.accountForm.controls.currency.disable({ emitEvent: false });
+          this.accountForm.controls.kind.disable({ emitEvent: false });
         }
         // Una cuenta desactivada o en una moneda que ya no se admite (EUR) solo se consulta.
         this.status.set(account.isActive && isSelectableCurrency(account.currency) ? 'ready' : 'readOnly');
@@ -383,6 +532,16 @@ export class AccountPanelComponent {
       this.currencyServerError.set(code);
     } else if (code && OPENING_DATE_ERROR_CODES.includes(code)) {
       this.openingServerError.set(code);
+    } else if (code && KIND_ERROR_CODES.includes(code)) {
+      this.kindServerError.set(code);
+    } else if (code === AccountErrorCode.CardInitialBalancePositive) {
+      this.balanceServerError.set(code);
+    } else if (code && CREDIT_LIMIT_ERROR_CODES.includes(code)) {
+      this.creditLimitServerError.set(code);
+    } else if (code && STATEMENT_DAY_ERROR_CODES.includes(code)) {
+      this.statementDayServerError.set(code);
+    } else if (code && PAYMENT_DAY_ERROR_CODES.includes(code)) {
+      this.paymentDayServerError.set(code);
     } else if (code === AccountErrorCode.NotFound) {
       this.status.set('notFound');
     } else {

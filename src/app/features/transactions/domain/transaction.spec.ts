@@ -7,6 +7,7 @@ import {
   monthRange,
   parseMonth,
   shiftMonth,
+  hasInstallments,
   isUsableAccount,
   previewDestinationAmount,
   roundAwayFromZero,
@@ -42,6 +43,9 @@ describe('isUsableAccount', () => {
     currency: 'COP',
     currentBalance: 0,
     isActive: true,
+    isCreditCard: false,
+    availableCredit: null,
+    nextStatementDate: null,
     ...patch,
   });
 
@@ -57,7 +61,7 @@ describe('isUsableAccount', () => {
 
 describe('categoryAppliesTo', () => {
   it('exige que la categoría sea del mismo tipo que el movimiento', () => {
-    const salary = { id: 1, name: 'Salario', type: 'income' as const, isActive: true };
+    const salary = { id: 1, name: 'Salario', type: 'income' as const, isActive: true, code: null };
     expect(categoryAppliesTo(salary, 'income')).toBe(true);
     expect(categoryAppliesTo(salary, 'expense')).toBe(false);
     expect(categoryAppliesTo(salary, 'transfer')).toBe(false);
@@ -115,6 +119,10 @@ function item(id: number, type: Transaction['type'], amount: number, date: strin
     destinationAmount: null,
     exchangeRate: null,
     exchangeRateDate: null,
+    installments: 1,
+    annualInterestRate: null,
+    installmentAmount: null,
+    schedule: [],
   };
 }
 
@@ -134,5 +142,13 @@ describe('dayOf y groupByDay', () => {
       ['2026-11-09', [1, 2]],
       ['2026-11-08', [3]],
     ]);
+  });
+});
+
+describe('hasInstallments', () => {
+  it('solo cuenta las compras a más de una cuota', () => {
+    expect(hasInstallments({ installments: 1 })).toBe(false);
+    expect(hasInstallments({ installments: 2 })).toBe(true);
+    expect(hasInstallments({ installments: 48 })).toBe(true);
   });
 });

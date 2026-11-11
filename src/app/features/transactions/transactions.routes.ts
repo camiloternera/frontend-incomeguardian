@@ -28,6 +28,25 @@ const knownType: CanActivateFn = (route, state) => {
   });
 };
 
+/** El detalle de un movimiento (su plan de cuotas) se abre en el mismo lugar que el panel. */
+const loadDetail = () =>
+  import('./presentation/components/transaction-detail/transaction-detail.component').then(
+    (m) => m.TransactionDetailComponent,
+  );
+
+/** Solo se abre el detalle para un id numérico; cualquier otro vuelve al listado. */
+const numericId: CanActivateFn = (route, state) => {
+  if (/^\d+$/.test(route.paramMap.get('id') ?? '')) {
+    return true;
+  }
+
+  const router = inject(Router);
+
+  return router.createUrlTree([TRANSACTIONS_URL], {
+    queryParams: router.parseUrl(state.url).queryParams,
+  });
+};
+
 export const transactionsRoutes: Routes = [
   {
     path: '',
@@ -36,6 +55,7 @@ export const transactionsRoutes: Routes = [
     children: [
       { path: 'new', pathMatch: 'full', redirectTo: 'new/expense' },
       { path: 'new/:type', canActivate: [knownType], loadComponent: loadPanel },
+      { path: ':id', canActivate: [numericId], loadComponent: loadDetail },
     ],
   },
 ];

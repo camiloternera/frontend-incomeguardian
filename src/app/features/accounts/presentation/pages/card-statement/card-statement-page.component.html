@@ -1,0 +1,285 @@
+<div *transloco="let t" data-testid="card-statement-page" [attr.data-theme]="theme()">
+  <div class="mx-auto flex w-full max-w-[1120px] flex-col gap-6 px-4 pb-10 pt-6 sm:gap-8 sm:px-8 sm:pt-8">
+    <nav class="text-[13px] text-ig-muted" [attr.aria-label]="t('accounts.statement.breadcrumb')">
+      <a class="text-ig-muted underline-offset-2 hover:text-ig-text" [routerLink]="listUrl">{{ t('accounts.list.title') }}</a>
+      @if (account(); as card) {
+        <span aria-hidden="true"> / </span>{{ card.name }}
+      }
+    </nav>
+
+    @switch (status()) {
+      @case ('loading') {
+        <p class="m-0 text-[14px] text-ig-muted" role="status">{{ t('accounts.statement.loading') }}</p>
+      }
+
+      @case ('notFound') {
+        <div data-testid="statement-not-found" class="flex flex-col items-start gap-4">
+          <h1 class="m-0 text-[28px] font-bold tracking-[-0.03em]">{{ t('accounts.statement.notFoundTitle') }}</h1>
+          <p class="m-0 text-[14px] text-ig-muted">{{ t('accounts.statement.notFoundBody') }}</p>
+          <a
+            class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-border px-5 text-[14px] font-bold text-ig-text no-underline hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+            [routerLink]="listUrl"
+          >
+            {{ t('accounts.form.backToList') }}
+          </a>
+        </div>
+      }
+
+      @case ('error') {
+        <div class="flex flex-col items-start gap-4 rounded-lg border border-ig-border bg-ig-surface px-6 py-8">
+          <p data-testid="load-error" class="m-0 text-[14px]" role="alert">{{ loadError() }}</p>
+          <button
+            data-testid="retry"
+            class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-border bg-transparent px-5 text-[14px] font-bold text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+            type="button"
+            (click)="load()"
+          >
+            {{ t('accounts.list.retry') }}
+          </button>
+        </div>
+      }
+
+      @default {
+        @if (statement(); as s) {
+          @if (account(); as card) {
+            <header class="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+              <div class="flex min-w-0 flex-col gap-2">
+                <h1 class="m-0 text-[28px] font-bold leading-[1.05] tracking-[-0.03em] sm:text-[34px]">
+                  {{ t('accounts.statement.title', { name: card.name }) }}
+                </h1>
+                <p class="m-0 text-[15px] text-ig-muted">
+                  {{
+                    t('accounts.statement.period', {
+                      start: (s.periodStart | date: 'd MMM' : 'UTC' : locale()),
+                      end: (s.periodEnd | date: 'mediumDate' : 'UTC' : locale()),
+                      day: s.statementDay
+                    })
+                  }}
+                </p>
+              </div>
+              <div
+                class="flex items-center gap-1 rounded-lg border border-ig-border bg-ig-surface p-1"
+                role="group"
+                [attr.aria-label]="t('accounts.statement.monthNav')"
+              >
+                <button
+                  data-testid="statement-previous"
+                  class="inline-grid size-11 place-items-center rounded-md border-0 bg-transparent text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:text-ig-muted disabled:opacity-50"
+                  type="button"
+                  [disabled]="!s.previous || isChangingMonth()"
+                  [attr.aria-label]="t('accounts.statement.previous')"
+                  (click)="goTo(s.previous)"
+                >
+                  <svg lucideChevronLeft [size]="18" aria-hidden="true"></svg>
+                </button>
+                <span
+                  data-testid="statement-month"
+                  class="min-w-[150px] px-2 text-center text-[14px] font-bold capitalize"
+                  aria-live="polite"
+                  >{{ monthDate(s.month) | date: 'MMMM y' : 'UTC' : locale() }}</span
+                >
+                <button
+                  data-testid="statement-next"
+                  class="inline-grid size-11 place-items-center rounded-md border-0 bg-transparent text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:text-ig-muted disabled:opacity-50"
+                  type="button"
+                  [disabled]="!s.next || isChangingMonth()"
+                  [attr.aria-label]="t('accounts.statement.next')"
+                  (click)="goTo(s.next)"
+                >
+                  <svg lucideChevronRight [size]="18" aria-hidden="true"></svg>
+                </button>
+              </div>
+            </header>
+
+            <section
+              data-testid="statement-summary"
+              class="grid grid-cols-1 gap-6 border-b border-ig-border pb-6 sm:grid-cols-2 lg:grid-cols-4"
+              [attr.aria-label]="t('accounts.statement.summary')"
+              [attr.aria-busy]="isChangingMonth()"
+            >
+              <div class="flex flex-col gap-1">
+                <p class="m-0 text-[13px] text-ig-muted">{{ t('accounts.statement.balanceDue') }}</p>
+                <p data-testid="statement-balance-due" class="m-0 text-[24px] font-bold tabular-nums tracking-[-0.02em]">
+                  {{ s.balanceDue | currency: card.currency : 'symbol' : moneyDigits(card.currency, s.balanceDue) : locale() }}
+                </p>
+                <span
+                  data-testid="statement-status"
+                  class="self-start rounded-full border px-2.5 py-0.5 text-[12px] font-bold"
+                  [class]="s.status === 'paid' ? 'border-ig-accent text-ig-accent-text' : 'border-ig-border text-ig-muted'"
+                >
+                  {{
+                    t('accounts.statement.status.' + s.status, {
+                      start: (s.periodStart | date: 'd MMM' : 'UTC' : locale()),
+                      cut: (s.periodEnd | date: 'd MMM' : 'UTC' : locale()),
+                      due: (s.paymentDueDate | date: 'd MMM' : 'UTC' : locale())
+                    })
+                  }}
+                </span>
+              </div>
+              <div class="flex flex-col gap-1">
+                <p class="m-0 text-[13px] text-ig-muted">{{ t('accounts.statement.total') }}</p>
+                <p data-testid="statement-total" class="m-0 text-[20px] font-bold tabular-nums">
+                  {{ s.total | currency: card.currency : 'symbol' : moneyDigits(card.currency, s.total) : locale() }}
+                </p>
+              </div>
+              <div class="flex flex-col gap-1">
+                <p class="m-0 text-[13px] text-ig-muted">{{ t('accounts.statement.paid') }}</p>
+                <p data-testid="statement-paid" class="m-0 text-[20px] font-bold tabular-nums">
+                  {{ s.paymentsTotal | currency: card.currency : 'symbol' : moneyDigits(card.currency, s.paymentsTotal) : locale() }}
+                </p>
+              </div>
+              <div class="flex flex-col items-start gap-3">
+                <div class="flex flex-col gap-1">
+                  <p class="m-0 text-[13px] text-ig-muted">{{ t('accounts.statement.dueDate') }}</p>
+                  <p data-testid="statement-due-date" class="m-0 text-[20px] font-bold tabular-nums">
+                    {{ s.paymentDueDate | date: 'mediumDate' : 'UTC' : locale() }}
+                  </p>
+                </div>
+                @if (canPay()) {
+                  <a
+                    data-testid="statement-pay"
+                    class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-accent bg-ig-accent px-5 text-[14px] font-bold text-ig-on-accent no-underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                    routerLink="/transactions/new/transfer"
+                    [queryParams]="payQuery()"
+                  >
+                    {{
+                      t('accounts.statement.pay', {
+                        amount: (s.balanceDue | currency: card.currency : 'symbol' : moneyDigits(card.currency, s.balanceDue) : locale())
+                      })
+                    }}
+                  </a>
+                }
+              </div>
+            </section>
+
+            @if (s.status === 'open') {
+              <p class="m-0 rounded-lg border border-ig-border bg-ig-surface px-4 py-3 text-[14px] text-ig-muted">
+                {{ t('accounts.statement.openNote', { cut: (s.periodEnd | date: 'd MMMM' : 'UTC' : locale()) }) }}
+              </p>
+            } @else if (s.status === 'upcoming') {
+              <p
+                data-testid="statement-upcoming-note"
+                class="m-0 rounded-lg border border-ig-border bg-ig-surface px-4 py-3 text-[14px] text-ig-muted"
+              >
+                {{
+                  t('accounts.statement.upcomingNote', {
+                    start: (s.periodStart | date: 'd MMMM' : 'UTC' : locale()),
+                    due: (s.paymentDueDate | date: 'd MMMM' : 'UTC' : locale())
+                  })
+                }}
+              </p>
+            }
+
+            @if (s.items.length || s.openingDebt > 0) {
+              <div class="overflow-x-auto rounded-lg border border-ig-border bg-ig-surface">
+                <table data-testid="statement-items" class="w-full min-w-[720px] border-collapse text-[14px] tabular-nums">
+                  <caption class="sr-only">{{ t('accounts.statement.itemsCaption') }}</caption>
+                  <thead>
+                    <tr class="border-b border-ig-border text-left text-[12px] text-ig-muted">
+                      <th scope="col" class="px-4 py-3 font-medium">{{ t('accounts.statement.columns.date') }}</th>
+                      <th scope="col" class="px-4 py-3 font-medium">{{ t('accounts.statement.columns.description') }}</th>
+                      <th scope="col" class="px-4 py-3 font-medium">{{ t('accounts.statement.columns.category') }}</th>
+                      <th scope="col" class="px-4 py-3 font-medium">{{ t('accounts.statement.columns.installment') }}</th>
+                      <th scope="col" class="px-4 py-3 text-right font-medium">{{ t('accounts.statement.columns.principal') }}</th>
+                      <th scope="col" class="px-4 py-3 text-right font-medium">{{ t('accounts.statement.columns.interest') }}</th>
+                      <th scope="col" class="px-4 py-3 text-right font-medium">{{ t('accounts.statement.columns.amount') }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @if (s.openingDebt > 0) {
+                      <tr data-testid="statement-opening-debt" class="border-b border-ig-border">
+                        <td class="px-4 py-3 text-ig-muted">—</td>
+                        <td class="px-4 py-3" colspan="5">
+                          <span class="font-bold">{{ t('accounts.statement.openingDebt') }}</span>
+                          <span class="block text-[12px] text-ig-muted">{{ t('accounts.statement.openingDebtHint') }}</span>
+                        </td>
+                        <td class="px-4 py-3 text-right font-bold">
+                          {{ s.openingDebt | currency: card.currency : 'symbol' : moneyDigits(card.currency, s.openingDebt) : locale() }}
+                        </td>
+                      </tr>
+                    }
+                    @for (item of s.items; track item.transactionId + '-' + item.number) {
+                      <tr class="border-b border-ig-border">
+                        <td class="whitespace-nowrap px-4 py-3 text-ig-muted">{{ item.purchaseDate | date: 'd MMM' : 'UTC' : locale() }}</td>
+                        <td class="px-4 py-3">
+                          <a
+                            class="text-ig-text underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                            [routerLink]="['/transactions', item.transactionId]"
+                            >{{ item.description || t('accounts.statement.noDescription') }}</a
+                          >
+                        </td>
+                        <td class="px-4 py-3 text-ig-muted">{{ item.categoryName ?? '—' }}</td>
+                        <td class="whitespace-nowrap px-4 py-3 text-ig-muted">
+                          {{ t('accounts.statement.installmentOf', { number: item.number, total: item.installments }) }}
+                        </td>
+                        <td class="px-4 py-3 text-right">
+                          {{ item.principal | currency: card.currency : 'symbol' : moneyDigits(card.currency, item.principal) : locale() }}
+                        </td>
+                        <td class="px-4 py-3 text-right text-ig-muted">
+                          @if (item.interest > 0) {
+                            {{ item.interest | currency: card.currency : 'symbol' : moneyDigits(card.currency, item.interest) : locale() }}
+                          } @else {
+                            —
+                          }
+                        </td>
+                        <td class="px-4 py-3 text-right font-bold">
+                          {{ item.amount | currency: card.currency : 'symbol' : moneyDigits(card.currency, item.amount) : locale() }}
+                        </td>
+                      </tr>
+                    }
+                    <tr>
+                      <th scope="row" colspan="6" class="px-4 py-3 text-right text-[13px] font-medium text-ig-muted">
+                        {{ t('accounts.statement.total') }}
+                      </th>
+                      <td class="px-4 py-3 text-right font-bold">
+                        {{ s.total | currency: card.currency : 'symbol' : moneyDigits(card.currency, s.total) : locale() }}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            } @else {
+              <div data-testid="statement-empty" class="rounded-lg border border-dashed border-ig-border px-6 py-8">
+                <p class="m-0 text-[14px] text-ig-muted">{{ t('accounts.statement.empty') }}</p>
+              </div>
+            }
+
+            @if (s.payments.length) {
+              <section data-testid="statement-payments" class="flex flex-col gap-3" aria-labelledby="statement-payments-title">
+                <h2 id="statement-payments-title" class="m-0 text-[15px] font-bold">{{ t('accounts.statement.paymentsTitle') }}</h2>
+                <ul class="m-0 flex list-none flex-col gap-2 p-0">
+                  @for (payment of s.payments; track payment.transactionId) {
+                    <li class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-[14px]">
+                      <span>
+                        {{
+                          t('accounts.statement.paymentLine', {
+                            account: payment.fromAccountName,
+                            date: (payment.date | date: 'mediumDate' : undefined : locale())
+                          })
+                        }}
+                        @if (payment.appliedAmount !== payment.paymentAmount) {
+                          <span class="text-ig-muted">
+                            {{
+                              t('accounts.statement.paymentSplit', {
+                                amount: (payment.paymentAmount | currency: card.currency : 'symbol' : moneyDigits(card.currency, payment.paymentAmount) : locale())
+                              })
+                            }}
+                          </span>
+                        }
+                      </span>
+                      <span class="font-bold tabular-nums">
+                        {{ payment.appliedAmount | currency: card.currency : 'symbol' : moneyDigits(card.currency, payment.appliedAmount) : locale() }}
+                      </span>
+                    </li>
+                  }
+                </ul>
+              </section>
+            }
+
+            <p class="m-0 text-[13px] text-ig-muted">{{ t('accounts.statement.transferNote') }}</p>
+          }
+        }
+      }
+    }
+  </div>
+</div>

@@ -112,6 +112,8 @@ export class CategoryPanelComponent {
   protected readonly nameLength = computed(() => this.formValue().name?.length ?? 0);
   /** El nombre no se puede cambiar porque la categoría ya tiene movimientos. */
   protected readonly nameLocked = computed(() => this.loaded()?.hasTransactions === true);
+  /** Categoría de sistema: no se renombra ni se desactiva; solo se edita su descripción. */
+  protected readonly isSystem = computed(() => this.loaded()?.code != null);
   protected readonly descriptionLength = computed(() => this.formValue().description?.length ?? 0);
 
   constructor() {
@@ -259,7 +261,7 @@ export class CategoryPanelComponent {
         this.loaded.set(category);
         this.categoryForm.reset({ name: category.name, description: category.description, type: category.type });
         // Con movimientos el backend ya no deja renombrarla; el nombre se envía igual al guardar.
-        if (category.hasTransactions) {
+        if (category.hasTransactions || category.code !== null) {
           this.categoryForm.controls.name.disable({ emitEvent: false });
         }
         // El backend solo edita categorías activas: una desactivada se consulta y se puede reactivar.

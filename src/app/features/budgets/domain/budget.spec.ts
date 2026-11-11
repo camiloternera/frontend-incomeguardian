@@ -5,6 +5,7 @@ import {
   blocksOf,
   daysLeftInMonth,
   hasBudget,
+  installmentPurchases,
   parseMonth,
   shiftMonth,
   totalPercent,
@@ -23,6 +24,10 @@ function row(overrides: Partial<BudgetRow>): BudgetRow {
     percentUsed: 40,
     recurringAmount: null,
     source: 'recurring',
+    monthAmount: null,
+    installmentsRaise: 0,
+    installmentsSpent: 0,
+    installments: [],
     ...overrides,
   };
 }
@@ -46,8 +51,8 @@ describe('usageOf y barPercent', () => {
 
 describe('totalPercent', () => {
   it('redondea y no divide por cero', () => {
-    expect(totalPercent({ currency: 'COP', budget: 3490000, spent: 2368100, available: 1121900 })).toBe(68);
-    expect(totalPercent({ currency: 'COP', budget: 0, spent: 10, available: -10 })).toBeNull();
+    expect(totalPercent({ currency: 'COP', budget: 3490000, spent: 2368100, available: 1121900, installmentsSpent: 0 })).toBe(68);
+    expect(totalPercent({ currency: 'COP', budget: 0, spent: 10, available: -10, installmentsSpent: 0 })).toBeNull();
   });
 });
 
@@ -59,8 +64,8 @@ describe('blocksOf', () => {
       isClosed: false,
       rows: [row({ categoryId: 8, currency: 'USD' }), row({ categoryId: 1 }), row({ categoryId: 2 })],
       totals: [
-        { currency: 'USD', budget: 100, spent: 40, available: 60 },
-        { currency: 'COP', budget: 200, spent: 80, available: 120 },
+        { currency: 'USD', budget: 100, spent: 40, available: 60, installmentsSpent: 0 },
+        { currency: 'COP', budget: 200, spent: 80, available: 120, installmentsSpent: 0 },
       ],
     };
 
@@ -98,5 +103,25 @@ describe('meses', () => {
     expect(parseMonth('2026-10')).toEqual({ year: 2026, month: 10 });
     expect(parseMonth('2026-00')).toBeNull();
     expect(shiftMonth({ year: 2026, month: 1 }, -1)).toEqual({ year: 2025, month: 12 });
+  });
+});
+
+describe('installmentPurchases', () => {
+  it('solo cuenta las compras a más de una cuota', () => {
+    const installment = (transactionId: number, installments: number) => ({
+      transactionId,
+      description: null,
+      number: 1,
+      installments,
+      accountId: 9,
+      accountName: 'Visa',
+      purchaseDate: '2026-11-03',
+      amount: 1000,
+      budgetAdjustment: 0,
+    });
+
+    const purchases = installmentPurchases({ installments: [installment(1, 1), installment(2, 3), installment(3, 12)] });
+
+    expect(purchases.map((item) => item.transactionId)).toEqual([2, 3]);
   });
 });

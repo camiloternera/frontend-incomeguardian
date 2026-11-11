@@ -4,6 +4,8 @@ import { accountsRoutes } from '../accounts.routes';
 import { Account, AccountDraft } from '../domain/account';
 import { AccountError, AccountErrorCode } from '../domain/account-error';
 import { AccountRepository } from '../domain/account.repository';
+import { CardStatement } from '../domain/card-statement';
+import { CardMonth } from '../domain/credit-card-calendar';
 
 /** Repositorio en memoria para los tests de presentation; `failWith` fuerza el siguiente error. */
 export class FakeAccountRepository extends AccountRepository {
@@ -11,6 +13,14 @@ export class FakeAccountRepository extends AccountRepository {
     {
       id: 5,
       name: 'Visa 4417',
+      // Cuenta normal con saldo negativo, como antes de las tarjetas; los tests de tarjetas agregan las suyas.
+      kind: 'standard',
+      creditLimit: null,
+      statementDay: null,
+      paymentDay: null,
+      availableCredit: null,
+      nextStatementDate: null,
+      nextPaymentDueDate: null,
       initialBalance: -250000,
       currentBalance: -250000,
       currency: 'COP',
@@ -23,6 +33,13 @@ export class FakeAccountRepository extends AccountRepository {
     {
       id: 2,
       name: 'Bancolombia',
+      kind: 'standard',
+      creditLimit: null,
+      statementDay: null,
+      paymentDay: null,
+      availableCredit: null,
+      nextStatementDate: null,
+      nextPaymentDueDate: null,
       initialBalance: 1250000,
       currentBalance: 1250000,
       currency: 'COP',
@@ -35,6 +52,13 @@ export class FakeAccountRepository extends AccountRepository {
     {
       id: 8,
       name: 'Wise',
+      kind: 'standard',
+      creditLimit: null,
+      statementDay: null,
+      paymentDay: null,
+      availableCredit: null,
+      nextStatementDate: null,
+      nextPaymentDueDate: null,
       initialBalance: 320.5,
       currentBalance: 320.5,
       currency: 'USD',
@@ -45,8 +69,27 @@ export class FakeAccountRepository extends AccountRepository {
       updatedAt: '2026-10-02T00:00:00Z',
     },
   ];
+  /** Extracto que devuelve `statement`, con el mes pedido. */
+  statementResult: CardStatement = {
+    accountId: 5,
+    month: { year: 2026, month: 11 },
+    statementDay: 15,
+    periodStart: '2026-10-16',
+    periodEnd: '2026-11-15',
+    paymentDueDate: '2026-12-02',
+    total: 250000,
+    paymentsTotal: 0,
+    balanceDue: 250000,
+    status: 'open',
+    openingDebt: 250000,
+    items: [],
+    payments: [],
+    previous: null,
+    next: null,
+  };
   failWith: AccountError | null = null;
   lastDraft: AccountDraft | null = null;
+  lastStatementMonth: CardMonth | undefined = undefined;
 
   list(): Observable<Account[]> {
     return this.respond(() => [...this.accounts]);
@@ -81,6 +124,11 @@ export class FakeAccountRepository extends AccountRepository {
     });
   }
 
+  statement(id: number, month?: CardMonth): Observable<CardStatement> {
+    this.lastStatementMonth = month;
+    return this.respond(() => ({ ...this.statementResult, accountId: id, month: month ?? this.statementResult.month }));
+  }
+
   private fromDraft(
     id: number,
     draft: AccountDraft,
@@ -90,6 +138,9 @@ export class FakeAccountRepository extends AccountRepository {
       id,
       ...draft,
       currentBalance: draft.initialBalance,
+      availableCredit: draft.creditLimit === null ? null : draft.creditLimit + draft.initialBalance,
+      nextStatementDate: null,
+      nextPaymentDueDate: null,
       ...rest,
     };
   }

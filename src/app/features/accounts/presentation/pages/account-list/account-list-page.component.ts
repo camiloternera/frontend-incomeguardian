@@ -1,15 +1,32 @@
-import { CurrencyPipe } from '@angular/common';
+import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, ElementRef, HostListener, computed, inject, signal } from '@angular/core';
 import { RouterLink, RouterOutlet } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
-import { LucideBan, LucideEllipsis, LucidePencil, LucidePlus, LucideSearch } from '@lucide/angular';
+import {
+  LucideBan,
+  LucideCreditCard,
+  LucideEllipsis,
+  LucideFileText,
+  LucidePencil,
+  LucidePlus,
+  LucideSearch,
+} from '@lucide/angular';
 import { finalize } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { LanguageService } from '@core/i18n/language.service';
 import { ThemeService } from '@core/theme/theme.service';
 import { PaginationComponent } from '@shared/ui/pagination.component';
 import { ListAccountsUseCase } from '../../../application/account-use-cases';
-import { Account, isSelectableCurrency, matchesAccount, totalsByCurrency } from '../../../domain/account';
+import {
+  Account,
+  cardDebt,
+  creditUsage,
+  isCreditCard,
+  isSelectableCurrency,
+  matchesAccount,
+  positionsByCurrency,
+  totalsByCurrency,
+} from '../../../domain/account';
 import { AccountError } from '../../../domain/account-error';
 import { AccountWorkspace } from '../../account-workspace';
 import { moneyDigits as balanceDigits } from '@shared/money/money-format';
@@ -26,12 +43,15 @@ export const ACCOUNT_PAGE_SIZE = 5;
   selector: 'app-account-list-page',
   imports: [
     CurrencyPipe,
+    DatePipe,
     RouterLink,
     RouterOutlet,
     TranslocoDirective,
     PaginationComponent,
     LucideBan,
+    LucideCreditCard,
     LucideEllipsis,
+    LucideFileText,
     LucidePencil,
     LucidePlus,
     LucideSearch,
@@ -54,6 +74,14 @@ export class AccountListPageComponent {
   /** Misma regla que el panel: solo se edita una cuenta activa en una moneda admitida. */
   protected readonly isEditable = (account: Account): boolean =>
     account.isActive && isSelectableCurrency(account.currency);
+  protected readonly isCreditCard = isCreditCard;
+  protected readonly cardDebt = cardDebt;
+  /** Porcentaje del cupo usado para la barra, de 0 a 100; null si la tarjeta no tiene cupo. */
+  protected readonly usagePercent = (account: Account): number | null => {
+    const usage = creditUsage(account);
+
+    return usage === null ? null : Math.round(usage * 100);
+  };
 
   protected readonly accounts = this.workspace.accounts;
   protected readonly notice = this.workspace.notice;
@@ -75,6 +103,11 @@ export class AccountListPageComponent {
 
   /** Saldos de las cuentas activas por moneda; no dependen de la pestaña ni de la búsqueda. */
   protected readonly totals = computed(() => totalsByCurrency(this.accounts() ?? []));
+  /** Con alguna tarjeta activa, los totales separan lo que se tiene de lo que se debe. */
+  protected readonly hasCards = computed(() =>
+    (this.accounts() ?? []).some((account) => account.isActive && isCreditCard(account)),
+  );
+  protected readonly positions = computed(() => positionsByCurrency(this.accounts() ?? []));
 
   private readonly matching = computed(() =>
     (this.accounts() ?? []).filter((account) => matchesAccount(account, this.query())),

@@ -16,7 +16,8 @@
       "lastDay": "Hoy es el último día del mes",
       "ended": "Este mes ya terminó",
       "closed": "Mes cerrado",
-      "closedNotice": "Este mes está cerrado: sus topes quedan como referencia y no se pueden cambiar."
+      "closedNotice": "Este mes está cerrado: sus topes quedan como referencia y no se pueden cambiar.",
+      "future": "Mes futuro: solo consulta"
     },
     "currency": {
       "label": "Moneda",
@@ -30,7 +31,8 @@
       "spent": "Gastado",
       "available": "Disponible",
       "usedBefore": "Usaste",
-      "usedAfter": "de lo planeado"
+      "usedAfter": "de lo planeado",
+      "installmentsSpent": "De eso, en compras a cuotas: {{amount}}"
     },
     "mobile": {
       "availableOf": "Disponible de {{budget}}",
@@ -53,7 +55,8 @@
       "recurring": "Cada mes",
       "month": "Solo este mes",
       "none": "Sin tope",
-      "paused": "Pausado solo este mes"
+      "paused": "Pausado solo este mes",
+      "raisedByInstallments": "Tope del mes · subido por cuotas"
     },
     "usage": {
       "paused": "Pausado este mes",
@@ -77,14 +80,18 @@
       "title": "Todavía no tienes topes",
       "body": "Define cuánto quieres gastar en cada categoría. El tope se repite cada mes y puedes ajustarlo para un mes en particular.",
       "action": "Agregar el primer tope",
-      "closedTitle": "No hubo topes en {{month}}"
+      "closedTitle": "No hubo topes en {{month}}",
+      "futureTitle": "Aún no hay topes ni cuotas en {{month}}",
+      "futureBody": "Los meses futuros son de solo consulta. Aquí verás las cuotas de tus compras con tarjeta que caen en este mes."
     },
     "notice": {
       "saved": "Guardaste el tope de {{name}}.",
       "removed": "Quitaste el tope de {{name}}.",
       "reset": "{{name}} volvió al tope recurrente.",
       "dismiss": "Cerrar"
-    }
+    },
+    "installmentsChip": "{{count}} en cuotas",
+    "view": "Ver tope de {{name}}"
   },
   "form": {
     "newTitle": "Nuevo tope",
@@ -96,7 +103,8 @@
     "backToList": "Volver al presupuesto",
     "readOnly": {
       "closed": "Este mes está cerrado: sus topes no se pueden cambiar. Reábrelo para editarlos.",
-      "inactive": "La categoría está desactivada. Reactívala en Categorías para cambiar su tope."
+      "inactive": "La categoría está desactivada. Reactívala en Categorías para cambiar su tope.",
+      "future": "Este mes todavía no empieza: puedes ver su tope y las cuotas que ya caen en él, pero no cambiarlo."
     },
     "currency": "Moneda",
     "currencyHelp": "Solo cuenta lo que gastes desde cuentas en esta moneda.",
@@ -138,5 +146,17 @@
     "BUDGET_CATEGORY_REQUIRED": "Elige una categoría.",
     "PERIOD_INVALID": "Ese mes no es válido.",
     "PERIOD_CLOSED": "Este mes está cerrado: sus topes no se pueden cambiar."
+  },
+  "detail": {
+    "capTitle": "Tope de {{month}}",
+    "capRecurring": "Tope recurrente",
+    "capInstallment": "Cuota {{number}}/{{total}} de {{description}}",
+    "capTotal": "Tope del mes",
+    "spentTitle": "Lo que cuenta este mes",
+    "loading": "Cargando los gastos del mes…",
+    "installmentMeta": "Cuota {{number}} de {{total}} · {{account}}",
+    "singleMeta": "1 cuota · {{account}}",
+    "noDescription": "Sin descripción",
+    "nothingSpent": "Todavía no hay gastos en esta categoría este mes."
   }
 }

@@ -8,6 +8,7 @@ import { BudgetFakes, fakeBudgetsRoutes, sampleSummary } from '../../budget-repo
 
 const CURRENT: BudgetMonth = monthOfDay(todayInBudgetZone());
 const PREVIOUS = shiftMonth(CURRENT, -1);
+const NEXT = shiftMonth(CURRENT, 1);
 
 describe('BudgetPanelComponent', () => {
   let fakes: BudgetFakes;
@@ -218,5 +219,52 @@ describe('BudgetPanelComponent', () => {
     const { element } = await open('/budgets/99/COP');
 
     expect(query(element, 'budget-not-found')).toBeTruthy();
+  });
+  it('shows what counts this month below the form', async () => {
+    fakes.movements.movements = [
+      { transactionId: 7, description: 'Mercado', accountName: 'Bancolombia', date: '2026-11-03T15:00:00Z', amount: 30000 },
+    ];
+    const { element } = await open('/budgets/1/COP');
+
+    expect(query(element, 'budget-month-detail')).toBeTruthy();
+    expect(fakes.movements.requested).toEqual([{ month: CURRENT, key: { categoryId: 1, currency: 'COP' }, type: 'expense' }]);
+    expect(text(element, 'budget-spent-lines')).toContain('Mercado');
+  });
+
+  it('does not show the month detail while adding a new limit', async () => {
+    const { element } = await open('/budgets/new');
+
+    expect(query(element, 'budget-month-detail')).toBeNull();
+  });
+  it('is view-only in a future month and still shows what counts in it', async () => {
+    fakes.budgets.summaries[formatMonthKey(NEXT)] = sampleSummary(NEXT);
+    const { element } = await open(`/budgets/1/COP?month=${formatMonthKey(NEXT)}`);
+
+    expect(text(element, 'budget-read-only')).toContain("This month hasn't started yet");
+    expect(element.querySelector('form')).toBeNull();
+    expect(query(element, 'budget-month-detail')).toBeTruthy();
+    expect(fakes.movements.requested).toEqual([{ month: NEXT, key: { categoryId: 1, currency: 'COP' }, type: 'expense' }]);
+  });
+
+  it('is view-only when adding a limit in a future month', async () => {
+    const { element } = await open(`/budgets/new?month=${formatMonthKey(NEXT)}`);
+
+    expect(text(element, 'budget-read-only')).toContain("This month hasn't started yet");
+    expect(element.querySelector('form')).toBeNull();
+  });
+
+  it('says so when the category is not in a future month', async () => {
+    fakes.budgets.summaries[formatMonthKey(NEXT)] = sampleSummary(NEXT);
+    const { element } = await open(`/budgets/99/COP?month=${formatMonthKey(NEXT)}`);
+
+    expect(query(element, 'budget-not-found')).toBeTruthy();
+    expect(query(element, 'budget-read-only')).toBeNull();
+  });
+
+  it('keeps a closed future month as closed', async () => {
+    fakes.budgets.summaries[formatMonthKey(NEXT)] = { ...sampleSummary(NEXT), isClosed: true };
+    const { element } = await open(`/budgets/1/COP?month=${formatMonthKey(NEXT)}`);
+
+    expect(text(element, 'budget-read-only')).toContain('This month is closed');
   });
 });

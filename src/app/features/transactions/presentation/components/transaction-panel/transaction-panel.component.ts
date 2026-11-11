@@ -1,5 +1,15 @@
-import { formatDate } from '@angular/common';
-import { Component, ElementRef, afterNextRender, computed, inject, signal, viewChild } from '@angular/core';
+import { DatePipe, formatDate } from '@angular/common';
+import {
+  Component,
+  ElementRef,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
@@ -12,10 +22,23 @@ import {
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { LucideCircleAlert, LucideLock, LucidePlus, LucideX } from '@lucide/angular';
-import { Observable, Subject, Subscription, catchError, finalize, map, merge, of, startWith, switchMap } from 'rxjs';
+import {
+  Observable,
+  Subject,
+  Subscription,
+  catchError,
+  debounceTime,
+  distinctUntilChanged,
+  finalize,
+  map,
+  merge,
+  of,
+  startWith,
+  switchMap,
+} from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { LanguageService } from '@core/i18n/language.service';
-import { LockedDateNoteComponent, PeriodOverlaysComponent } from '@features/periods';
+import { LockedDateNoteComponent, PeriodOverlaysComponent, ReopenPeriodButtonComponent } from '@features/periods';
 import { DatePickerComponent } from '@shared/ui/date-picker/date-picker.component';
 import { SelectComponent, SelectOption } from '@shared/ui/select/select.component';
 import {
@@ -23,9 +46,19 @@ import {
   GetExchangeRateUseCase,
   ListTransactionAccountOptionsUseCase,
   ListTransactionCategoryOptionsUseCase,
+  PreviewInstallmentsUseCase,
 } from '../../../application/transaction-use-cases';
 import {
+  CARD_PAYMENT_CATEGORY_CODE,
   ExchangeRate,
+  INSTALLMENTS_MAX,
+  INSTALLMENTS_MIN,
+  INSTALLMENT_CHOICES,
+  INTEREST_RATE_MAX,
+  INTEREST_RATE_MIN,
+  InstallmentPreview,
+  InstallmentPreviewRequest,
+  TransactionMonth,
   TRANSACTION_AMOUNT_MAX_DECIMALS,
   TRANSACTION_AMOUNT_MAX_INTEGER_DIGITS,
   TRANSACTION_DESCRIPTION_MAX_LENGTH,
@@ -39,13 +72,16 @@ import {
   isCrossCurrency,
   isTransactionType,
   isUsableAccount,
+  parseMonth,
   previewDestinationAmount,
+  roundAwayFromZero,
 } from '../../../domain/transaction';
 import {
   ACCOUNT_ERROR_CODES,
   AMOUNT_ERROR_CODES,
   CATEGORY_ERROR_CODES,
   DESCRIPTION_ERROR_CODES,
+  INSTALLMENT_ERROR_CODES,
   RATE_ERROR_CODES,
   TransactionError,
   TransactionErrorCode,
@@ -67,6 +103,25 @@ type RateState =
   | { status: 'ready'; date: string; rate: ExchangeRate }
   | { status: 'error'; date: string; message: string };
 
+/** Estado del plan de cuotas que calcula el backend para la compra que se está escribiendo. */
+type InstallmentPreviewState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'ready'; preview: InstallmentPreview }
+  | { status: 'error'; message: string };
+
+/** Montos sugeridos al pagar una tarjeta: lo que falta del extracto o toda la deuda. */
+type PayPreset = 'statement' | 'all';
+
+/** Pago de tarjeta que se abrió desde un extracto (`?payCard=&statement=&due=`). */
+interface CardPayment {
+  cardId: number;
+  /** Mes del extracto que se paga; null si no se indicó. */
+  statement: TransactionMonth | null;
+  /** Lo que falta por pagar del extracto, en la moneda de la tarjeta; null si no se indicó. */
+  due: number | null;
+}
+
 /** Mensaje a mostrar bajo un campo: clave de traducción y sus parámetros. */
 interface FieldMessage {
   key: string;
@@ -86,6 +141,7 @@ const TYPE_ORDER: readonly TransactionType[] = ['expense', 'income', 'transfer']
 @Component({
   selector: 'app-transaction-panel',
   imports: [
+    DatePipe,
     ReactiveFormsModule,
     RouterLink,
     TranslocoDirective,
@@ -97,6 +153,7 @@ const TYPE_ORDER: readonly TransactionType[] = ['expense', 'income', 'transfer']
     DatePickerComponent,
     LockedDateNoteComponent,
     PeriodOverlaysComponent,
+    ReopenPeriodButtonComponent,
   ],
   templateUrl: './transaction-panel.component.html',
 })
@@ -105,6 +162,8 @@ export class TransactionPanelComponent {
   private readonly getExchangeRate = inject(GetExchangeRateUseCase);
   private readonly listAccounts = inject(ListTransactionAccountOptionsUseCase);
   private readonly listCategories = inject(ListTransactionCategoryOptionsUseCase);
+  private readonly previewInstallments = inject(PreviewInstallmentsUseCase);
+  private readonly route = inject(ActivatedRoute);
   private readonly workspace = inject(TransactionWorkspace);
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly router = inject(Router);
@@ -116,6 +175,9 @@ export class TransactionPanelComponent {
   protected readonly typeOrder = TYPE_ORDER;
   protected readonly locale = inject(LanguageService).language;
   protected readonly descriptionMax = TRANSACTION_DESCRIPTION_MAX_LENGTH;
+  protected readonly installmentChoices = INSTALLMENT_CHOICES;
+  protected readonly installmentLimits = { min: INSTALLMENTS_MIN, max: INSTALLMENTS_MAX };
+  protected readonly rateLimits = { min: INTEREST_RATE_MIN, max: INTEREST_RATE_MAX };
   protected readonly amountParams = {
     decimals: TRANSACTION_AMOUNT_MAX_DECIMALS,
     digits: TRANSACTION_AMOUNT_MAX_INTEGER_DIGITS,
@@ -142,6 +204,16 @@ export class TransactionPanelComponent {
   protected readonly accountServerError = signal<TransactionErrorCode | null>(null);
   protected readonly categoryServerError = signal<TransactionErrorCode | null>(null);
   protected readonly descriptionServerError = signal<TransactionErrorCode | null>(null);
+  protected readonly installmentsServerError = signal<TransactionErrorCode | null>(null);
+  /** Mes cerrado de una cuota (distinto del de la fecha) que impidió guardar la compra. */
+  protected readonly closedInstallmentMonth = signal<TransactionMonth | null>(null);
+
+  /** Pago de tarjeta abierto desde un extracto; null en un movimiento normal. */
+  protected readonly cardPayment = signal<CardPayment | null>(null);
+  /** Monto sugerido elegido; se suelta en cuanto la persona escribe otro monto. */
+  protected readonly payPreset = signal<PayPreset | null>(null);
+  /** Texto que puso el monto sugerido, para saber si la persona lo cambió después. */
+  private presetText: string | null = null;
 
   protected readonly form = this.formBuilder.group({
     amount: ['', amountValidator],
@@ -153,6 +225,14 @@ export class TransactionPanelComponent {
     fromAccountId: this.formBuilder.control<number | null>(null),
     toAccountId: this.formBuilder.control<number | null>(null),
     date: [todayInputDate(), [Validators.required, notInFuture]],
+    /** Cuotas de un gasto con tarjeta; 1 en cualquier otro caso. */
+    installments: this.formBuilder.control(1),
+    /** «Otra»: número de cuotas escrito a mano. */
+    customInstallments: ['', customInstallmentsValidator],
+    /** Si la compra a cuotas cobra interés. */
+    withInterest: this.formBuilder.control(false),
+    /** Tasa efectiva anual (%) cuando hay interés. */
+    interestRate: ['', interestRateValidator],
   });
 
   protected readonly formValue = toSignal(this.form.valueChanges.pipe(map(() => this.form.getRawValue())), {
@@ -194,9 +274,17 @@ export class TransactionPanelComponent {
   );
 
   /** Opciones del selector de categoría: solo las activas del tipo, sin opción vacía. */
-  protected readonly categoryOptions = computed<SelectOption<number>[]>(() =>
-    this.categories().map((category) => ({ value: category.id, label: category.name })),
-  );
+  protected readonly categoryOptions = computed<SelectOption<number>[]>(() => {
+    // Las categorías de sistema se nombran por su código, en el idioma activo.
+    this.locale();
+
+    return this.categories().map((category) => ({
+      value: category.id,
+      label: category.code
+        ? this.transloco.translate(`transactions.systemCategories.${category.code}`)
+        : category.name,
+    }));
+  });
 
   /** Mensaje del fallo de la TRM, si lo hay. */
   protected readonly rateMessage = computed(() => {
@@ -245,6 +333,25 @@ export class TransactionPanelComponent {
     const value = parseAmount(this.formValue().amount);
 
     return Number.isFinite(value) && value > 0 ? value : null;
+  });
+
+  /** Lo que llega a la cuenta destino de una transferencia entre monedas, sin formato. */
+  private readonly previewAmount = computed(() => {
+    const state = this.rateState();
+    const from = this.account();
+    const to = this.destination();
+    const amount = this.amount();
+
+    if (state.status !== 'ready' || !this.crossCurrency() || !from || !to || amount === null) {
+      return null;
+    }
+
+    return previewDestinationAmount(
+      amount,
+      from.currency as TransactionCurrency,
+      to.currency as TransactionCurrency,
+      state.rate.rate,
+    );
   });
 
   /** Vista previa de lo que llega a la cuenta destino, ya formateada. */
@@ -308,8 +415,179 @@ export class TransactionPanelComponent {
     () =>
       !this.isSubmitting() &&
       !this.dateLocked() &&
-      (!this.crossCurrency() || this.rateState().status === 'ready'),
+      (!this.crossCurrency() || this.rateState().status === 'ready') &&
+      (!this.isCardExpense() || this.interestRate() !== undefined),
   );
+
+  /** Un gasto con tarjeta: puede ser a cuotas y muestra el cupo que queda. */
+  protected readonly isCardExpense = computed(() => this.type() === 'expense' && this.account()?.isCreditCard === true);
+
+  /** Tasa escrita, si aplica y es válida; null sin interés. `undefined` si falta o no es válida. */
+  private readonly interestRate = computed<number | null | undefined>(() => {
+    const value = this.formValue();
+
+    if (!value.withInterest || value.installments <= 1) {
+      return null;
+    }
+
+    const rate = parseAmount(value.interestRate);
+
+    return value.interestRate.trim() && Number.isFinite(rate) && this.form.controls.interestRate.valid ? rate : undefined;
+  });
+
+  /** Lo que se le pide al backend para calcular el plan; null si aún falta algún dato válido. */
+  private readonly previewRequest = computed<InstallmentPreviewRequest | null>(() => {
+    const account = this.account();
+    const amount = this.amount();
+    const value = this.formValue();
+    const rate = this.interestRate();
+
+    if (!this.isCardExpense() || !account || amount === null || !value.date || value.date > todayInputDate()) {
+      return null;
+    }
+
+    if (rate === undefined || value.installments < INSTALLMENTS_MIN || value.installments > INSTALLMENTS_MAX) {
+      return null;
+    }
+
+    return {
+      fromAccountId: account.id,
+      amount,
+      date: toUtcIso(value.date),
+      installments: value.installments,
+      annualInterestRate: rate,
+      categoryId: value.categoryId,
+    };
+  });
+
+  protected readonly installmentPreview = signal<InstallmentPreviewState>({ status: 'idle' });
+
+  /** Nombre de la categoría elegida, para el aviso de los topes que subirán. */
+  protected readonly categoryName = computed(() => {
+    const id = this.formValue().categoryId;
+
+    return this.categoryOptions().find((option) => option.value === id)?.label ?? null;
+  });
+
+  /** Cupo disponible de la tarjeta antes y después de la compra (la compra baja todo el capital). */
+  protected readonly creditAfterPurchase = computed(() => {
+    const account = this.account();
+    const amount = this.amount();
+
+    if (!this.isCardExpense() || !account || account.availableCredit === null) {
+      return null;
+    }
+
+    const after = amount === null ? null : account.availableCredit - amount;
+
+    return {
+      name: account.name,
+      before: formatMoney(account.availableCredit, account.currency, this.locale()),
+      after: after === null ? null : formatMoney(after, account.currency, this.locale()),
+      over: after !== null && after < 0,
+    };
+  });
+
+  /** Filtros del listado que el panel conserva al cerrarse. */
+  private readonly queryParams = toSignal(this.route.queryParams, { initialValue: {} as Record<string, unknown> });
+
+  /** Al cerrar, un pago de tarjeta vuelve a su extracto; cualquier otro movimiento, al listado. */
+  protected readonly closeLink = computed(() => {
+    const payment = this.cardPayment();
+
+    return payment ? ['/accounts', payment.cardId, 'statement'] : [LIST_URL];
+  });
+  protected readonly closeQuery = computed(() => {
+    const payment = this.cardPayment();
+
+    if (!payment) {
+      return this.queryParams();
+    }
+
+    return payment.statement ? { month: `${payment.statement.year}-${String(payment.statement.month).padStart(2, '0')}` } : {};
+  });
+
+  /** La tarjeta que se paga, si el panel se abrió desde un extracto. */
+  protected readonly payingCard = computed(() => {
+    const payment = this.cardPayment();
+
+    return payment ? this.findAccount(payment.cardId) : null;
+  });
+
+  /** Deuda total de la tarjeta que se paga, en positivo y en su moneda. */
+  private readonly cardDebt = computed(() => {
+    const card = this.payingCard();
+
+    return card?.currentBalance != null && card.currentBalance < 0 ? -card.currentBalance : 0;
+  });
+
+  /** Montos sugeridos, en la moneda de la tarjeta; solo los que tienen algo por pagar. */
+  protected readonly payPresets = computed(() => {
+    const card = this.payingCard();
+    const due = this.cardPayment()?.due ?? null;
+
+    if (!card || this.type() !== 'transfer') {
+      return [];
+    }
+
+    const presets: { id: PayPreset; amount: number }[] = [];
+
+    if (due !== null && due > 0) {
+      presets.push({ id: 'statement', amount: due });
+    }
+    if (this.cardDebt() > 0) {
+      presets.push({ id: 'all', amount: this.cardDebt() });
+    }
+
+    return presets.map((preset) => ({ ...preset, text: formatMoney(preset.amount, card.currency, this.locale()) }));
+  });
+
+  /**
+   * Monto sugerido convertido a la moneda de la cuenta origen, que es la que se escribe. Entre monedas
+   * usa la TRM de la fecha del pago, la misma con la que el backend calcula lo que llega a la tarjeta.
+   */
+  private readonly presetSourceAmount = computed<number | null>(() => {
+    const preset = this.payPresets().find((item) => item.id === this.payPreset());
+    const from = this.account();
+    const card = this.payingCard();
+
+    if (!preset || !from || !card) {
+      return null;
+    }
+
+    if (from.currency === card.currency) {
+      return preset.amount;
+    }
+
+    const state = this.rateState();
+
+    if (state.status !== 'ready') {
+      return null;
+    }
+
+    return roundAwayFromZero(card.currency === 'USD' ? preset.amount * state.rate.rate : preset.amount / state.rate.rate);
+  });
+
+  /** Cómo quedan la cuenta origen y la deuda de la tarjeta después del pago. */
+  protected readonly paymentOutcome = computed(() => {
+    const from = this.account();
+    const card = this.payingCard();
+    const amount = this.amount();
+
+    if (!from || !card || amount === null || this.formValue().toAccountId !== card.id) {
+      return null;
+    }
+
+    const locale = this.locale();
+    const arriving = from.currency === card.currency ? amount : this.previewAmount();
+
+    return {
+      fromName: from.name,
+      fromAfter: from.currentBalance == null ? null : formatMoney(from.currentBalance - amount, from.currency, locale),
+      cardName: card.name,
+      debtAfter: arriving === null ? null : formatMoney(Math.max(0, this.cardDebt() - arriving), card.currency, locale),
+    };
+  });
 
   private categoriesRequest: Subscription | null = null;
 
@@ -329,7 +607,53 @@ export class TransactionPanelComponent {
       }
     });
 
+    controls.installments.valueChanges.subscribe(() => this.installmentsServerError.set(null));
+    controls.interestRate.valueChanges.subscribe(() => this.installmentsServerError.set(null));
+    controls.date.valueChanges.subscribe(() => this.closedInstallmentMonth.set(null));
+    controls.accountId.valueChanges.subscribe(() => this.closedInstallmentMonth.set(null));
+    controls.installments.valueChanges.subscribe(() => this.closedInstallmentMonth.set(null));
+    controls.customInstallments.valueChanges.subscribe((text) => {
+      const value = Number(text.trim());
+
+      if (text.trim() && Number.isInteger(value) && value >= INSTALLMENTS_MIN && value <= INSTALLMENTS_MAX) {
+        controls.installments.setValue(value);
+      }
+    });
+    // Si la persona cambia el monto sugerido, la sugerencia deja de estar elegida.
+    controls.amount.valueChanges.subscribe((text) => {
+      if (this.presetText !== null && text !== this.presetText) {
+        this.payPreset.set(null);
+        this.presetText = null;
+      }
+    });
+
     this.loadAccounts();
+
+    // El plan de cuotas lo calcula el backend; se pide cuando los datos dejan de cambiar.
+    toObservable(this.previewRequest)
+      .pipe(
+        debounceTime(300),
+        distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b)),
+        switchMap((request) => (request === null ? of<InstallmentPreviewState>({ status: 'idle' }) : this.fetchPreview(request))),
+        takeUntilDestroyed(),
+      )
+      .subscribe((state) => this.installmentPreview.set(state));
+
+    // Al elegir un monto sugerido se escribe en el campo, ya convertido si hace falta la TRM.
+    effect(() => {
+      const amount = this.presetSourceAmount();
+
+      if (amount === null) {
+        return;
+      }
+
+      untracked(() => {
+        const text = String(amount);
+        this.presetText = text;
+        controls.amount.setValue(text);
+        controls.amount.markAsDirty();
+      });
+    });
 
     // Se pide la TRM al cambiar la fecha o el par de monedas, y al reintentar.
     merge(toObservable(this.rateDate), this.rateRetries.pipe(map(() => this.rateDate())))
@@ -346,6 +670,9 @@ export class TransactionPanelComponent {
         const type = params.get('type');
         this.open(isTransactionType(type) ? type : 'expense');
       });
+
+    // Un pago de tarjeta llega desde el extracto con la tarjeta, el mes y lo que falta por pagar.
+    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((query) => this.openCardPayment(query));
 
     // Lleva el foco al título para que el lector de pantalla anuncie el panel recién abierto.
     afterNextRender(() => this.heading()?.nativeElement.focus());
@@ -429,6 +756,60 @@ export class TransactionPanelComponent {
       : { key: `transactions.form.categoryRequired.${this.type()}` };
   }
 
+  protected installmentsError(): FieldMessage | null {
+    const server = this.installmentsServerError();
+
+    if (server) {
+      return this.codeMessage(server);
+    }
+
+    const control = this.form.controls.customInstallments;
+
+    return control.touched && control.invalid
+      ? { key: 'transactions.form.installments.outOfRange', params: this.installmentLimits }
+      : null;
+  }
+
+  protected interestRateError(): FieldMessage | null {
+    const control = this.form.controls.interestRate;
+    const value = this.formValue();
+
+    if (!value.withInterest || value.installments <= 1 || !control.touched) {
+      return null;
+    }
+
+    if (!value.interestRate.trim()) {
+      return { key: 'transactions.form.installments.rateRequired' };
+    }
+
+    return control.invalid ? { key: 'transactions.form.installments.rateInvalid', params: this.rateLimits } : null;
+  }
+
+  /** Elige un número de cuotas de las opciones rápidas. */
+  protected chooseInstallments(count: number): void {
+    this.form.controls.customInstallments.setValue('', { emitEvent: false });
+    this.form.controls.customInstallments.markAsUntouched();
+    this.form.controls.installments.setValue(count);
+  }
+
+  protected setInterest(withInterest: boolean): void {
+    this.form.controls.withInterest.setValue(withInterest);
+  }
+
+  protected choosePreset(preset: PayPreset): void {
+    this.payPreset.set(preset);
+  }
+
+  /** Mes `{year, month}` como fecha `YYYY-MM-01` para formatearlo con el pipe en UTC. */
+  protected monthDate(month: { year: number; month: number }): string {
+    return `${month.year}-${String(month.month).padStart(2, '0')}-01`;
+  }
+
+  /** Monto en la moneda de la cuenta elegida, ya formateado. */
+  protected money(amount: number, currency = this.currency()): string {
+    return formatMoney(amount, currency, this.locale());
+  }
+
   protected dateError(): FieldMessage | null {
     const control = this.form.controls.date;
 
@@ -471,6 +852,7 @@ export class TransactionPanelComponent {
         // que luego rechace con TRANSACTION_CATEGORY_TYPE_MISMATCH. Las desactivadas no se ofrecen.
         this.categories.set(categories.filter((category) => category.isActive && categoryAppliesTo(category, type)));
         this.categoriesStatus.set('ready');
+        this.preselectCardPaymentCategory();
       },
       error: () => this.categoriesStatus.set('error'),
     });
@@ -494,13 +876,13 @@ export class TransactionPanelComponent {
   }
 
   protected close(): void {
-    void this.router.navigate([LIST_URL], { queryParamsHandling: 'preserve' });
+    void this.router.navigate(this.closeLink(), { queryParams: this.closeQuery() });
   }
 
   protected submit(): void {
     this.formError.set('');
 
-    if (this.form.invalid) {
+    if (this.form.invalid || (this.isCardExpense() && this.interestRate() === undefined)) {
       this.form.markAllAsTouched();
       return;
     }
@@ -534,8 +916,18 @@ export class TransactionPanelComponent {
     switch (this.type()) {
       case 'income':
         return { ...base, type: 'income', categoryId: value.categoryId, toAccountId: value.accountId! };
-      case 'expense':
-        return { ...base, type: 'expense', categoryId: value.categoryId, fromAccountId: value.accountId! };
+      case 'expense': {
+        const installments = this.isCardExpense() ? value.installments : 1;
+
+        return {
+          ...base,
+          type: 'expense',
+          categoryId: value.categoryId,
+          fromAccountId: value.accountId!,
+          installments,
+          annualInterestRate: installments > 1 ? (this.interestRate() ?? null) : null,
+        };
+      }
       case 'transfer':
         return {
           ...base,
@@ -560,6 +952,8 @@ export class TransactionPanelComponent {
     this.accountServerError.set(null);
     this.categoryServerError.set(null);
     this.descriptionServerError.set(null);
+    this.installmentsServerError.set(null);
+    this.closedInstallmentMonth.set(null);
     controls.categoryId.setValue(null);
 
     if (previous !== 'transfer' && type === 'transfer' && controls.fromAccountId.value === null) {
@@ -578,6 +972,54 @@ export class TransactionPanelComponent {
     this.loadCategories();
   }
 
+  private fetchPreview(request: InstallmentPreviewRequest): Observable<InstallmentPreviewState> {
+    return this.previewInstallments.execute(request).pipe(
+      map((preview): InstallmentPreviewState => ({ status: 'ready', preview })),
+      catchError((error: unknown) => of<InstallmentPreviewState>({ status: 'error', message: this.messageOf(error) })),
+      startWith<InstallmentPreviewState>({ status: 'loading' }),
+    );
+  }
+
+  /** Lee el pago de tarjeta de la URL y llena destino, monto sugerido y descripción. */
+  private openCardPayment(query: { get(name: string): string | null }): void {
+    const cardId = Number(query.get('payCard'));
+
+    if (!query.get('payCard') || !Number.isInteger(cardId)) {
+      this.cardPayment.set(null);
+      return;
+    }
+
+    const due = Number(query.get('due'));
+    const statement = parseMonth(query.get('statement'));
+    const controls = this.form.controls;
+
+    this.cardPayment.set({ cardId, statement, due: query.get('due') && Number.isFinite(due) ? due : null });
+    controls.toAccountId.setValue(cardId);
+
+    if (!controls.description.value && statement) {
+      const month = formatDate(this.monthDate(statement), 'MMMM y', this.locale(), 'UTC');
+      controls.description.setValue(this.transloco.translate('transactions.form.pay.description', { month }));
+    }
+
+    this.payPreset.set(statement && query.get('due') ? 'statement' : 'all');
+    this.preselectCardPaymentCategory();
+  }
+
+  /** En un pago de tarjeta, elige la categoría de sistema de pago de tarjeta si existe y no hay otra elegida. */
+  private preselectCardPaymentCategory(): void {
+    const control = this.form.controls.categoryId;
+
+    if (!this.cardPayment() || this.type() !== 'transfer' || control.value !== null) {
+      return;
+    }
+
+    const category = this.categories().find((item) => item.code === CARD_PAYMENT_CATEGORY_CODE);
+
+    if (category) {
+      control.setValue(category.id);
+    }
+  }
+
   private fetchRate(date: string): Observable<RateState> {
     return this.getExchangeRate.execute(date).pipe(
       map((rate): RateState => ({ status: 'ready', date, rate })),
@@ -591,8 +1033,18 @@ export class TransactionPanelComponent {
     const code = error instanceof TransactionError ? error.code : null;
 
     if (code === TransactionErrorCode.PeriodClosed) {
-      // Otro dispositivo pudo cerrar el mes: la nota de la fecha lo explica y ofrece reabrirlo.
-      this.lockedNote()?.markLocked(this.form.controls.date.value);
+      const closed = error instanceof TransactionError ? error.closedMonth : null;
+      const dateMonth = this.form.controls.date.value.slice(0, 7);
+
+      if (closed && `${closed.year}-${String(closed.month).padStart(2, '0')}` !== dateMonth) {
+        // La fecha está abierta, pero una cuota cae en un mes cerrado.
+        this.closedInstallmentMonth.set(closed);
+      } else {
+        // Otro dispositivo pudo cerrar el mes: la nota de la fecha lo explica y ofrece reabrirlo.
+        this.lockedNote()?.markLocked(this.form.controls.date.value);
+      }
+    } else if (code && INSTALLMENT_ERROR_CODES.includes(code)) {
+      this.installmentsServerError.set(code);
     } else if (code && AMOUNT_ERROR_CODES.includes(code)) {
       this.amountServerError.set(code);
     } else if (code && ACCOUNT_ERROR_CODES.includes(code)) {
@@ -649,6 +1101,31 @@ function setRequired(control: AbstractControl, required: boolean): void {
   }
 
   control.updateValueAndValidity({ emitEvent: false });
+}
+
+/** «Otra» cantidad de cuotas: vacía, o un entero entre el mínimo y el máximo del backend. */
+function customInstallmentsValidator(control: AbstractControl<string>): ValidationErrors | null {
+  const text = control.value.trim();
+  const value = Number(text);
+
+  return !text || (Number.isInteger(value) && value >= INSTALLMENTS_MIN && value <= INSTALLMENTS_MAX)
+    ? null
+    : { installmentsOutOfRange: true };
+}
+
+/** Tasa EA: vacía (la exige la vista solo con interés), o un número entre 0 y 200 con hasta 2 decimales. */
+function interestRateValidator(control: AbstractControl<string>): ValidationErrors | null {
+  const text = control.value.trim();
+
+  if (!text) {
+    return null;
+  }
+
+  const value = parseAmount(text);
+
+  return /^\d+(?:[.,]\d{1,2})?$/.test(text) && value >= INTEREST_RATE_MIN && value <= INTEREST_RATE_MAX
+    ? null
+    : { rateInvalid: true };
 }
 
 /** Rechaza fechas posteriores a hoy: el backend no tiene TRM para ellas. */

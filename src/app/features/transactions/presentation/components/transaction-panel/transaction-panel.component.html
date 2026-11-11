@@ -13,17 +13,25 @@
         tabindex="-1"
         class="m-0 break-words text-[20px] font-bold tracking-[-0.02em] outline-none"
       >
-        {{ t('transactions.form.title.' + type()) }}
+        @if (payingCard(); as card) {
+          {{ t('transactions.form.pay.title', { name: card.name }) }}
+        } @else {
+          {{ t('transactions.form.title.' + type()) }}
+        }
       </h2>
       <p class="m-0 text-[13px] leading-normal text-ig-muted">
-        {{ t('transactions.form.subtitle.' + type()) }}
+        @if (cardPayment()?.statement; as month) {
+          {{ t('transactions.form.pay.subtitle', { month: (monthDate(month) | date: 'MMMM y' : 'UTC' : locale()) }) }}
+        } @else {
+          {{ t('transactions.form.subtitle.' + type()) }}
+        }
       </p>
     </div>
     <a
       data-testid="close-panel"
       class="-mr-2 -mt-2 inline-grid size-11 shrink-0 place-items-center rounded-lg text-ig-muted hover:bg-ig-surface-raised hover:text-ig-text focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
-      [routerLink]="listUrl"
-      queryParamsHandling="preserve"
+      [routerLink]="closeLink()"
+      [queryParams]="closeQuery()"
       [attr.aria-label]="t('transactions.form.close')"
     >
       <svg lucideX [size]="18" aria-hidden="true"></svg>
@@ -85,6 +93,30 @@
         </div>
       } @else {
         <form class="flex flex-col gap-6" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+          @if (payPresets().length) {
+            <fieldset data-testid="pay-presets" class="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
+              <legend class="mb-2 p-0 text-[13px] font-bold">{{ t('transactions.form.pay.howMuch') }}</legend>
+              <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                @for (preset of payPresets(); track preset.id) {
+                  <button
+                    type="button"
+                    [attr.data-testid]="'pay-preset-' + preset.id"
+                    class="flex min-h-14 flex-col items-start justify-center rounded-lg border px-3 py-2 text-left text-[13px] focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                    [class]="payPreset() === preset.id ? 'border-ig-accent bg-ig-surface text-ig-text' : 'border-ig-border bg-transparent text-ig-muted hover:text-ig-text'"
+                    [attr.aria-pressed]="payPreset() === preset.id"
+                    (click)="choosePreset(preset.id)"
+                  >
+                    <span>{{ t('transactions.form.pay.preset.' + preset.id) }}</span>
+                    <span class="text-[15px] font-bold tabular-nums text-ig-text">{{ preset.text }}</span>
+                  </button>
+                }
+              </div>
+              @if (crossCurrency() && payPreset() && rateState().status !== 'ready') {
+                <p class="m-0 text-[12px] text-ig-muted" role="status">{{ t('transactions.form.pay.waitingRate') }}</p>
+              }
+            </fieldset>
+          }
+
           <!-- Monto -->
           <div class="flex flex-col gap-2">
             <label class="text-[13px] font-bold" for="transaction-amount">{{
@@ -501,6 +533,252 @@
             (useToday)="useToday($event)"
           />
 
+          @if (isCardExpense()) {
+            <section
+              data-testid="installments"
+              class="flex flex-col gap-4 rounded-lg border border-ig-border bg-ig-surface p-4"
+              aria-labelledby="installments-title"
+            >
+              <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                <h3 id="installments-title" class="m-0 text-[15px] font-bold">{{ t('transactions.form.installments.title') }}</h3>
+                <span class="text-[12px] text-ig-muted">{{ t('transactions.form.installments.onlyCards') }}</span>
+              </div>
+
+              <div class="flex flex-wrap gap-2" role="radiogroup" [attr.aria-label]="t('transactions.form.installments.count')">
+                @for (count of installmentChoices; track count) {
+                  @let on = formValue().installments === count && !formValue().customInstallments.trim();
+                  <button
+                    type="button"
+                    role="radio"
+                    [attr.data-testid]="'installments-' + count"
+                    class="min-h-11 min-w-14 rounded-lg border px-4 text-[14px] tabular-nums focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                    [class]="on ? 'border-ig-accent bg-ig-accent font-bold text-ig-on-accent' : 'border-ig-border bg-ig-canvas text-ig-text hover:bg-ig-surface-raised'"
+                    [attr.aria-checked]="on"
+                    (click)="chooseInstallments(count)"
+                  >
+                    {{ count === 1 ? t('transactions.form.installments.one') : count }}
+                  </button>
+                }
+                <label
+                  class="flex min-h-11 items-center gap-2 rounded-lg border bg-ig-canvas px-3 text-[13px] text-ig-muted focus-within:border-ig-accent"
+                  [class]="installmentsError() ? 'border-ig-text' : formValue().customInstallments.trim() ? 'border-ig-accent' : 'border-ig-border'"
+                >
+                  {{ t('transactions.form.installments.other') }}
+                  <input
+                    data-testid="installments-custom"
+                    class="w-14 border-0 bg-transparent text-[16px] tabular-nums text-ig-text outline-none lg:text-[14px]"
+                    formControlName="customInstallments"
+                    type="text"
+                    inputmode="numeric"
+                    autocomplete="off"
+                    [placeholder]="t('transactions.form.installments.range', installmentLimits)"
+                    [attr.aria-label]="t('transactions.form.installments.otherLabel', installmentLimits)"
+                    [attr.aria-invalid]="installmentsError() !== null"
+                    [attr.aria-describedby]="installmentsError() ? 'installments-error' : null"
+                  />
+                </label>
+              </div>
+              @if (installmentsError(); as message) {
+                <p id="installments-error" data-testid="installments-error" class="m-0 text-[13px] leading-snug text-ig-text" role="alert">
+                  {{ t(message.key, message.params) }}
+                </p>
+              }
+
+              @if (formValue().installments > 1) {
+                <fieldset class="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
+                  <legend class="mb-2 p-0 text-[13px] font-bold">{{ t('transactions.form.installments.interest') }}</legend>
+                  <div class="grid grid-cols-2 gap-1 rounded-lg border border-ig-border bg-ig-canvas p-1">
+                    @for (option of [false, true]; track option) {
+                      <button
+                        type="button"
+                        [attr.data-testid]="option ? 'with-interest' : 'without-interest'"
+                        class="min-h-10 rounded-md border text-[14px] focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                        [class]="formValue().withInterest === option ? 'border-ig-border bg-ig-surface font-bold text-ig-text' : 'border-transparent bg-transparent text-ig-muted hover:text-ig-text'"
+                        [attr.aria-pressed]="formValue().withInterest === option"
+                        (click)="setInterest(option)"
+                      >
+                        {{ t(option ? 'transactions.form.installments.withInterest' : 'transactions.form.installments.withoutInterest') }}
+                      </button>
+                    }
+                  </div>
+                </fieldset>
+
+                @if (formValue().withInterest) {
+                  <div class="flex flex-col gap-2">
+                    <label class="text-[13px] font-bold" for="transaction-interest-rate">{{ t('transactions.form.installments.rateLabel') }}</label>
+                    <div
+                      class="flex min-h-12 items-center rounded-lg border bg-ig-canvas focus-within:border-ig-accent focus-within:outline-2 focus-within:outline-ig-accent focus-within:outline-offset-2 lg:min-h-11"
+                      [class]="interestRateError() ? 'border-ig-text' : 'border-ig-border'"
+                    >
+                      <input
+                        id="transaction-interest-rate"
+                        data-testid="transaction-interest-rate"
+                        class="min-h-11 w-full min-w-0 flex-1 border-0 bg-transparent px-3 text-[16px] tabular-nums text-ig-text outline-none lg:text-[14px]"
+                        formControlName="interestRate"
+                        type="text"
+                        inputmode="decimal"
+                        autocomplete="off"
+                        [attr.aria-invalid]="interestRateError() !== null"
+                        [attr.aria-describedby]="interestRateError() ? 'interest-rate-error interest-rate-help' : 'interest-rate-help'"
+                      />
+                      <span class="shrink-0 pr-3 text-[13px] text-ig-muted" aria-hidden="true">{{ t('transactions.form.installments.rateSuffix') }}</span>
+                    </div>
+                    @if (interestRateError(); as message) {
+                      <p id="interest-rate-error" data-testid="interest-rate-error" class="m-0 text-[13px] leading-snug text-ig-text" role="alert">
+                        {{ t(message.key, message.params) }}
+                      </p>
+                    }
+                    <p id="interest-rate-help" class="m-0 text-[12px] text-ig-muted">{{ t('transactions.form.installments.rateHelp') }}</p>
+                  </div>
+                }
+              }
+
+              @switch (installmentPreview().status) {
+                @case ('loading') {
+                  <p data-testid="installments-loading" class="m-0 text-[13px] text-ig-muted" role="status">
+                    {{ t('transactions.form.installments.calculating') }}
+                  </p>
+                }
+                @case ('error') {
+                  @if (installmentPreview(); as state) {
+                    @if (state.status === 'error') {
+                      <p data-testid="installments-preview-error" class="m-0 text-[13px]" role="alert">{{ state.message }}</p>
+                    }
+                  }
+                }
+                @case ('ready') {
+                  @if (installmentPreview(); as state) {
+                    @if (state.status === 'ready') {
+                      @let plan = state.preview;
+                      @let first = plan.schedule[0];
+                      @if (formValue().installments > 1) {
+                        <div data-testid="installments-plan" class="flex flex-col gap-2">
+                          <div class="flex items-baseline justify-between gap-4 text-[13px]">
+                            <p class="m-0 font-bold">{{ t('transactions.form.installments.plan') }}</p>
+                            <p class="m-0 font-bold tabular-nums">{{ plan.schedule.length }} × {{ money(plan.installmentAmount) }}</p>
+                          </div>
+                          <ol class="m-0 max-h-[196px] list-none overflow-y-auto rounded-lg border border-ig-border bg-ig-canvas p-0">
+                            @for (item of plan.schedule; track item.number) {
+                              <li class="grid grid-cols-[48px_1fr_auto] items-baseline gap-2 border-b border-ig-border px-3 py-2 text-[13px] tabular-nums last:border-b-0">
+                                <span class="text-ig-muted">{{ item.number }}/{{ plan.schedule.length }}</span>
+                                <span>
+                                  {{ monthDate(item) | date: 'MMM y' : 'UTC' : locale() }}
+                                  @if (item.interest > 0) {
+                                    <span class="text-ig-muted">
+                                      · {{ t('transactions.form.installments.split', { principal: money(item.principal), interest: money(item.interest) }) }}
+                                    </span>
+                                  }
+                                </span>
+                                <span class="text-right font-bold">{{ money(item.amount) }}</span>
+                              </li>
+                            }
+                          </ol>
+                          <dl class="m-0 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-[13px] tabular-nums">
+                            @if (first) {
+                              <dt class="text-ig-muted">{{ t('transactions.form.installments.firstStatement') }}</dt>
+                              <dd class="m-0 text-right">{{ first.statementDate | date: 'mediumDate' : 'UTC' : locale() }}</dd>
+                            }
+                            <dt class="text-ig-muted">{{ t('transactions.form.installments.totalInterest') }}</dt>
+                            <dd data-testid="installments-interest" class="m-0 text-right">{{ money(plan.totalInterest) }}</dd>
+                            <dt class="text-ig-muted">{{ t('transactions.form.installments.total') }}</dt>
+                            <dd data-testid="installments-total" class="m-0 text-right font-bold">{{ money(plan.totalAmount) }}</dd>
+                          </dl>
+                        </div>
+
+                        @if (plan.budgetAdjustments.length) {
+                          <div data-testid="budget-adjustments" class="flex flex-col gap-3 rounded-lg border border-ig-border bg-ig-surface-raised p-4">
+                            <div class="flex flex-col gap-1">
+                              <p class="m-0 text-[14px] font-bold">
+                                {{ t('transactions.form.installments.budgetTitle', { category: categoryName() ?? '', count: plan.budgetAdjustments.length }) }}
+                              </p>
+                              <p class="m-0 text-[13px] text-ig-muted">{{ t('transactions.form.installments.budgetBody') }}</p>
+                            </div>
+                            <table class="w-full border-collapse text-[13px] tabular-nums">
+                              <thead>
+                                <tr class="text-ig-muted">
+                                  <th scope="col" class="py-1 text-left font-medium">{{ t('transactions.form.installments.budgetMonth') }}</th>
+                                  <th scope="col" class="py-1 text-right font-medium">{{ t('transactions.form.installments.budgetNow') }}</th>
+                                  <th scope="col" class="py-1 text-right font-medium">{{ t('transactions.form.installments.budgetNew') }}</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                @for (adjustment of plan.budgetAdjustments.slice(0, 3); track adjustment.year + '-' + adjustment.month) {
+                                  <tr class="border-t border-ig-border">
+                                    <td class="py-1">{{ monthDate(adjustment) | date: 'MMM y' : 'UTC' : locale() }}</td>
+                                    <td class="py-1 text-right text-ig-muted">
+                                      {{ adjustment.currentAmount === null ? t('transactions.form.installments.noBudget') : money(adjustment.currentAmount, adjustment.currency) }}
+                                    </td>
+                                    <td class="py-1 text-right font-bold">{{ money(adjustment.newAmount, adjustment.currency) }}</td>
+                                  </tr>
+                                }
+                              </tbody>
+                            </table>
+                            @if (plan.budgetAdjustments.length > 3) {
+                              @let last = plan.budgetAdjustments[plan.budgetAdjustments.length - 1];
+                              <p class="m-0 text-[12px] text-ig-muted">
+                                {{
+                                  t('transactions.form.installments.budgetMore', {
+                                    count: plan.budgetAdjustments.length - 3,
+                                    month: (monthDate(last) | date: 'MMM y' : 'UTC' : locale())
+                                  })
+                                }}
+                              </p>
+                            }
+                          </div>
+                        }
+                      } @else if (first) {
+                        <p data-testid="installments-single" class="m-0 text-[13px] text-ig-muted">
+                          {{
+                            t('transactions.form.installments.single', {
+                              amount: money(plan.totalAmount),
+                              month: (monthDate(first) | date: 'MMMM y' : 'UTC' : locale()),
+                              date: (first.statementDate | date: 'd MMM' : 'UTC' : locale())
+                            })
+                          }}
+                        </p>
+                      }
+                    }
+                  }
+                }
+              }
+
+              @if (closedInstallmentMonth(); as closed) {
+                <div data-testid="installment-month-closed" class="flex flex-col items-start gap-2 rounded-lg border border-ig-border bg-ig-surface-raised px-4 py-3 text-[13px]" role="alert">
+                  <p class="m-0">{{ t('transactions.form.installments.closedMonth', { month: (monthDate(closed) | date: 'MMMM y' : 'UTC' : locale()) }) }}</p>
+                  <app-reopen-period-button [year]="closed.year" [month]="closed.month" />
+                </div>
+              }
+            </section>
+
+            @if (creditAfterPurchase(); as credit) {
+              <dl data-testid="credit-after" class="m-0 grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 rounded-lg border border-ig-border p-4 text-[13px] tabular-nums">
+                <dt class="text-ig-muted">{{ t('transactions.form.installments.available', { name: credit.name }) }}</dt>
+                <dd class="m-0 text-right">{{ credit.before }}</dd>
+                @if (credit.after) {
+                  <dt class="text-ig-muted">{{ t('transactions.form.installments.availableAfter') }}</dt>
+                  <dd class="m-0 text-right font-bold">{{ credit.after }}</dd>
+                }
+                @if (credit.over) {
+                  <dt class="col-span-2 text-[12px] font-bold">{{ t('transactions.form.installments.overLimit') }}</dt>
+                }
+              </dl>
+            }
+          }
+
+          @if (paymentOutcome(); as outcome) {
+            <dl data-testid="payment-outcome" class="m-0 grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 rounded-lg border border-ig-border p-4 text-[13px] tabular-nums">
+              @if (outcome.fromAfter) {
+                <dt class="text-ig-muted">{{ t('transactions.form.pay.fromAfter', { name: outcome.fromName }) }}</dt>
+                <dd class="m-0 text-right">{{ outcome.fromAfter }}</dd>
+              }
+              @if (outcome.debtAfter) {
+                <dt class="text-ig-muted">{{ t('transactions.form.pay.debtAfter', { name: outcome.cardName }) }}</dt>
+                <dd class="m-0 text-right font-bold">{{ outcome.debtAfter }}</dd>
+              }
+              <dt class="col-span-2 text-[12px] text-ig-muted">{{ t('transactions.form.pay.notSpending') }}</dt>
+            </dl>
+          }
+
           @if (formError()) {
             <p
               data-testid="form-error"
@@ -514,8 +792,8 @@
           <div class="flex flex-wrap items-center justify-end gap-2 border-t border-ig-border pt-6">
             <a
               class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-border px-4 text-[14px] text-ig-text no-underline hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
-              [routerLink]="listUrl"
-              queryParamsHandling="preserve"
+              [routerLink]="closeLink()"
+              [queryParams]="closeQuery()"
             >
               {{ t('transactions.form.cancel') }}
             </a>
@@ -528,7 +806,13 @@
               @if (isSubmitting()) {
                 {{ t('transactions.form.saving') }}
               } @else {
-                {{ t('transactions.form.submit.' + type()) }}
+                @if (isCardExpense() && formValue().installments > 1) {
+                  {{ t('transactions.form.installments.submit', { count: formValue().installments }) }}
+                } @else if (payingCard()) {
+                  {{ t('transactions.form.pay.submit') }}
+                } @else {
+                  {{ t('transactions.form.submit.' + type()) }}
+                }
               }
             </button>
           </div>

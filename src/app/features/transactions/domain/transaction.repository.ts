@@ -1,6 +1,8 @@
 import { Observable } from 'rxjs';
 import {
   ExchangeRate,
+  InstallmentPreview,
+  InstallmentPreviewRequest,
   Transaction,
   TransactionAccountOption,
   TransactionCategoryOption,
@@ -25,6 +27,12 @@ export abstract class TransactionRepository {
 
   /** Registra un movimiento; en transferencias entre monedas el backend calcula el monto destino. */
   abstract create(draft: TransactionDraft): Observable<Transaction>;
+
+  /** Un movimiento con su plan de cuotas. */
+  abstract get(id: number): Observable<Transaction>;
+
+  /** Calcula el plan de cuotas de una compra con tarjeta sin guardarla. */
+  abstract previewInstallments(request: InstallmentPreviewRequest): Observable<InstallmentPreview>;
 }
 
 /**

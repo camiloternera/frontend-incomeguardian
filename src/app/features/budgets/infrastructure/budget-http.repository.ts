@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { TranslocoService } from '@jsverse/transloco';
-import { Observable, OperatorFunction, catchError, map, pipe, throwError } from 'rxjs';
+import { Observable, OperatorFunction, catchError, forkJoin, map, pipe, throwError } from 'rxjs';
 import { environment } from '@env/environment';
 import { ApiResponse } from '@core/http/api-response';
 import { GENERIC_ERROR_KEY, apiErrorCode, resolveApiError } from '@core/http/api-error';
@@ -10,16 +10,25 @@ import {
   BudgetCategoryType,
   BudgetKey,
   BudgetMonth,
+  BudgetMovement,
   BudgetRow,
   BudgetSource,
   BudgetSummary,
+  BUDGET_TIME_ZONE,
 } from '../domain/budget';
 import { BudgetError, isBudgetErrorCode } from '../domain/budget-error';
-import { BudgetCategoryOptionsRepository, BudgetRepository, BudgetTarget } from '../domain/budget.repository';
+import {
+  BudgetCategoryOptionsRepository,
+  BudgetMovementsRepository,
+  BudgetRepository,
+  BudgetTarget,
+} from '../domain/budget.repository';
 import { BUDGET_ERROR_KEYS } from './budget-error-messages';
 import {
+  BudgetAccountDto,
   BudgetCategoryOptionDto,
   BudgetRowDto,
+  BudgetTransactionPageDto,
   BudgetSummaryDto,
   MonthBudgetRequestDto,
   RecurringBudgetRequestDto,
@@ -54,8 +63,46 @@ function toRow(dto: BudgetRowDto): BudgetRow {
     percentUsed: dto.percentUsed ?? null,
     recurringAmount: dto.recurringAmount ?? null,
     source,
+    monthAmount: dto.monthAmount ?? null,
+    installmentsRaise: dto.installmentsRaise ?? 0,
+    installmentsSpent: dto.installmentsSpent ?? 0,
+    installments: (dto.installments ?? []).map((item) => ({
+      transactionId: item.transactionId,
+      description: item.description ?? null,
+      number: item.number,
+      installments: item.installments,
+      accountId: item.accountId,
+      accountName: item.accountName,
+      purchaseDate: toDay(item.purchaseDate),
+      amount: item.amount,
+      budgetAdjustment: item.budgetAdjustment ?? 0,
+    })),
   };
 }
+
+/** Día `YYYY-MM-DD`: tal cual si ya lo es; si es un instante, el día en hora de Colombia. */
+function toDay(value: string): string {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
+  }
+
+  // `en-CA` formatea las fechas como `YYYY-MM-DD`.
+  return new Intl.DateTimeFormat('en-CA', { timeZone: BUDGET_TIME_ZONE }).format(new Date(value));
+}
+
+/** Desfase de Colombia respecto a UTC, en horas; no tiene horario de verano. */
+const TIME_ZONE_OFFSET_HOURS = -5;
+
+/** Rango de instantes UTC del mes completo en hora de Colombia; ambos límites incluidos. */
+function monthRange({ year, month }: BudgetMonth): { fromDate: string; toDate: string } {
+  const start = Date.UTC(year, month - 1, 1, -TIME_ZONE_OFFSET_HOURS);
+  const next = Date.UTC(year, month, 1, -TIME_ZONE_OFFSET_HOURS);
+
+  return { fromDate: new Date(start).toISOString(), toDate: new Date(next - 1).toISOString() };
+}
+
+/** Movimientos que se piden de una vez para «Lo que cuenta este mes». */
+const MOVEMENTS_PAGE_SIZE = 50;
 
 function toSummary(dto: BudgetSummaryDto): BudgetSummary {
   return {
@@ -68,6 +115,7 @@ function toSummary(dto: BudgetSummaryDto): BudgetSummary {
       budget: total.budget,
       spent: total.spent,
       available: total.available,
+      installmentsSpent: total.installmentsSpent ?? 0,
     })),
   };
 }
@@ -189,5 +237,57 @@ export class BudgetCategoryOptionsHttpRepository extends BudgetCategoryOptionsRe
         map((dtos) => dtos.map(toCategoryOption)),
         toErrors(this.transloco),
       );
+  }
+}
+
+/**
+ * Lee los gastos de una categoría en el mes y deja solo los de cuentas normales en la moneda pedida:
+ * las compras con tarjeta cuentan por cuota y ya llegan en el resumen. El backend no filtra por tipo
+ * de cuenta, así que se cruzan con las cuentas.
+ */
+@Injectable()
+export class BudgetMovementsHttpRepository extends BudgetMovementsRepository {
+  private readonly http = inject(HttpClient);
+  private readonly transloco = inject(TranslocoService);
+  private readonly transactionsUrl = `${environment.apiUrl}/api/v1/transactions`;
+  private readonly accountsUrl = `${environment.apiUrl}/api/v1/accounts`;
+
+  list(month: BudgetMonth, key: BudgetKey, type: BudgetCategoryType): Observable<BudgetMovement[]> {
+    const range = monthRange(month);
+    const params = new HttpParams()
+      .set('page', 1)
+      .set('pageSize', MOVEMENTS_PAGE_SIZE)
+      .set('fromDate', range.fromDate)
+      .set('toDate', range.toDate)
+      .set('categoryId', key.categoryId)
+      .set('type', type);
+
+    return forkJoin({
+      page: this.http.get<ApiResponse<BudgetTransactionPageDto>>(this.transactionsUrl, { params }).pipe(unwrap()),
+      accounts: this.http.get<ApiResponse<BudgetAccountDto[]>>(this.accountsUrl).pipe(unwrap()),
+    }).pipe(
+      map(({ page, accounts }) => {
+        const byId = new Map(accounts.map((account) => [account.id, account]));
+
+        return (page.items ?? []).flatMap((item): BudgetMovement[] => {
+          const account = item.fromAccountId === null ? undefined : byId.get(item.fromAccountId);
+
+          if (!account || account.kind === 'credit_card' || account.currency !== key.currency) {
+            return [];
+          }
+
+          return [
+            {
+              transactionId: item.id,
+              description: item.description ?? null,
+              accountName: account.name,
+              date: item.date,
+              amount: item.amount,
+            },
+          ];
+        });
+      }),
+      toErrors(this.transloco),
+    );
   }
 }

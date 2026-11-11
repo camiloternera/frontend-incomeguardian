@@ -4,6 +4,7 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { By } from '@angular/platform-browser';
 import { translocoTesting } from '@core/i18n/i18n.testing';
 import { LanguageService } from '@core/i18n/language.service';
+import { Account } from '../../../domain/account';
 import { AccountError, AccountErrorCode } from '../../../domain/account-error';
 import { FakeAccountRepository, fakeAccountsRoutes } from '../../account-repository.fake';
 import { AccountPanelComponent } from './account-panel.component';
@@ -98,9 +99,13 @@ describe('AccountPanelComponent', () => {
 
     expect(fake.lastDraft).toEqual({
       name: 'Visa 9000',
+      kind: 'standard',
       currency: 'USD',
       initialBalance: -1250.5,
       openingDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00[+-]\d{2}:\d{2}$/),
+      creditLimit: null,
+      statementDay: null,
+      paymentDay: null,
     });
     expect(new Date(fake.lastDraft!.openingDate).getTime()).toBeLessThanOrEqual(Date.now());
     expect(TestBed.inject(Router).url).toBe('/accounts');
@@ -245,7 +250,7 @@ describe('AccountPanelComponent', () => {
       expect(field(element, 'currency-COP').checked).toBe(true);
       expect(field(element, 'currency-USD').disabled).toBe(true);
       expect(element.querySelector('[data-testid="account-locked"]')?.textContent?.trim()).toBe(
-        'This account already has transactions, so its name and currency cannot change.',
+        'This account already has transactions: its name, currency and type can no longer change.',
       );
       expect(field(element, 'account-name').getAttribute('aria-describedby')).toBe(
         'account-locked account-name-count',
@@ -259,7 +264,7 @@ describe('AccountPanelComponent', () => {
       const { element } = await open('/accounts/5/edit');
 
       expect(element.querySelector('[data-testid="account-locked"]')?.textContent?.trim()).toBe(
-        'Esta cuenta ya tiene movimientos: su nombre y su moneda no se pueden cambiar.',
+        'Esta cuenta ya tiene movimientos: su nombre, su moneda y su tipo no se pueden cambiar.',
       );
     });
 
@@ -315,6 +320,250 @@ describe('AccountPanelComponent', () => {
         'The account already has transactions, so its name cannot change.',
       );
       expect(element.querySelector('[data-testid="form-error"]')).toBeNull();
+    });
+  });
+  describe('a credit card', () => {
+    /** Tarjeta con deuda, cupo y días de corte y pago. */
+    const CARD: Account = {
+      id: 9,
+      name: 'Visa Oro',
+      kind: 'credit_card',
+      initialBalance: -150000,
+      currentBalance: -150000,
+      currency: 'COP',
+      isActive: true,
+      hasTransactions: false,
+      openingDate: '2026-10-01T00:00:00Z',
+      creditLimit: 2000000,
+      statementDay: 15,
+      paymentDay: 5,
+      availableCredit: 1850000,
+      nextStatementDate: '2026-11-15',
+      nextPaymentDueDate: '2026-12-05',
+      createdAt: '2026-10-01T00:00:00Z',
+      updatedAt: null,
+    };
+
+    /** Elige un día en el selector del campo (`account-statement-day` o `account-payment-day`). */
+    async function pickDay(harness: RouterTestingHarness, element: HTMLElement, testId: string, day: number) {
+      element.querySelector<HTMLElement>(`[data-testid="${testId}"] [data-testid="select-trigger"]`)!.click();
+      harness.detectChanges();
+      element.querySelector<HTMLElement>(`[data-testid="${testId}"] [data-testid="select-option-${day - 1}"]`)!.click();
+      harness.detectChanges();
+      await harness.fixture.whenStable();
+    }
+
+    async function chooseCard(harness: RouterTestingHarness, element: HTMLElement) {
+      click(element, 'kind-credit_card');
+      harness.detectChanges();
+      await harness.fixture.whenStable();
+    }
+
+    it('shows the limit, the statement and payment days only for a card', async () => {
+      const { harness, element } = await open('/accounts/new');
+
+      expect(element.querySelector<HTMLInputElement>('[data-testid="kind-standard"]')!.checked).toBe(true);
+      expect(element.querySelector('[data-testid="card-fields"]')).toBeNull();
+
+      await chooseCard(harness, element);
+
+      expect(element.querySelector('[data-testid="card-fields"]')).toBeTruthy();
+      expect(element.querySelector('[data-testid="account-credit-limit"]')).toBeTruthy();
+      expect(element.querySelector('[data-testid="account-statement-day"]')).toBeTruthy();
+      expect(element.querySelector('[data-testid="account-payment-day"]')).toBeTruthy();
+      expect(element.querySelector('label[for="account-balance"]')?.textContent).toContain('Current debt');
+      expect(element.querySelector('[data-testid="account-submit"]')?.textContent).toContain('Create card');
+      // Sin días elegidos no hay vista previa.
+      expect(element.querySelector('[data-testid="card-preview"]')).toBeNull();
+
+      click(element, 'kind-standard');
+      harness.detectChanges();
+
+      expect(element.querySelector('[data-testid="card-fields"]')).toBeNull();
+    });
+
+    it('previews the next statement and when to pay it', async () => {
+      const { harness, element } = await open('/accounts/new');
+      await chooseCard(harness, element);
+
+      await pickDay(harness, element, 'account-statement-day', 15);
+      await pickDay(harness, element, 'account-payment-day', 5);
+
+      const preview = element.querySelector('[data-testid="card-preview"]')?.textContent ?? '';
+      expect(preview).toContain('Next statement');
+      expect(preview).toContain('Pay by');
+      expect(preview).toContain('The payment falls in the month after the statement');
+    });
+
+    it('sends the debt written in positive as a negative opening balance', async () => {
+      const { harness, element } = await open('/accounts/new');
+      await chooseCard(harness, element);
+
+      type(element, 'account-name', 'Visa Oro');
+      type(element, 'account-balance', '150000,5');
+      type(element, 'account-credit-limit', '2000000');
+      await pickDay(harness, element, 'account-statement-day', 15);
+      await pickDay(harness, element, 'account-payment-day', 5);
+      submit(element);
+      await harness.fixture.whenStable();
+
+      expect(fake.lastDraft).toEqual(
+        expect.objectContaining({
+          name: 'Visa Oro',
+          kind: 'credit_card',
+          initialBalance: -150000.5,
+          creditLimit: 2000000,
+          statementDay: 15,
+          paymentDay: 5,
+        }),
+      );
+    });
+
+    it('sends a zero debt as 0 and an empty limit as null', async () => {
+      const { harness, element } = await open('/accounts/new');
+      await chooseCard(harness, element);
+
+      type(element, 'account-name', 'Sin deuda');
+      await pickDay(harness, element, 'account-statement-day', 20);
+      await pickDay(harness, element, 'account-payment-day', 28);
+      submit(element);
+      await harness.fixture.whenStable();
+
+      expect(Object.is(fake.lastDraft?.initialBalance, 0)).toBe(true);
+      expect(fake.lastDraft?.creditLimit).toBeNull();
+    });
+
+    it('validates the card fields before calling the backend', async () => {
+      const { harness, element } = await open('/accounts/new');
+      await chooseCard(harness, element);
+
+      type(element, 'account-name', 'Visa');
+      type(element, 'account-balance', '-100');
+      type(element, 'account-credit-limit', '0');
+      submit(element);
+      harness.detectChanges();
+
+      expect(element.querySelector('[data-testid="balance-error"]')?.textContent).toContain(
+        'Enter the debt as a positive number',
+      );
+      expect(element.querySelector('[data-testid="credit-limit-error"]')?.textContent).toContain(
+        'The credit limit must be greater than 0',
+      );
+      expect(element.querySelector('[data-testid="statement-day-error"]')?.textContent).toContain(
+        "Pick the card's statement day.",
+      );
+      expect(element.querySelector('[data-testid="payment-day-error"]')?.textContent).toContain(
+        "Pick the card's payment day.",
+      );
+      expect(fake.lastDraft).toBeNull();
+    });
+
+    it('does not send the card fields of a standard account', async () => {
+      const { harness, element } = await open('/accounts/new');
+      await chooseCard(harness, element);
+      type(element, 'account-credit-limit', '5000');
+      await pickDay(harness, element, 'account-statement-day', 15);
+
+      click(element, 'kind-standard');
+      harness.detectChanges();
+      type(element, 'account-name', 'Ahorros');
+      type(element, 'account-balance', '-20');
+      submit(element);
+      await harness.fixture.whenStable();
+
+      expect(fake.lastDraft).toEqual(
+        expect.objectContaining({
+          kind: 'standard',
+          initialBalance: -20,
+          creditLimit: null,
+          statementDay: null,
+          paymentDay: null,
+        }),
+      );
+    });
+
+    it('shows the debt of a card in positive when editing', async () => {
+      fake.accounts.push(CARD);
+      const { element } = await open('/accounts/9/edit');
+
+      expect(element.querySelector<HTMLInputElement>('[data-testid="kind-credit_card"]')!.checked).toBe(true);
+      expect(element.querySelector<HTMLInputElement>('[data-testid="account-balance"]')!.value).toBe('150000');
+      expect(element.querySelector<HTMLInputElement>('[data-testid="account-credit-limit"]')!.value).toBe('2000000');
+      expect(element.querySelector('label[for="account-balance"]')?.textContent).toContain('Initial debt');
+      expect(element.querySelector('[data-testid="account-statement-day"]')?.textContent).toContain('15');
+      expect(element.querySelector('[data-testid="account-payment-day"]')?.textContent).toContain('5');
+    });
+
+    it('keeps the debt of a card negative when saving the edit', async () => {
+      fake.accounts.push(CARD);
+      const { harness, element } = await open('/accounts/9/edit');
+
+      type(element, 'account-balance', '200000');
+      submit(element);
+      await harness.fixture.whenStable();
+
+      expect(fake.lastDraft).toEqual(
+        expect.objectContaining({ kind: 'credit_card', initialBalance: -200000, statementDay: 15, paymentDay: 5 }),
+      );
+    });
+
+    it('locks the type when the account has transactions', async () => {
+      fake.accounts.push({ ...CARD, hasTransactions: true });
+      const { element } = await open('/accounts/9/edit');
+
+      expect(element.querySelector<HTMLInputElement>('[data-testid="kind-credit_card"]')!.disabled).toBe(true);
+      expect(element.querySelector<HTMLInputElement>('[data-testid="kind-standard"]')!.disabled).toBe(true);
+      expect(element.textContent).toContain('The type can no longer change: the account has transactions.');
+      // Los días siguen editables, con la nota de que solo afectan compras nuevas.
+      expect(element.textContent).toContain('Changing the statement or payment day only affects new purchases.');
+    });
+
+    it('sends the locked type when saving', async () => {
+      fake.accounts.push({ ...CARD, hasTransactions: true });
+      const { harness, element } = await open('/accounts/9/edit');
+
+      submit(element);
+      await harness.fixture.whenStable();
+
+      expect(fake.lastDraft?.kind).toBe('credit_card');
+    });
+
+    it('leaves the type editable for an account without transactions', async () => {
+      const { element } = await open('/accounts/2/edit');
+
+      expect(element.querySelector<HTMLInputElement>('[data-testid="kind-credit_card"]')!.disabled).toBe(false);
+    });
+
+    it.each([
+      [AccountErrorCode.CardInitialBalancePositive, 'balance-error', "A card's debt can't start as a credit balance."],
+      [AccountErrorCode.StatementDayRequired, 'statement-day-error', "Pick the card's statement day."],
+      [AccountErrorCode.StatementDayInvalid, 'statement-day-error', 'The statement day must be between 1 and 31.'],
+      [AccountErrorCode.PaymentDayRequired, 'payment-day-error', "Pick the card's payment day."],
+      [AccountErrorCode.PaymentDayInvalid, 'payment-day-error', 'The payment day must be between 1 and 31.'],
+      [AccountErrorCode.CreditLimitInvalid, 'credit-limit-error', 'The credit limit must be greater than 0.'],
+      [AccountErrorCode.KindInvalid, 'kind-error', 'Choose whether it is a regular account or a credit card.'],
+      [AccountErrorCode.KindLocked, 'kind-error', "The account already has transactions, so its type can't change."],
+    ])('shows the backend %s beside its field', async (code, testId, copy) => {
+      fake.accounts.push(CARD);
+      const { harness, element } = await open('/accounts/9/edit');
+      fake.failWith = new AccountError('Backend', code);
+
+      submit(element);
+      await harness.fixture.whenStable();
+      harness.detectChanges();
+
+      expect(element.querySelector(`[data-testid="${testId}"]`)?.textContent).toContain(copy);
+      expect(element.querySelector('[data-testid="form-error"]')).toBeNull();
+    });
+
+    it('opens a deactivated card read-only with its debt in positive', async () => {
+      fake.accounts.push({ ...CARD, isActive: false });
+      const { element } = await open('/accounts/9/edit');
+
+      const summary = element.querySelector('[data-testid="account-read-only"]')?.textContent ?? '';
+      expect(summary).toContain('Initial debt');
+      expect(summary).toContain('150,000');
+      expect(summary).not.toContain('-');
     });
   });
 });

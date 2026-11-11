@@ -14,6 +14,49 @@ export interface TransactionDto {
   destinationAmount?: number | null;
   exchangeRate?: number | null;
   exchangeRateDate?: string | null;
+  /** Campos de cuotas: opcionales mientras el backend desplegado no los envíe. */
+  installments?: number | null;
+  annualInterestRate?: number | null;
+  installmentAmount?: number | null;
+  schedule?: InstallmentScheduleItemDto[] | null;
+}
+
+export interface InstallmentScheduleItemDto {
+  number: number;
+  year: number;
+  month: number;
+  statementDate: string;
+  principal: number;
+  interest: number;
+  amount: number;
+}
+
+/** Cuerpo de `POST /api/v1/transactions/installments/preview`. */
+export interface InstallmentPreviewRequestDto {
+  fromAccountId: number;
+  amount: number;
+  date: string;
+  installments: number;
+  annualInterestRate?: number;
+  categoryId?: number;
+}
+
+export interface BudgetAdjustmentDto {
+  year: number;
+  month: number;
+  categoryId: number;
+  currency: string;
+  currentAmount?: number | null;
+  newAmount: number;
+}
+
+/** Respuesta de `POST /api/v1/transactions/installments/preview`. */
+export interface InstallmentPreviewDto {
+  installmentAmount: number;
+  totalInterest: number;
+  totalAmount: number;
+  schedule: InstallmentScheduleItemDto[];
+  budgetAdjustments?: BudgetAdjustmentDto[] | null;
 }
 
 export interface TransactionPageDto {
@@ -48,6 +91,9 @@ export interface TransactionRequestDto {
   toAccountId?: number;
   categoryId?: number;
   description?: string;
+  /** Solo en gastos con tarjeta a más de una cuota. */
+  installments?: number;
+  annualInterestRate?: number;
 }
 
 /** Lo que este dominio lee de `GET /api/v1/accounts`; ignora el resto de campos. */
@@ -58,6 +104,9 @@ export interface TransactionAccountOptionDto {
   initialBalance: number;
   currentBalance: number | null;
   isActive: boolean;
+  kind?: string | null;
+  availableCredit?: number | null;
+  nextStatementDate?: string | null;
 }
 
 /** Lo que este dominio lee de `GET /api/v1/categories`; ignora el resto de campos. */
@@ -67,6 +116,8 @@ export interface TransactionCategoryOptionDto {
   isActive: boolean;
   /** 1 Ingreso, 2 Gasto, 3 Transferencia. */
   transactionTypeId: number;
+  /** Código de una categoría de sistema; null en las del usuario. */
+  code?: string | null;
 }
 
 /** Respuesta de `GET /api/v1/exchange-rates/trm`. */
