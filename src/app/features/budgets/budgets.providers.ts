@@ -2,12 +2,21 @@ import { Provider } from '@angular/core';
 import {
   GetBudgetSummaryUseCase,
   ListBudgetCategoryOptionsUseCase,
+  ListBudgetMovementsUseCase,
   RemoveBudgetUseCase,
   ResetMonthBudgetUseCase,
   SaveBudgetUseCase,
 } from './application/budget-use-cases';
-import { BudgetCategoryOptionsRepository, BudgetRepository } from './domain/budget.repository';
-import { BudgetCategoryOptionsHttpRepository, BudgetHttpRepository } from './infrastructure/budget-http.repository';
+import {
+  BudgetCategoryOptionsRepository,
+  BudgetMovementsRepository,
+  BudgetRepository,
+} from './domain/budget.repository';
+import {
+  BudgetCategoryOptionsHttpRepository,
+  BudgetHttpRepository,
+  BudgetMovementsHttpRepository,
+} from './infrastructure/budget-http.repository';
 
 /** Casos de uso del dominio; los tests los registran junto con puertos falsos. */
 export const BUDGET_USE_CASES: Provider[] = [
@@ -16,6 +25,7 @@ export const BUDGET_USE_CASES: Provider[] = [
   RemoveBudgetUseCase,
   ResetMonthBudgetUseCase,
   ListBudgetCategoryOptionsUseCase,
+  ListBudgetMovementsUseCase,
 ];
 
 /**
@@ -26,6 +36,7 @@ export function provideBudgets(): Provider[] {
   return [
     { provide: BudgetRepository, useClass: BudgetHttpRepository },
     { provide: BudgetCategoryOptionsRepository, useClass: BudgetCategoryOptionsHttpRepository },
+    { provide: BudgetMovementsRepository, useClass: BudgetMovementsHttpRepository },
     ...BUDGET_USE_CASES,
   ];
 }
