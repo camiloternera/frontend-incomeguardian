@@ -23,8 +23,18 @@ export interface Category {
   isActive: boolean;
   /** Con movimientos (incluso eliminados) ya no se puede cambiar el nombre. */
   hasTransactions: boolean;
+  /**
+   * Código de una categoría de sistema (por ejemplo `CARD_PAYMENT`); null en las del usuario. Una de
+   * sistema se nombra por su código y no se puede renombrar ni desactivar.
+   */
+  code: string | null;
   createdAt: string;
   updatedAt: string | null;
+}
+
+/** Indica si es una categoría de sistema, que el backend crea y protege. */
+export function isSystemCategory(category: Pick<Category, 'code'>): boolean {
+  return category.code !== null;
 }
 
 /** Pestañas del listado: una por tipo de movimiento para las activas y una para las desactivadas. */

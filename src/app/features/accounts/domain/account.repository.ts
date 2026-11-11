@@ -1,5 +1,7 @@
 import { Observable } from 'rxjs';
 import { Account, AccountDraft } from './account';
+import { CardStatement } from './card-statement';
+import { CardMonth } from './credit-card-calendar';
 
 /**
  * Puerto: cómo llega el dominio de cuentas al backend. Se implementa en infrastructure.
@@ -20,4 +22,7 @@ export abstract class AccountRepository {
 
   /** El backend desactiva la cuenta; sigue apareciendo en `list` con `isActive` en false. */
   abstract deactivate(id: number): Observable<void>;
+
+  /** Extracto de una tarjeta en el mes de corte indicado; sin mes, el del próximo corte. */
+  abstract statement(id: number, month?: CardMonth): Observable<CardStatement>;
 }

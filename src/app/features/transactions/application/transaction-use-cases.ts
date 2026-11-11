@@ -2,6 +2,8 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import {
   ExchangeRate,
+  InstallmentPreview,
+  InstallmentPreviewRequest,
   Transaction,
   TransactionAccountOption,
   TransactionCategoryOption,
@@ -54,6 +56,24 @@ export class CreateTransactionUseCase {
 
   execute(draft: TransactionDraft): Observable<Transaction> {
     return this.repository.create(trimmed(draft));
+  }
+}
+
+@Injectable()
+export class GetTransactionUseCase {
+  private readonly repository = inject(TransactionRepository);
+
+  execute(id: number): Observable<Transaction> {
+    return this.repository.get(id);
+  }
+}
+
+@Injectable()
+export class PreviewInstallmentsUseCase {
+  private readonly repository = inject(TransactionRepository);
+
+  execute(request: InstallmentPreviewRequest): Observable<InstallmentPreview> {
+    return this.repository.previewInstallments(request);
   }
 }
 

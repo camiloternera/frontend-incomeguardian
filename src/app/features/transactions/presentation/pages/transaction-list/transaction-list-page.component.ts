@@ -152,7 +152,16 @@ export class TransactionListPageComponent {
   );
   private readonly categoryNames = toSignal(
     this.listCategories.execute().pipe(
-      map((categories) => new Map(categories.map((category) => [category.id, category.name]))),
+      // Las categorías de sistema (como la de pago de tarjeta) se nombran por su código.
+      map(
+        (categories) =>
+          new Map(
+            categories.map((category) => [
+              category.id,
+              category.code ? this.transloco.translate(`transactions.systemCategories.${category.code}`) : category.name,
+            ]),
+          ),
+      ),
       catchError(() => of(new Map<number, string>())),
     ),
     { initialValue: new Map<number, string>() },

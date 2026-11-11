@@ -1,7 +1,19 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
-import { BudgetCategoryOption, BudgetDraft, BudgetKey, BudgetMonth, BudgetSummary } from '../domain/budget';
-import { BudgetCategoryOptionsRepository, BudgetRepository } from '../domain/budget.repository';
+import {
+  BudgetCategoryOption,
+  BudgetCategoryType,
+  BudgetDraft,
+  BudgetKey,
+  BudgetMonth,
+  BudgetMovement,
+  BudgetSummary,
+} from '../domain/budget';
+import {
+  BudgetCategoryOptionsRepository,
+  BudgetMovementsRepository,
+  BudgetRepository,
+} from '../domain/budget.repository';
 
 @Injectable()
 export class GetBudgetSummaryUseCase {
@@ -55,5 +67,15 @@ export class ListBudgetCategoryOptionsUseCase {
     return this.repository
       .list()
       .pipe(map((items) => [...items].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))));
+  }
+}
+
+@Injectable()
+export class ListBudgetMovementsUseCase {
+  private readonly repository = inject(BudgetMovementsRepository);
+
+  /** Gastos de cuentas normales de la categoría en el mes, del más reciente al más antiguo. */
+  execute(month: BudgetMonth, key: BudgetKey, type: BudgetCategoryType): Observable<BudgetMovement[]> {
+    return this.repository.list(month, key, type);
   }
 }

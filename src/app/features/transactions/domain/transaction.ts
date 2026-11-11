@@ -7,6 +7,16 @@ export const TRANSACTION_DESCRIPTION_MAX_LENGTH = 500;
 export const TRANSACTION_PAGE_SIZE = 5;
 /** Zona horaria en la que el backend decide la TRM y qué fecha es futura. */
 export const TRANSACTION_TIME_ZONE = 'America/Bogota';
+/** Cuotas que admite el backend en una compra con tarjeta. */
+export const INSTALLMENTS_MIN = 1;
+export const INSTALLMENTS_MAX = 48;
+/** Opciones rápidas del número de cuotas; cualquier otro valor se escribe aparte. */
+export const INSTALLMENT_CHOICES = [1, 3, 6, 12, 24] as const;
+/** Tasa efectiva anual (%) que admite el backend. */
+export const INTEREST_RATE_MIN = 0;
+export const INTEREST_RATE_MAX = 200;
+/** Código de la categoría de sistema para los pagos de tarjeta (tipo transferencia). */
+export const CARD_PAYMENT_CATEGORY_CODE = 'CARD_PAYMENT';
 
 /** Clases de movimiento que registra el usuario. */
 export const TRANSACTION_TYPES = ['income', 'expense', 'transfer'] as const;
@@ -45,6 +55,67 @@ export interface Transaction {
   /** TRM usada en una transferencia entre monedas distintas; null en los demás casos. */
   exchangeRate: number | null;
   exchangeRateDate: string | null;
+  /** Número de cuotas de un gasto con tarjeta; 1 en cualquier otro movimiento. */
+  installments: number;
+  /** Tasa efectiva anual (%) de la compra a cuotas; null sin interés o fuera de una tarjeta. */
+  annualInterestRate: number | null;
+  /** Valor de cada cuota; null cuando es una sola. */
+  installmentAmount: number | null;
+  /** Plan de cuotas; solo llega al consultar un movimiento (`get`), vacío en el listado. */
+  schedule: InstallmentScheduleItem[];
+}
+
+/** Una cuota del plan de una compra con tarjeta. */
+export interface InstallmentScheduleItem {
+  /** Número de la cuota, desde 1. */
+  number: number;
+  /** Mes de corte en el que se cobra la cuota. */
+  year: number;
+  month: number;
+  /** Fecha de corte de ese mes (`YYYY-MM-DD`). */
+  statementDate: string;
+  principal: number;
+  interest: number;
+  amount: number;
+}
+
+/** Indica si el movimiento es una compra a varias cuotas. */
+export function hasInstallments(transaction: Pick<Transaction, 'installments'>): boolean {
+  return transaction.installments > 1;
+}
+
+/** Datos para calcular el plan de cuotas de una compra con tarjeta antes de guardarla. */
+export interface InstallmentPreviewRequest {
+  fromAccountId: number;
+  amount: number;
+  /** Fecha ISO 8601 en UTC con `Z`. */
+  date: string;
+  installments: number;
+  /** % EA; null sin interés. */
+  annualInterestRate: number | null;
+  /** Con categoría, el backend calcula cuánto subirán los topes del presupuesto. */
+  categoryId: number | null;
+}
+
+/** Cuánto sube el tope de una categoría en un mes por las cuotas de la compra. */
+export interface BudgetAdjustment {
+  year: number;
+  month: number;
+  categoryId: number;
+  currency: string;
+  /** Tope del mes hoy; null si el mes no tiene tope. */
+  currentAmount: number | null;
+  newAmount: number;
+}
+
+/** Plan de cuotas calculado por el backend. */
+export interface InstallmentPreview {
+  installmentAmount: number;
+  totalInterest: number;
+  totalAmount: number;
+  schedule: InstallmentScheduleItem[];
+  /** Solo los meses posteriores al de la compra; el mes de la compra no se toca. */
+  budgetAdjustments: BudgetAdjustment[];
 }
 
 /** Una página del listado de movimientos. */
@@ -188,10 +259,14 @@ export interface IncomeDraft extends TransactionDraftBase {
   toAccountId: number;
 }
 
-/** Dinero que sale de una cuenta. */
+/** Dinero que sale de una cuenta. Con una tarjeta puede ser a cuotas. */
 export interface ExpenseDraft extends TransactionDraftBase {
   type: 'expense';
   fromAccountId: number;
+  /** Solo con tarjeta; se omite (1) en cualquier otra cuenta. */
+  installments?: number;
+  /** % EA; null o ausente sin interés. */
+  annualInterestRate?: number | null;
 }
 
 /** Dinero que pasa de una cuenta a otra; el backend calcula el monto destino si cambian las monedas. */
@@ -208,9 +283,15 @@ export interface TransactionAccountOption {
   id: number;
   name: string;
   currency: string;
-  /** Saldo actual; null mientras el backend no lo informe. */
+  /** Saldo actual; null mientras el backend no lo informe. En una tarjeta es negativo si hay deuda. */
   currentBalance: number | null;
   isActive: boolean;
+  /** Si es una tarjeta de crédito: sus gastos pueden ser a cuotas y sus pagos son transferencias. */
+  isCreditCard: boolean;
+  /** Cupo disponible de la tarjeta; null sin cupo o en una cuenta normal. */
+  availableCredit: number | null;
+  /** Próximo corte de la tarjeta (`YYYY-MM-DD`); null en una cuenta normal. */
+  nextStatementDate: string | null;
 }
 
 /** Indica si la cuenta se puede usar en un movimiento nuevo: activa y en una moneda soportada. */
@@ -226,6 +307,8 @@ export interface TransactionCategoryOption {
   type: TransactionType | null;
   /** Las desactivadas no se ofrecen en movimientos nuevos, pero nombran los ya registrados. */
   isActive: boolean;
+  /** Código de una categoría de sistema (por ejemplo `CARD_PAYMENT`); null en las del usuario. */
+  code: string | null;
 }
 
 /** Indica si la categoría se puede usar en el tipo de movimiento: deben ser del mismo tipo. */

@@ -1,6 +1,8 @@
 export interface ApiError {
   code: string;
   message: string;
+  /** Datos del error, como el mes cerrado de `PERIOD_CLOSED`; el backend lo omite si es null. */
+  data?: unknown;
 }
 
 export interface ApiResponse<T> {

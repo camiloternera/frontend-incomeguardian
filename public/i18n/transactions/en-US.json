@@ -41,7 +41,8 @@
       "transfer": "Transfer saved: {{amount}}",
       "transferConverted": "Transfer saved: {{amount}} arrived",
       "dismiss": "Dismiss"
-    }
+    },
+    "installments": "{{count}} installments"
   },
   "form": {
     "title": {
@@ -140,6 +141,58 @@
       "formulaMultiply": "{{amount}} × {{rate}}",
       "help": "Calculated with the official TRM. To have a different amount arrive, adjust the amount you send.",
       "needsDate": "Pick today or an earlier date to calculate with the official rate."
+    },
+    "installments": {
+      "title": "Installments",
+      "onlyCards": "Only for credit card purchases",
+      "count": "Number of installments",
+      "one": "1 installment",
+      "other": "Other",
+      "otherLabel": "Other number of installments, from {{min}} to {{max}}",
+      "range": "{{min}}–{{max}}",
+      "outOfRange": "Enter a whole number of installments between {{min}} and {{max}}.",
+      "interest": "Interest",
+      "withoutInterest": "No interest",
+      "withInterest": "With interest",
+      "rateLabel": "Effective annual rate (EA)",
+      "rateSuffix": "% EA",
+      "rateHelp": "It's on the receipt or in your bank's app. With a rate, the installment is fixed.",
+      "rateRequired": "Enter the effective annual rate, or choose “No interest”.",
+      "rateInvalid": "Enter a rate between {{min}} and {{max}}%, with up to 2 decimals.",
+      "calculating": "Calculating the installment plan…",
+      "plan": "Installment plan",
+      "split": "principal {{principal}} + interest {{interest}}",
+      "firstStatement": "First installment on the statement of",
+      "totalInterest": "Interest",
+      "total": "Total you'll pay",
+      "single": "A single installment of {{amount}} on the {{month}} statement (closes {{date}}).",
+      "budgetTitle": "We'll raise the {{category}} budget in {{count}} months",
+      "budgetBody": "Each installment counts in its month's budget. So you don't go over, we add the installment to the budget of each month after the purchase. If you delete or edit the purchase, we undo it.",
+      "budgetMonth": "Month",
+      "budgetNow": "Budget today",
+      "budgetNew": "New budget",
+      "noBudget": "No budget",
+      "budgetMore": "and {{count}} more months, through {{month}}.",
+      "closedMonth": "An installment falls in {{month}}, which is closed. Reopen it, or change the date or the installments to save the purchase.",
+      "available": "Available credit on {{name}}",
+      "availableAfter": "After this purchase",
+      "overLimit": "This purchase takes you over the limit. You can still save it.",
+      "submit": "Save expense in {{count}} installments"
+    },
+    "pay": {
+      "title": "Pay {{name}}",
+      "subtitle": "{{month}} statement",
+      "howMuch": "How much are you paying?",
+      "preset": {
+        "statement": "Statement amount due",
+        "all": "Entire debt"
+      },
+      "waitingRate": "Waiting for the exchange rate to convert the amount…",
+      "description": "Statement payment {{month}}",
+      "fromAfter": "{{name}} ends at",
+      "debtAfter": "{{name}} debt ends at",
+      "notSpending": "It's a transfer: it doesn't count as spending in your budget or overview.",
+      "submit": "Record payment"
     }
   },
   "errors": {
@@ -159,6 +212,40 @@
     "TRANSACTION_ACCOUNT_CURRENCY_UNSUPPORTED": "That account uses a currency that does not allow transactions. Pick one in pesos or dollars.",
     "EXCHANGE_RATE_UNAVAILABLE": "The exchange rate is not available right now.",
     "EXCHANGE_RATE_DATE_INVALID": "There is no TRM for that date. Pick today or an earlier date.",
-    "PERIOD_CLOSED": "The month of that date is closed. Reopen it to record transactions."
+    "PERIOD_CLOSED": "The month of that date is closed. Reopen it to record transactions.",
+    "TRANSACTION_INSTALLMENTS_NOT_ALLOWED": "Installments only apply to credit card expenses.",
+    "TRANSACTION_INSTALLMENTS_OUT_OF_RANGE": "The number of installments must be between 1 and 48.",
+    "TRANSACTION_INTEREST_RATE_OUT_OF_RANGE": "The rate must be between 0 and 200% EA."
+  },
+  "systemCategories": {
+    "CARD_PAYMENT": "Card payment"
+  },
+  "detail": {
+    "title": "Transaction",
+    "loading": "Loading the transaction…",
+    "installmentsOf": "{{count}} installments of {{amount}}",
+    "rate": "{{rate}}% EA",
+    "interest": "Interest",
+    "total": "Total to pay",
+    "remaining": "Remaining",
+    "remainingValue": "{{count}} installments · {{amount}}",
+    "plan": "Installment plan",
+    "afterCut": "The purchase was after its month's statement closed, so the first installment fell in {{month}}.",
+    "columns": {
+      "number": "Installment",
+      "month": "Statement month",
+      "principal": "Principal",
+      "interest": "Interest",
+      "amount": "Amount"
+    },
+    "state": {
+      "billed": "Billed",
+      "current": "On the current statement",
+      "pending": "Pending"
+    },
+    "viewStatement": "View the {{month}} statement",
+    "budgetTitle": "{{category}} budget",
+    "budgetBody": "Each installment counts in its statement month's budget. Installments after the purchase month raised their month's budget.",
+    "viewBudget": "View budget"
   }
 }

@@ -15,6 +15,18 @@ export const AccountErrorCode = {
   OpeningDateFuture: 'ACCOUNT_OPENING_DATE_FUTURE',
   /** Cambiar saldo inicial o moneda cuando ya hay meses cerrados desde la apertura. */
   LockedByClosedPeriod: 'ACCOUNT_LOCKED_BY_CLOSED_PERIOD',
+  KindInvalid: 'ACCOUNT_KIND_INVALID',
+  /** Cambiar el tipo de una cuenta que ya tiene movimientos. */
+  KindLocked: 'ACCOUNT_KIND_LOCKED',
+  StatementDayRequired: 'ACCOUNT_STATEMENT_DAY_REQUIRED',
+  StatementDayInvalid: 'ACCOUNT_STATEMENT_DAY_INVALID',
+  PaymentDayRequired: 'ACCOUNT_PAYMENT_DAY_REQUIRED',
+  PaymentDayInvalid: 'ACCOUNT_PAYMENT_DAY_INVALID',
+  CreditLimitInvalid: 'ACCOUNT_CREDIT_LIMIT_INVALID',
+  /** Una tarjeta con deuda inicial positiva: la deuda va en negativo. */
+  CardInitialBalancePositive: 'CREDIT_CARD_INITIAL_BALANCE_POSITIVE',
+  /** Pedir el extracto de una cuenta que no es tarjeta. */
+  NotCreditCard: 'ACCOUNT_NOT_CREDIT_CARD',
 } as const;
 
 export type AccountErrorCode = (typeof AccountErrorCode)[keyof typeof AccountErrorCode];
@@ -37,6 +49,23 @@ export const CURRENCY_ERROR_CODES: readonly AccountErrorCode[] = [
   AccountErrorCode.CurrencyRequired,
   AccountErrorCode.CurrencyInvalid,
   AccountErrorCode.CurrencyLocked,
+];
+
+export const KIND_ERROR_CODES: readonly AccountErrorCode[] = [
+  AccountErrorCode.KindInvalid,
+  AccountErrorCode.KindLocked,
+];
+
+export const CREDIT_LIMIT_ERROR_CODES: readonly AccountErrorCode[] = [AccountErrorCode.CreditLimitInvalid];
+
+export const STATEMENT_DAY_ERROR_CODES: readonly AccountErrorCode[] = [
+  AccountErrorCode.StatementDayRequired,
+  AccountErrorCode.StatementDayInvalid,
+];
+
+export const PAYMENT_DAY_ERROR_CODES: readonly AccountErrorCode[] = [
+  AccountErrorCode.PaymentDayRequired,
+  AccountErrorCode.PaymentDayInvalid,
 ];
 
 export const OPENING_DATE_ERROR_CODES: readonly AccountErrorCode[] = [

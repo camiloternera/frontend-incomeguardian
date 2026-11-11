@@ -35,6 +35,7 @@ function toCategory(dto: CategoryDto): Category {
     type,
     isActive: dto.isActive,
     hasTransactions: dto.hasTransactions ?? false,
+    code: dto.code ?? null,
     createdAt: dto.createdAt,
     updatedAt: dto.updatedAt,
   };

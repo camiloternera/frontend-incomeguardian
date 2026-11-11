@@ -2,6 +2,8 @@ import { Provider } from '@angular/core';
 import {
   CreateTransactionUseCase,
   GetExchangeRateUseCase,
+  GetTransactionUseCase,
+  PreviewInstallmentsUseCase,
   SummarizeTransactionsUseCase,
   ListTransactionAccountOptionsUseCase,
   ListTransactionCategoryOptionsUseCase,
@@ -25,6 +27,8 @@ export const TRANSACTION_USE_CASES: Provider[] = [
   ListTransactionsUseCase,
   SummarizeTransactionsUseCase,
   CreateTransactionUseCase,
+  GetTransactionUseCase,
+  PreviewInstallmentsUseCase,
   GetExchangeRateUseCase,
   ListTransactionAccountOptionsUseCase,
   ListTransactionCategoryOptionsUseCase,

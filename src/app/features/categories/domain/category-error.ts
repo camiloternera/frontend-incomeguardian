@@ -16,6 +16,8 @@ export const CategoryErrorCode = {
   StatusInvalid: 'CATEGORY_STATUS_INVALID',
   AlreadyActive: 'CATEGORY_ALREADY_ACTIVE',
   AlreadyInactive: 'CATEGORY_ALREADY_INACTIVE',
+  /** Renombrar, desactivar o borrar una categoría de sistema. */
+  SystemLocked: 'CATEGORY_SYSTEM_LOCKED',
 } as const;
 
 export type CategoryErrorCode = (typeof CategoryErrorCode)[keyof typeof CategoryErrorCode];

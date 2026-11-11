@@ -215,4 +215,50 @@ describe('TransactionListPageComponent', () => {
 
     expect(texts(element, 'row-description')).toHaveLength(3);
   });
+  describe('card purchases and system categories', () => {
+    it('marks a purchase in installments and links its description to the detail', async () => {
+      fakes.transactions.transactions.push(
+        transaction(41, 'expense', 300000, {
+          date: `${TODAY}T18:00:00Z`,
+          fromAccountId: 2,
+          categoryId: 1,
+          description: 'Televisor',
+          installments: 6,
+          installmentAmount: 50000,
+        }),
+      );
+      const { element } = await open('/transactions?month=' + formatMonthKey(CURRENT));
+      const row = query(element, 'transaction-41')!;
+
+      expect(row.querySelector('[data-testid="row-installments"]')?.textContent?.trim()).toBe('6 installments');
+      const link = row.querySelector<HTMLAnchorElement>('a[data-testid="row-description"]')!;
+      expect(link.textContent?.trim()).toBe('Televisor');
+      expect(link.getAttribute('href')).toBe(`/transactions/41?month=${formatMonthKey(CURRENT)}`);
+    });
+
+    it('keeps a single-installment description as plain text', async () => {
+      const { element } = await open();
+      const row = query(element, 'transaction-1')!;
+
+      expect(row.querySelector('[data-testid="row-installments"]')).toBeNull();
+      expect(row.querySelector('a[data-testid="row-description"]')).toBeNull();
+      expect(row.querySelector('[data-testid="row-description"]')?.textContent?.trim()).toBe('Mercado semanal');
+    });
+
+    it('names a system category by its code', async () => {
+      // Las transferencias no muestran su categoría en la fila: se prueba con un gasto.
+      fakes.categories.categories.push({ id: 7, name: 'Pago tarjeta', type: 'expense', isActive: true, code: 'CARD_PAYMENT' });
+      fakes.transactions.transactions.push(
+        transaction(50, 'expense', 150000, {
+          date: `${TODAY}T18:00:00Z`,
+          fromAccountId: 2,
+          categoryId: 7,
+          description: 'Pago extracto',
+        }),
+      );
+      const { element } = await open();
+
+      expect(query(element, 'transaction-50')?.querySelector('[data-testid="row-meta"]')?.textContent).toContain('Card payment');
+    });
+  });
 });

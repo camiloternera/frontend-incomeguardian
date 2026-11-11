@@ -2,7 +2,19 @@ import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { translocoTesting } from '@core/i18n/i18n.testing';
-import { BudgetMonth, daysLeftInMonth, formatMonthKey, monthOfDay, shiftMonth, todayInBudgetZone } from '../../../domain/budget';
+import { LanguageService } from '@core/i18n/language.service';
+import {
+  BUDGET_FUTURE_MONTHS_MAX,
+  BudgetMonth,
+  BudgetRow,
+  BudgetTotal,
+  daysLeftInMonth,
+  formatMonthKey,
+  lastViewableMonth,
+  monthOfDay,
+  shiftMonth,
+  todayInBudgetZone,
+} from '../../../domain/budget';
 import { BudgetError } from '../../../domain/budget-error';
 import { BudgetFakes, fakeBudgetsRoutes, sampleSummary } from '../../budget-repository.fake';
 
@@ -10,6 +22,8 @@ import { BudgetFakes, fakeBudgetsRoutes, sampleSummary } from '../../budget-repo
 const TODAY = todayInBudgetZone();
 const CURRENT: BudgetMonth = monthOfDay(TODAY);
 const PREVIOUS = shiftMonth(CURRENT, -1);
+const NEXT = shiftMonth(CURRENT, 1);
+const LAST = lastViewableMonth(CURRENT);
 
 describe('BudgetListPageComponent', () => {
   let fakes: BudgetFakes;
@@ -184,11 +198,11 @@ describe('BudgetListPageComponent', () => {
     expect(text(inactive.querySelector('[data-testid="row-kind"]'))).toBe('Expense · deactivated category');
   });
 
-  it('counts the days left in the current month and blocks the next one', async () => {
+  it('counts the days left in the current month and lets you look at the next one', async () => {
     const { element } = await open();
     const days = daysLeftInMonth(TODAY);
 
-    expect(query(element, '[data-testid="month-next"]')?.hasAttribute('disabled')).toBe(true);
+    expect(query(element, '[data-testid="month-next"]')?.hasAttribute('disabled')).toBe(false);
     if (days > 1) {
       expect(text(query(element, '[data-testid="time-note"]'))).toBe(`${days} days left this month`);
     }
@@ -230,5 +244,124 @@ describe('BudgetListPageComponent', () => {
     await settle(harness);
 
     expect(query(element, '[data-testid="block-COP"]')).toBeTruthy();
+  });
+  describe('installments', () => {
+    function purchase(transactionId: number, installments: number) {
+      return {
+        transactionId,
+        description: 'Compra',
+        number: 1,
+        installments,
+        accountId: 9,
+        accountName: 'Visa',
+        purchaseDate: '2026-11-03',
+        amount: 10000,
+        budgetAdjustment: 0,
+      };
+    }
+
+    function withRow(overrides: Partial<BudgetRow>, totals: Partial<BudgetTotal> = {}): void {
+      const summary = sampleSummary(CURRENT);
+      summary.rows = summary.rows.map((item) => (item.categoryId === 1 && item.currency === 'COP' ? { ...item, ...overrides } : item));
+      summary.totals = summary.totals.map((total) => (total.currency === 'COP' ? { ...total, ...totals } : total));
+      fakes.budgets.summaries[formatMonthKey(CURRENT)] = summary;
+    }
+
+    it('counts only the purchases of more than one installment in the chip', async () => {
+      withRow({ installments: [purchase(1, 1), purchase(2, 3), purchase(3, 12)] });
+      const { element } = await open();
+
+      expect(text(row(element, '1-COP').querySelector('[data-testid="row-installments"]'))).toBe('2 in installments');
+    });
+
+    it('does not show the chip with only single-installment purchases', async () => {
+      withRow({ installments: [purchase(1, 1)] });
+      const { element } = await open();
+
+      expect(row(element, '1-COP').querySelector('[data-testid="row-installments"]')).toBeNull();
+    });
+
+    it('says when installments raised the limit of the month', async () => {
+      withRow({ installmentsRaise: 50000 });
+      const { element } = await open();
+
+      expect(text(row(element, '1-COP').querySelector('[data-testid="row-source"]'))).toContain('raised by installments');
+      expect(text(row(element, '3-COP').querySelector('[data-testid="row-source"]'))).not.toContain('raised by installments');
+    });
+
+    it('shows how much of the spending went to installment purchases', async () => {
+      withRow({}, { installmentsSpent: 120000 });
+      const { element } = await open();
+      const note = text(query(element, '[data-testid="block-COP"] [data-testid="block-installments"]'));
+
+      expect(note).toContain('Of that, on installment purchases');
+      expect(note).toContain('120,000');
+    });
+
+    it('hides that line when no installment purchase counts', async () => {
+      const { element } = await open();
+
+      expect(query(element, '[data-testid="block-COP"] [data-testid="block-installments"]')).toBeNull();
+    });
+  });
+  describe('future months', () => {
+    it('steps forward to the next month in view-only mode', async () => {
+      fakes.budgets.summaries[formatMonthKey(NEXT)] = sampleSummary(NEXT);
+      const { harness, element } = await open();
+
+      query(element, '[data-testid="month-next"]')!.click();
+      await settle(harness);
+
+      expect(TestBed.inject(Router).url).toBe(`/budgets?month=${formatMonthKey(NEXT)}`);
+      expect(fakes.budgets.requested.at(-1)).toEqual(NEXT);
+      expect(text(query(element, '[data-testid="time-note"]'))).toBe('Future month: view only');
+      expect(query(element, '[data-testid="new-budget"]')).toBeNull();
+    });
+
+    it('keeps the rows linked to a view-only panel', async () => {
+      fakes.budgets.summaries[formatMonthKey(NEXT)] = sampleSummary(NEXT);
+      const { element } = await open(`/budgets?month=${formatMonthKey(NEXT)}`);
+      const link = row(element, '4-COP').querySelector('[data-testid="row-edit"]')!;
+
+      expect(link.getAttribute('href')).toBe(`/budgets/4/COP?month=${formatMonthKey(NEXT)}`);
+      expect(link.getAttribute('aria-label')).toMatch(/^View the .* limit$/);
+    });
+
+    it('labels the rows as editable in the current month', async () => {
+      const { element } = await open();
+
+      expect(row(element, '4-COP').querySelector('[data-testid="row-edit"]')?.getAttribute('aria-label')).not.toMatch(/^View the/);
+    });
+
+    it('explains an empty future month without offering to add a limit', async () => {
+      const { element } = await open(`/budgets?month=${formatMonthKey(NEXT)}`);
+      const empty = text(query(element, '[data-testid="budget-empty"]'));
+
+      expect(empty).toContain('No limits or installments in');
+      expect(empty).toContain('Future months are view only.');
+      expect(query(element, '[data-testid="new-first-budget"]')).toBeNull();
+    });
+
+    it(`opens up to ${BUDGET_FUTURE_MONTHS_MAX} months ahead and blocks the next one there`, async () => {
+      const { element } = await open(`/budgets?month=${formatMonthKey(LAST)}`);
+
+      expect(fakes.budgets.requested).toEqual([LAST]);
+      expect(query(element, '[data-testid="month-next"]')?.hasAttribute('disabled')).toBe(true);
+      expect(query(element, '[data-testid="month-previous"]')?.hasAttribute('disabled')).toBe(false);
+    });
+
+    it('falls back to the current month beyond the last viewable one', async () => {
+      await open(`/budgets?month=${formatMonthKey(shiftMonth(LAST, 1))}`);
+
+      expect(fakes.budgets.requested).toEqual([CURRENT]);
+    });
+
+    it('translates the future month into Spanish', async () => {
+      TestBed.inject(LanguageService).setLanguage('es-CO');
+      const { element } = await open(`/budgets?month=${formatMonthKey(NEXT)}`);
+
+      expect(text(query(element, '[data-testid="time-note"]'))).toBe('Mes futuro: solo consulta');
+      expect(text(query(element, '[data-testid="budget-empty"]'))).toContain('Los meses futuros son de solo consulta.');
+    });
   });
 });

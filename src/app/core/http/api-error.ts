@@ -19,6 +19,11 @@ export function apiErrorCode(error: unknown): string | undefined {
   return readEnvelope(error)?.errors?.[0]?.code;
 }
 
+/** Los datos del primer error que reportó el backend (por ejemplo `{ year, month }`), si existen. */
+export function apiErrorData(error: unknown): unknown {
+  return readEnvelope(error)?.errors?.[0]?.data;
+}
+
 /**
  * Reads the error out of the API envelope, which reaches us either inside an
  * HttpErrorResponse or as a 200 body carrying `isSuccess: false`.

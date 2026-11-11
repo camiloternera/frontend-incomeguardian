@@ -41,7 +41,8 @@
       "transfer": "Transferencia registrada: {{amount}}",
       "transferConverted": "Transferencia registrada: llegaron {{amount}}",
       "dismiss": "Cerrar"
-    }
+    },
+    "installments": "{{count}} cuotas"
   },
   "form": {
     "title": {
@@ -140,6 +141,58 @@
       "formulaMultiply": "{{amount}} × {{rate}}",
       "help": "Se calcula con la TRM oficial. Si quieres que llegue otro valor, ajusta el monto que envías.",
       "needsDate": "Elige una fecha de hoy o anterior para calcular con la TRM."
+    },
+    "installments": {
+      "title": "Cuotas",
+      "onlyCards": "Solo para compras con tarjeta",
+      "count": "Número de cuotas",
+      "one": "1 cuota",
+      "other": "Otra",
+      "otherLabel": "Otro número de cuotas, de {{min}} a {{max}}",
+      "range": "{{min}}–{{max}}",
+      "outOfRange": "Escribe un número entero de cuotas entre {{min}} y {{max}}.",
+      "interest": "Interés",
+      "withoutInterest": "Sin interés",
+      "withInterest": "Con interés",
+      "rateLabel": "Tasa efectiva anual (EA)",
+      "rateSuffix": "% EA",
+      "rateHelp": "Aparece en el comprobante o en la app de tu banco. Con tasa, la cuota es fija.",
+      "rateRequired": "Escribe la tasa efectiva anual, o elige «Sin interés».",
+      "rateInvalid": "Escribe una tasa entre {{min}} y {{max}} %, con hasta 2 decimales.",
+      "calculating": "Calculando el plan de cuotas…",
+      "plan": "Plan de cuotas",
+      "split": "capital {{principal}} + interés {{interest}}",
+      "firstStatement": "Primera cuota en el corte del",
+      "totalInterest": "Intereses",
+      "total": "Total que pagarás",
+      "single": "Una sola cuota de {{amount}} en el extracto de {{month}} (corte el {{date}}).",
+      "budgetTitle": "Subiremos el tope de {{category}} en {{count}} meses",
+      "budgetBody": "Cada cuota cuenta en el presupuesto de su mes. Para que no te pases, le sumamos la cuota al tope de cada mes posterior al de la compra. Si borras o editas la compra, lo deshacemos.",
+      "budgetMonth": "Mes",
+      "budgetNow": "Tope hoy",
+      "budgetNew": "Tope nuevo",
+      "noBudget": "Sin tope",
+      "budgetMore": "y {{count}} meses más, hasta {{month}}.",
+      "closedMonth": "Una cuota cae en {{month}}, que está cerrado. Reábrelo o cambia la fecha o las cuotas para guardar la compra.",
+      "available": "Cupo disponible de {{name}}",
+      "availableAfter": "Después de esta compra",
+      "overLimit": "Con esta compra pasas el cupo. Puedes guardarla igual.",
+      "submit": "Guardar gasto a {{count}} cuotas"
+    },
+    "pay": {
+      "title": "Pagar {{name}}",
+      "subtitle": "Extracto de {{month}}",
+      "howMuch": "¿Cuánto pagas?",
+      "preset": {
+        "statement": "Por pagar del extracto",
+        "all": "Toda la deuda"
+      },
+      "waitingRate": "Esperando la TRM para convertir el monto…",
+      "description": "Pago extracto {{month}}",
+      "fromAfter": "{{name}} queda en",
+      "debtAfter": "Deuda de {{name}} queda en",
+      "notSpending": "Es una transferencia: no cuenta como gasto en tu presupuesto ni en el resumen.",
+      "submit": "Registrar pago"
     }
   },
   "errors": {
@@ -159,6 +212,40 @@
     "TRANSACTION_ACCOUNT_CURRENCY_UNSUPPORTED": "Esa cuenta está en una moneda que no admite movimientos. Elige una en pesos o dólares.",
     "EXCHANGE_RATE_UNAVAILABLE": "La TRM no está disponible en este momento.",
     "EXCHANGE_RATE_DATE_INVALID": "No hay TRM para esa fecha. Elige hoy o una fecha anterior.",
-    "PERIOD_CLOSED": "El mes de esa fecha está cerrado. Reábrelo para registrar movimientos."
+    "PERIOD_CLOSED": "El mes de esa fecha está cerrado. Reábrelo para registrar movimientos.",
+    "TRANSACTION_INSTALLMENTS_NOT_ALLOWED": "Las cuotas solo aplican a gastos con tarjeta de crédito.",
+    "TRANSACTION_INSTALLMENTS_OUT_OF_RANGE": "El número de cuotas debe estar entre 1 y 48.",
+    "TRANSACTION_INTEREST_RATE_OUT_OF_RANGE": "La tasa debe estar entre 0 y 200 % EA."
+  },
+  "systemCategories": {
+    "CARD_PAYMENT": "Pago de tarjeta"
+  },
+  "detail": {
+    "title": "Movimiento",
+    "loading": "Cargando el movimiento…",
+    "installmentsOf": "{{count}} cuotas de {{amount}}",
+    "rate": "{{rate}} % EA",
+    "interest": "Intereses",
+    "total": "Total a pagar",
+    "remaining": "Faltan",
+    "remainingValue": "{{count}} cuotas · {{amount}}",
+    "plan": "Plan de cuotas",
+    "afterCut": "La compra fue después del corte de su mes, así que la primera cuota cayó en {{month}}.",
+    "columns": {
+      "number": "Cuota",
+      "month": "Mes de corte",
+      "principal": "Capital",
+      "interest": "Interés",
+      "amount": "Cuota"
+    },
+    "state": {
+      "billed": "Facturada",
+      "current": "En el extracto actual",
+      "pending": "Pendiente"
+    },
+    "viewStatement": "Ver el extracto de {{month}}",
+    "budgetTitle": "Presupuesto de {{category}}",
+    "budgetBody": "Cada cuota cuenta en el presupuesto de su mes de corte. Las cuotas que caen después del mes de la compra subieron el tope de su mes.",
+    "viewBudget": "Ver presupuesto"
   }
 }

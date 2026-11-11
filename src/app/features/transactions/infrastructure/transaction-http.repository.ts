@@ -4,13 +4,17 @@ import { TranslocoService } from '@jsverse/transloco';
 import { Observable, OperatorFunction, catchError, map, pipe, throwError } from 'rxjs';
 import { environment } from '@env/environment';
 import { ApiResponse } from '@core/http/api-response';
-import { GENERIC_ERROR_KEY, apiErrorCode, resolveApiError } from '@core/http/api-error';
+import { GENERIC_ERROR_KEY, apiErrorCode, apiErrorData, resolveApiError } from '@core/http/api-error';
 import {
   ExchangeRate,
+  InstallmentPreview,
+  InstallmentPreviewRequest,
+  InstallmentScheduleItem,
   Transaction,
   TransactionAccountOption,
   TransactionCategoryOption,
   TransactionDraft,
+  TransactionMonth,
   TransactionPage,
   TransactionQuery,
   TransactionRange,
@@ -28,6 +32,9 @@ import {
 import { TRANSACTION_ERROR_KEYS, TRANSACTION_ERROR_PARAMS } from './transaction-error-messages';
 import {
   ExchangeRateDto,
+  InstallmentPreviewDto,
+  InstallmentPreviewRequestDto,
+  InstallmentScheduleItemDto,
   TransactionAccountOptionDto,
   TransactionCategoryOptionDto,
   TransactionDto,
@@ -45,6 +52,64 @@ const CATEGORY_TYPE_IDS: Record<TransactionType, number> = { income: 1, expense:
 const CATEGORY_TYPES_BY_ID = new Map<number, TransactionType>(
   Object.entries(CATEGORY_TYPE_IDS).map(([type, id]) => [id, type as TransactionType]),
 );
+
+/** Día `YYYY-MM-DD`: tal cual si ya lo es; si es un instante, el día en hora de Colombia. */
+function toDay(value: string): string {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
+  }
+
+  // `en-CA` formatea las fechas como `YYYY-MM-DD`.
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date(value));
+}
+
+function toScheduleItem(dto: InstallmentScheduleItemDto): InstallmentScheduleItem {
+  return {
+    number: dto.number,
+    year: dto.year,
+    month: dto.month,
+    statementDate: toDay(dto.statementDate),
+    principal: dto.principal,
+    interest: dto.interest,
+    amount: dto.amount,
+  };
+}
+
+function toPreview(dto: InstallmentPreviewDto): InstallmentPreview {
+  return {
+    installmentAmount: dto.installmentAmount,
+    totalInterest: dto.totalInterest,
+    totalAmount: dto.totalAmount,
+    schedule: (dto.schedule ?? []).map(toScheduleItem),
+    budgetAdjustments: (dto.budgetAdjustments ?? []).map((item) => ({
+      year: item.year,
+      month: item.month,
+      categoryId: item.categoryId,
+      currency: item.currency,
+      currentAmount: item.currentAmount ?? null,
+      newAmount: item.newAmount,
+    })),
+  };
+}
+
+/** Solo se envían la tasa y la categoría cuando hay. */
+function toPreviewRequest(request: InstallmentPreviewRequest): InstallmentPreviewRequestDto {
+  const body: InstallmentPreviewRequestDto = {
+    fromAccountId: request.fromAccountId,
+    amount: request.amount,
+    date: request.date,
+    installments: request.installments,
+  };
+
+  if (request.annualInterestRate !== null) {
+    body.annualInterestRate = request.annualInterestRate;
+  }
+  if (request.categoryId !== null) {
+    body.categoryId = request.categoryId;
+  }
+
+  return body;
+}
 
 function toTransaction(dto: TransactionDto): Transaction {
   if (!isTransactionType(dto.type)) {
@@ -66,6 +131,10 @@ function toTransaction(dto: TransactionDto): Transaction {
     destinationAmount: dto.destinationAmount ?? null,
     exchangeRate: dto.exchangeRate ?? null,
     exchangeRateDate: dto.exchangeRateDate ?? null,
+    installments: dto.installments ?? 1,
+    annualInterestRate: dto.annualInterestRate ?? null,
+    installmentAmount: dto.installmentAmount ?? null,
+    schedule: (dto.schedule ?? []).map(toScheduleItem),
   };
 }
 
@@ -108,6 +177,14 @@ function toRequest(draft: TransactionDraft): TransactionRequestDto {
   if (draft.description !== null) {
     body.description = draft.description;
   }
+  // Una sola cuota es el valor por defecto: no se envía.
+  if (draft.type === 'expense' && draft.installments !== undefined && draft.installments > 1) {
+    body.installments = draft.installments;
+
+    if (draft.annualInterestRate != null) {
+      body.annualInterestRate = draft.annualInterestRate;
+    }
+  }
 
   return body;
 }
@@ -135,6 +212,9 @@ function toAccountOption(dto: TransactionAccountOptionDto): TransactionAccountOp
     currency: dto.currency,
     currentBalance: dto.currentBalance ?? dto.initialBalance,
     isActive: dto.isActive,
+    isCreditCard: dto.kind === 'credit_card',
+    availableCredit: dto.availableCredit ?? null,
+    nextStatementDate: dto.nextStatementDate ? toDay(dto.nextStatementDate) : null,
   };
 }
 
@@ -145,6 +225,7 @@ function toCategoryOption(dto: TransactionCategoryOptionDto): TransactionCategor
     name: dto.name,
     type: CATEGORY_TYPES_BY_ID.get(dto.transactionTypeId) ?? null,
     isActive: dto.isActive !== false,
+    code: dto.code ?? null,
   };
 }
 
@@ -186,7 +267,18 @@ function toTransactionError(error: unknown, transloco: TranslocoService): Transa
     transloco.translate(key, TRANSACTION_ERROR_PARAMS),
   );
 
-  return new TransactionError(message, isTransactionErrorCode(code) ? code : null);
+  return new TransactionError(message, isTransactionErrorCode(code) ? code : null, toMonth(apiErrorData(error)));
+}
+
+/** El mes de los datos de un error (`{ year, month }`), si lo trae. */
+function toMonth(data: unknown): TransactionMonth | null {
+  if (typeof data !== 'object' || data === null) {
+    return null;
+  }
+
+  const { year, month } = data as { year?: unknown; month?: unknown };
+
+  return typeof year === 'number' && typeof month === 'number' ? { year, month } : null;
 }
 
 /** Operador común a los adaptadores: todo fallo sale como `TransactionError`. */
@@ -218,6 +310,18 @@ export class TransactionHttpRepository extends TransactionRepository {
     return this.http
       .post<ApiResponse<TransactionDto>>(this.baseUrl, toRequest(draft))
       .pipe(unwrap(), map(toTransaction), toErrors(this.transloco));
+  }
+
+  get(id: number): Observable<Transaction> {
+    return this.http
+      .get<ApiResponse<TransactionDto>>(`${this.baseUrl}/${id}`)
+      .pipe(unwrap(), map(toTransaction), toErrors(this.transloco));
+  }
+
+  previewInstallments(request: InstallmentPreviewRequest): Observable<InstallmentPreview> {
+    return this.http
+      .post<ApiResponse<InstallmentPreviewDto>>(`${this.baseUrl}/installments/preview`, toPreviewRequest(request))
+      .pipe(unwrap(), map(toPreview), toErrors(this.transloco));
   }
 }
 

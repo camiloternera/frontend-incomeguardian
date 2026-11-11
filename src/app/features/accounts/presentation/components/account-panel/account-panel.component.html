@@ -27,7 +27,13 @@
       </h2>
       @if (status() === 'ready') {
         <p class="m-0 text-[13px] leading-normal text-ig-muted">
-          {{ isEdit() ? t('accounts.form.editSubtitle') : t('accounts.form.createSubtitle') }}
+          {{
+            isEdit()
+              ? t('accounts.form.editSubtitle')
+              : isCard()
+                ? t('accounts.form.card.createSubtitle')
+                : t('accounts.form.createSubtitle')
+          }}
         </p>
       }
     </div>
@@ -83,14 +89,17 @@
               <dd class="m-0 text-right">{{ t('accounts.form.currency.' + current.currency) }}</dd>
             </div>
             <div class="flex items-baseline justify-between gap-4">
-              <dt class="text-ig-muted">{{ t('accounts.form.balanceLabel') }}</dt>
+              <dt class="text-ig-muted">
+                {{ current.kind === 'credit_card' ? t('accounts.form.card.initialDebtLabel') : t('accounts.form.balanceLabel') }}
+              </dt>
+              @let shownBalance = current.kind === 'credit_card' ? -current.initialBalance || 0 : current.initialBalance;
               <dd class="m-0 text-right font-bold tabular-nums">
                 {{
-                  current.initialBalance
+                  shownBalance
                     | currency
                       : current.currency
                       : 'symbol'
-                      : balanceDigits(current.currency, current.initialBalance)
+                      : balanceDigits(current.currency, shownBalance)
                       : locale()
                 }}
               </dd>
@@ -114,6 +123,41 @@
 
     @default {
       <form class="flex flex-col gap-6" [formGroup]="accountForm" (ngSubmit)="submit()" novalidate>
+        <fieldset
+          class="m-0 flex min-w-0 flex-col gap-2 border-0 p-0"
+          [attr.aria-describedby]="kindError() ? 'account-kind-error' : identityLocked() ? 'account-kind-locked' : null"
+        >
+          <legend class="mb-2 p-0 text-[13px] font-bold">{{ t('accounts.form.kindLabel') }}</legend>
+          <div
+            class="grid grid-cols-2 gap-1 rounded-lg border p-1"
+            [class]="kindError() ? 'border-ig-text' : 'border-ig-border'"
+          >
+            @for (option of kinds; track option) {
+              <label
+                class="relative grid min-h-11 cursor-pointer place-items-center rounded-md px-2 text-center text-[14px] text-ig-muted hover:text-ig-text has-disabled:cursor-not-allowed has-disabled:hover:text-ig-muted has-checked:bg-ig-surface-raised has-checked:font-bold has-checked:text-ig-text has-focus-visible:outline-2 has-focus-visible:outline-ig-accent has-focus-visible:outline-offset-2"
+              >
+                <input
+                  class="sr-only"
+                  type="radio"
+                  formControlName="kind"
+                  [attr.data-testid]="'kind-' + option"
+                  [value]="option"
+                />
+                {{ t('accounts.form.kind.' + option) }}
+              </label>
+            }
+          </div>
+          @if (kindError(); as message) {
+            <p id="account-kind-error" data-testid="kind-error" class="m-0 text-[13px] leading-snug text-ig-text" role="alert">
+              {{ t(message.key, message.params) }}
+            </p>
+          } @else if (identityLocked()) {
+            <p id="account-kind-locked" class="m-0 text-[12px] text-ig-muted">
+              {{ t('accounts.form.kindLocked') }}
+            </p>
+          }
+        </fieldset>
+
         <div class="flex flex-col gap-2">
           <div class="flex items-baseline justify-between gap-3">
             <label class="text-[13px] font-bold" for="account-name">{{
@@ -201,7 +245,9 @@
 
         <div class="flex flex-col gap-2">
           <label class="text-[13px] font-bold" for="account-balance">{{
-            t('accounts.form.balanceLabel')
+            isCard()
+              ? t(isEdit() ? 'accounts.form.card.initialDebtLabel' : 'accounts.form.card.debtLabel')
+              : t('accounts.form.balanceLabel')
           }}</label>
           <div
             class="flex min-h-12 items-center rounded-lg border bg-ig-surface focus-within:border-ig-accent focus-within:outline-2 focus-within:outline-ig-accent focus-within:outline-offset-2 lg:min-h-11"
@@ -245,9 +291,125 @@
             </p>
           }
           <p id="account-balance-hint" class="m-0 text-[12px] text-ig-muted">
-            {{ t('accounts.form.balanceHint', balanceParams) }}
+            {{ isCard() ? t('accounts.form.card.debtHint') : t('accounts.form.balanceHint', balanceParams) }}
           </p>
         </div>
+
+        @if (isCard()) {
+          <div data-testid="card-fields" class="flex flex-col gap-6">
+            <div class="flex flex-col gap-2">
+              <label class="text-[13px] font-bold" for="account-credit-limit">
+                {{ t('accounts.form.card.limitLabel') }}
+                <span class="font-normal text-ig-muted">{{ t('accounts.form.card.optional') }}</span>
+              </label>
+              <div class="flex min-h-12 items-center rounded-lg border bg-ig-surface focus-within:border-ig-accent focus-within:outline-2 focus-within:outline-ig-accent focus-within:outline-offset-2 lg:min-h-11" [class]="creditLimitError() ? 'border-ig-text' : 'border-ig-border'">
+                <span class="shrink-0 pl-3 text-[14px] text-ig-muted" aria-hidden="true">{{ currencySymbol() }}</span>
+                <input
+                  class="min-h-11 w-full min-w-0 flex-1 border-0 bg-transparent px-2 text-[16px] tabular-nums text-ig-text outline-none lg:text-[14px]"
+                  id="account-credit-limit"
+                  data-testid="account-credit-limit"
+                  formControlName="creditLimit"
+                  type="text"
+                  inputmode="decimal"
+                  autocomplete="off"
+                  [attr.aria-invalid]="creditLimitError() !== null"
+                  [attr.aria-describedby]="
+                    creditLimitError() ? 'account-credit-limit-error account-credit-limit-hint' : 'account-credit-limit-hint'
+                  "
+                />
+                @if (currencySymbol() !== currency()) {
+                  <span class="shrink-0 pr-3 text-[13px] text-ig-muted" aria-hidden="true">{{ currency() }}</span>
+                }
+              </div>
+              @if (creditLimitError(); as message) {
+                <p
+                  id="account-credit-limit-error"
+                  data-testid="credit-limit-error"
+                  class="m-0 text-[13px] leading-snug text-ig-text"
+                  role="alert"
+                >
+                  {{ t(message.key, message.params) }}
+                </p>
+              }
+              <p id="account-credit-limit-hint" class="m-0 text-[12px] text-ig-muted">
+                {{ t('accounts.form.card.limitHint') }}
+              </p>
+            </div>
+
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div class="flex min-w-0 flex-col gap-2">
+                <label class="text-[13px] font-bold" for="account-statement-day">{{
+                  t('accounts.form.card.statementDayLabel')
+                }}</label>
+                <app-select
+                  data-testid="account-statement-day"
+                  inputId="account-statement-day"
+                  formControlName="statementDay"
+                  [options]="dayOptions"
+                  [placeholder]="t('accounts.form.card.dayPlaceholder')"
+                  [invalid]="statementDayError() !== null"
+                  [describedBy]="statementDayError() ? 'account-statement-day-error' : null"
+                />
+                @if (statementDayError(); as message) {
+                  <p
+                    id="account-statement-day-error"
+                    data-testid="statement-day-error"
+                    class="m-0 text-[13px] leading-snug text-ig-text"
+                    role="alert"
+                  >
+                    {{ t(message.key, message.params) }}
+                  </p>
+                }
+              </div>
+              <div class="flex min-w-0 flex-col gap-2">
+                <label class="text-[13px] font-bold" for="account-payment-day">{{
+                  t('accounts.form.card.paymentDayLabel')
+                }}</label>
+                <app-select
+                  data-testid="account-payment-day"
+                  inputId="account-payment-day"
+                  formControlName="paymentDay"
+                  [options]="dayOptions"
+                  [placeholder]="t('accounts.form.card.dayPlaceholder')"
+                  [invalid]="paymentDayError() !== null"
+                  [describedBy]="paymentDayError() ? 'account-payment-day-error' : null"
+                />
+                @if (paymentDayError(); as message) {
+                  <p
+                    id="account-payment-day-error"
+                    data-testid="payment-day-error"
+                    class="m-0 text-[13px] leading-snug text-ig-text"
+                    role="alert"
+                  >
+                    {{ t(message.key, message.params) }}
+                  </p>
+                }
+              </div>
+            </div>
+
+            @if (cardPreview(); as preview) {
+              <dl
+                data-testid="card-preview"
+                class="m-0 grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 rounded-lg border border-ig-border p-4 text-[13px] tabular-nums"
+              >
+                <dt class="text-ig-muted">{{ t('accounts.form.card.nextStatement') }}</dt>
+                <dd class="m-0 text-right font-bold">{{ preview.statementDate | date: 'mediumDate' : 'UTC' : locale() }}</dd>
+                <dt class="text-ig-muted">{{ t('accounts.form.card.payBy') }}</dt>
+                <dd class="m-0 text-right font-bold">{{ preview.paymentDueDate | date: 'mediumDate' : 'UTC' : locale() }}</dd>
+                <dt class="col-span-2 text-[12px] text-ig-muted">
+                  {{ preview.paysNextMonth ? t('accounts.form.card.paysNextMonth') : t('accounts.form.card.paysSameMonth') }}
+                  {{ t('accounts.form.card.shortMonths') }}
+                </dt>
+              </dl>
+            }
+
+            @if (identityLocked()) {
+              <p class="m-0 rounded-lg border border-ig-border bg-ig-surface-raised px-4 py-3 text-[13px] text-ig-muted">
+                {{ t('accounts.form.card.daysChangeNote') }}
+              </p>
+            }
+          </div>
+        }
 
         <fieldset
           class="m-0 flex min-w-0 flex-col gap-2 border-0 p-0"
@@ -369,7 +531,13 @@
                 @if (isSubmitting()) {
                   {{ t('accounts.form.saving') }}
                 } @else {
-                  {{ isEdit() ? t('accounts.form.saveChanges') : t('accounts.form.create') }}
+                  {{
+                    isEdit()
+                      ? t('accounts.form.saveChanges')
+                      : isCard()
+                        ? t('accounts.form.card.create')
+                        : t('accounts.form.create')
+                  }}
                 }
               </button>
             </div>

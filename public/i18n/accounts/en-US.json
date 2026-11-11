@@ -1,7 +1,7 @@
 {
   "list": {
     "title": "Accounts",
-    "subtitle": "Where your money is: banks, cards, wallets and cash.",
+    "subtitle": "Where your money is, and what you owe on your cards.",
     "create": "New account",
     "loading": "Loading your accounts…",
     "retry": "Try again",
@@ -47,6 +47,23 @@
       "updated": "You saved the changes to “{{name}}”.",
       "deactivated": "You deactivated the “{{name}}” account.",
       "dismiss": "Dismiss"
+    },
+    "positions": {
+      "assets": "In your accounts ({{currency}})",
+      "debt": "Owed on cards ({{currency}})",
+      "net": "Net in {{currency}}"
+    },
+    "card": {
+      "kind": "Credit card",
+      "statement": "Statement {{date}}",
+      "payment": "Due {{date}}",
+      "owes": "You owe",
+      "credit": "Credit balance",
+      "usage": "Credit used: {{percent}}%",
+      "available": "{{available}} available of {{limit}}",
+      "overLimit": "Over the limit by {{amount}}",
+      "noLimit": "No credit limit recorded.",
+      "viewStatement": "View statement"
     }
   },
   "form": {
@@ -59,7 +76,7 @@
     "readOnlyCurrency": "This account uses a currency that is no longer supported: you can look it up, but you cannot edit it or record new transactions in it.",
     "loading": "Loading the account…",
     "nameLabel": "Name",
-    "identityLocked": "This account already has transactions, so its name and currency cannot change.",
+    "identityLocked": "This account already has transactions: its name, currency and type can no longer change.",
     "namePlaceholder": "For example, Chase savings",
     "currencyLabel": "Currency",
     "currency": {
@@ -81,7 +98,33 @@
     "openingLabel": "Opening date",
     "openingDay": "Opening day",
     "openingTime": "Opening time",
-    "openingHint": "When the account started; it cannot be later than now."
+    "openingHint": "When the account started; it cannot be later than now.",
+    "kindLabel": "Type",
+    "kind": {
+      "standard": "Regular account",
+      "credit_card": "Credit card"
+    },
+    "kindLocked": "The type can no longer change: the account has transactions.",
+    "card": {
+      "create": "Create card",
+      "createSubtitle": "A card with a credit limit, a statement day and a payment day.",
+      "debtLabel": "Current debt",
+      "initialDebtLabel": "Initial debt",
+      "debtHint": "What you owe today, according to your bank. That way you don't have to record old purchases.",
+      "debtNegative": "Enter the debt as a positive number; use 0 if the card has no debt.",
+      "limitLabel": "Credit limit",
+      "optional": "(optional)",
+      "limitHint": "With the limit we can show you how much credit you have left.",
+      "statementDayLabel": "Statement day",
+      "paymentDayLabel": "Payment day",
+      "dayPlaceholder": "Pick a day",
+      "nextStatement": "Next statement",
+      "payBy": "Pay by",
+      "paysNextMonth": "The payment falls in the month after the statement because the payment day is not after the statement day.",
+      "paysSameMonth": "The payment falls in the same month as the statement.",
+      "shortMonths": "If a month has fewer days, we use its last day.",
+      "daysChangeNote": "Changing the statement or payment day only affects new purchases. Installments already recorded stay in their months."
+    }
   },
   "errors": {
     "ACCOUNT_NAME_REQUIRED": "Enter a name for the account.",
@@ -93,6 +136,61 @@
     "ACCOUNT_CURRENCY_LOCKED": "The account already has transactions, so its currency cannot change.",
     "ACCOUNT_OPENING_DATE_REQUIRED": "Enter the day and time you opened the account.",
     "ACCOUNT_OPENING_DATE_FUTURE": "The opening date cannot be later than now.",
-    "ACCOUNT_LOCKED_BY_CLOSED_PERIOD": "You can't change the opening balance or currency: there are closed months since this account opened. Reopen them first."
+    "ACCOUNT_LOCKED_BY_CLOSED_PERIOD": "You can't change the opening balance or currency: there are closed months since this account opened. Reopen them first.",
+    "ACCOUNT_KIND_INVALID": "Choose whether it is a regular account or a credit card.",
+    "ACCOUNT_KIND_LOCKED": "The account already has transactions, so its type can't change.",
+    "ACCOUNT_STATEMENT_DAY_REQUIRED": "Pick the card's statement day.",
+    "ACCOUNT_STATEMENT_DAY_INVALID": "The statement day must be between 1 and 31.",
+    "ACCOUNT_PAYMENT_DAY_REQUIRED": "Pick the card's payment day.",
+    "ACCOUNT_PAYMENT_DAY_INVALID": "The payment day must be between 1 and 31.",
+    "ACCOUNT_CREDIT_LIMIT_INVALID": "The credit limit must be greater than 0. Leave it empty if you don't know it.",
+    "CREDIT_CARD_INITIAL_BALANCE_POSITIVE": "A card's debt can't start as a credit balance. Enter it as a positive number.",
+    "ACCOUNT_NOT_CREDIT_CARD": "This account is not a credit card."
+  },
+  "statement": {
+    "breadcrumb": "Breadcrumb",
+    "loading": "Loading the statement…",
+    "notFoundTitle": "Statement not available",
+    "notFoundBody": "We couldn't find this card, or the account is not a credit card.",
+    "title": "{{name}} statement",
+    "period": "{{start}} – {{end}} · closes on day {{day}}",
+    "monthNav": "Statement month",
+    "previous": "Previous statement",
+    "next": "Next statement",
+    "summary": "Statement summary",
+    "balanceDue": "Amount due",
+    "total": "Statement total",
+    "paid": "Already paid",
+    "dueDate": "Due date",
+    "pay": "Pay {{amount}}",
+    "status": {
+      "upcoming": "Upcoming · starts {{start}}",
+      "open": "Open · closes {{cut}}",
+      "due": "Due · by {{due}}",
+      "partial": "Partly paid · due {{due}}",
+      "paid": "Paid",
+      "overdue": "Overdue since {{due}}"
+    },
+    "openNote": "This statement hasn't closed yet: purchases you make through {{cut}} are added here.",
+    "upcomingNote": "This statement hasn't started yet: its cycle begins {{start}}. It shows installments already scheduled; you pay them after it closes, by {{due}}.",
+    "itemsCaption": "Installments billed on this statement",
+    "columns": {
+      "date": "Purchase",
+      "description": "Description",
+      "category": "Category",
+      "installment": "Installment",
+      "principal": "Principal",
+      "interest": "Interest",
+      "amount": "Amount"
+    },
+    "installmentOf": "{{number}} of {{total}}",
+    "noDescription": "No description",
+    "openingDebt": "Previous balance",
+    "openingDebtHint": "The debt the card had when you added it.",
+    "empty": "This statement has no purchases.",
+    "paymentsTitle": "Payments",
+    "paymentLine": "Transfer from {{account}} on {{date}}",
+    "paymentSplit": "(from a {{amount}} payment)",
+    "transferNote": "Paying the card is a transfer from your bank. It doesn't count as spending: each installment already counts in its month's budget."
   }
 }

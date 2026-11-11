@@ -1,0 +1,60 @@
+<div *transloco="let t" data-testid="budget-month-detail" class="flex flex-col gap-6 border-t border-ig-border pt-6">
+  @if (capLines(); as cap) {
+    <section class="flex flex-col gap-2" aria-labelledby="budget-cap-title">
+      <h3 id="budget-cap-title" class="m-0 text-[14px] font-bold">
+        {{ t('budgets.detail.capTitle', { month: (monthDate() | date: 'MMMM y' : 'UTC' : locale()) }) }}
+      </h3>
+      <dl data-testid="budget-cap-lines" class="m-0 grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 text-[13px] tabular-nums">
+        @if (cap.recurring) {
+          <dt class="text-ig-muted">{{ t('budgets.detail.capRecurring') }}</dt>
+          <dd class="m-0 text-right">{{ cap.recurring }}</dd>
+        }
+        @for (line of cap.adjustments; track line.key) {
+          <dt class="text-ig-muted">{{ line.label }}</dt>
+          <dd class="m-0 text-right">+ {{ line.amount }}</dd>
+        }
+        <dt class="border-t border-ig-border pt-2 font-bold">{{ t('budgets.detail.capTotal') }}</dt>
+        <dd class="m-0 border-t border-ig-border pt-2 text-right font-bold">{{ cap.total }}</dd>
+      </dl>
+    </section>
+  }
+
+  <section class="flex flex-col gap-2" aria-labelledby="budget-spent-title">
+    <h3 id="budget-spent-title" class="m-0 text-[14px] font-bold">{{ t('budgets.detail.spentTitle') }}</h3>
+    @switch (movements().status) {
+      @case ('loading') {
+        <p class="m-0 text-[13px] text-ig-muted" role="status">{{ t('budgets.detail.loading') }}</p>
+      }
+      @case ('error') {
+        @if (movements(); as state) {
+          @if (state.status === 'error') {
+            <p data-testid="budget-spent-error" class="m-0 text-[13px]" role="alert">{{ state.message }}</p>
+          }
+        }
+      }
+      @default {
+        @if (spentLines(); as lines) {
+          @if (lines.length) {
+            <ul data-testid="budget-spent-lines" class="m-0 flex list-none flex-col gap-3 p-0">
+              @for (line of lines; track line.key) {
+                <li class="flex items-baseline justify-between gap-4 text-[13px]">
+                  <span class="flex min-w-0 flex-col">
+                    <a
+                      class="truncate font-medium text-ig-text underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                      [routerLink]="['/transactions', line.transactionId]"
+                      >{{ line.description || t('budgets.detail.noDescription') }}</a
+                    >
+                    <span class="text-[12px] text-ig-muted">{{ line.meta }}</span>
+                  </span>
+                  <span class="shrink-0 font-bold tabular-nums">{{ line.amount }}</span>
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="m-0 text-[13px] text-ig-muted">{{ t('budgets.detail.nothingSpent') }}</p>
+          }
+        }
+      }
+    }
+  </section>
+</div>
