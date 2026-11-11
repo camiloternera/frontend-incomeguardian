@@ -607,6 +607,7 @@ describe('TransactionPanelComponent', () => {
 
       expect(query(element, 'installments-plan')).toBeNull();
       expect(query(element, 'installments-single')?.textContent).toContain('A single installment of');
+      expect(query(element, 'installments-single')?.textContent).toContain('on the November 2026 statement (closes Nov 15).');
     });
 
     it('accepts another number of installments from 1 to 48', async () => {
@@ -713,6 +714,49 @@ describe('TransactionPanelComponent', () => {
       expect(rows[1]).toContain('100,000');
     });
 
+    it('writes the first statement of the plan with the month in words', async () => {
+      const { harness, element } = await openCardExpense();
+      click(element, 'installments-3');
+      await waitForPlan(harness);
+
+      const summary = query(element, 'installments-interest')!.closest('dl')!.textContent ?? '';
+      expect(summary).toContain('First installment on the statement of');
+      expect(summary).toContain('Nov 15, 2026');
+    });
+
+    it('says how much is owed on the card instead of its balance', async () => {
+      const { element } = await openCardExpense();
+
+      expect(query(element, 'account-balance')?.textContent?.trim()).toBe('You owe on this card: COP300,000');
+    });
+
+    it('says when the card has a credit balance', async () => {
+      fakes.accounts.accounts = fakes.accounts.accounts.map((account) =>
+        account.id === 20 ? { ...account, currentBalance: 50000 } : account,
+      );
+      const { element } = await openCardExpense();
+
+      expect(query(element, 'account-balance')?.textContent?.trim()).toBe('Credit balance on this card: COP50,000');
+    });
+
+    it('keeps the current balance for a standard account', async () => {
+      const { harness, element } = await open('/transactions/new/expense');
+      choose(element, 'transaction-account', 'Nequi', harness);
+      await settle(harness);
+
+      expect(query(element, 'account-balance')?.textContent?.trim()).toBe('Current balance: COP85,000');
+    });
+
+    it('says how much is owed on the card in Spanish', async () => {
+      TestBed.inject(LanguageService).setLanguage('es-CO');
+      const { harness, element } = await open('/transactions/new/expense');
+      choose(element, 'transaction-account', 'Visa', harness);
+      await settle(harness);
+
+      expect(query(element, 'account-balance')?.textContent).toContain('Debes en la tarjeta:');
+      expect(query(element, 'account-balance')?.textContent).toContain('300.000');
+    });
+
     it('shows the available credit before and after the purchase', async () => {
       const { element } = await openCardExpense('2000000');
       const credit = query(element, 'credit-after')!.textContent ?? '';
@@ -810,6 +854,30 @@ describe('TransactionPanelComponent', () => {
       expect(query(element, 'transaction-to')?.textContent).toContain('Visa');
       expect(query(element, 'transaction-category')?.textContent).toContain('Card payment');
       expect(query<HTMLTextAreaElement>(element, 'transaction-description')!.value).toBe('Statement payment October 2026');
+    });
+
+    it('does not offer the card being paid as the source', async () => {
+      const { harness, element } = await open(PAY_URL);
+
+      const labels = optionLabels(element, 'transaction-from', harness);
+      expect(labels.some((label) => label.includes('Bancolombia'))).toBe(true);
+      expect(labels.some((label) => label.includes('Visa'))).toBe(false);
+    });
+
+    it('drops the payment data from the type tabs', async () => {
+      const { element } = await open(PAY_URL);
+
+      expect(query(element, 'type-expense')?.getAttribute('href')).toBe('/transactions/new/expense');
+      expect(query(element, 'type-transfer')?.getAttribute('href')).toBe('/transactions/new/transfer');
+    });
+
+    it('names the system category without warning of a missing translation', async () => {
+      const warn = vi.spyOn(console, 'warn');
+      const { element } = await open(PAY_URL);
+
+      expect(query(element, 'transaction-category')?.textContent).toContain('Card payment');
+      expect(warn.mock.calls.flat().join(' ')).not.toContain('CARD_PAYMENT');
+      warn.mockRestore();
     });
 
     it('names the statement in Spanish', async () => {
@@ -920,5 +988,10 @@ describe('TransactionPanelComponent', () => {
 
       expect(query(element, 'close-panel')?.getAttribute('href')).toBe('/accounts/20/statement?month=2026-10');
     });
+  });
+  it('keeps the filters of the list in the type tabs', async () => {
+    const { element } = await open('/transactions/new/expense?month=2026-10');
+
+    expect(query(element, 'type-income')?.getAttribute('href')).toBe('/transactions/new/income?month=2026-10');
   });
 });

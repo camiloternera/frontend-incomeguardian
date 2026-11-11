@@ -52,7 +52,7 @@
             : 'text-ig-muted hover:text-ig-text'
         "
         [routerLink]="[listUrl, 'new', option]"
-        queryParamsHandling="preserve"
+        [queryParams]="typeTabQuery()"
         [attr.aria-current]="type() === option ? 'page' : null"
       >
         {{ t('transactions.types.' + option) }}
@@ -171,7 +171,7 @@
                 data-testid="transaction-from"
                 inputId="transaction-from"
                 formControlName="fromAccountId"
-                [options]="accountOptions()"
+                [options]="sourceOptions()"
                 [placeholder]="t('transactions.form.accountPlaceholder')"
                 [invalid]="fromError() !== null"
                 [describedBy]="fromError() ? 'transaction-from-error' : 'transaction-from-balance'"
@@ -196,9 +196,9 @@
                   {{ t(message.key, message.params) }}
                 </p>
               }
-              @if (balanceText()) {
+              @if (balanceText(); as balance) {
                 <p id="transaction-from-balance" data-testid="from-balance" class="m-0 text-[12px] text-ig-muted">
-                  {{ t('transactions.form.balance', { amount: balanceText() }) }}
+                  {{ t(balance.key, { amount: balance.amount }) }}
                 </p>
               }
             </div>
@@ -237,9 +237,9 @@
                   {{ t(message.key, message.params) }}
                 </p>
               }
-              @if (destinationBalanceText()) {
+              @if (destinationBalanceText(); as balance) {
                 <p id="transaction-to-balance" data-testid="to-balance" class="m-0 text-[12px] text-ig-muted">
-                  {{ t('transactions.form.balance', { amount: destinationBalanceText() }) }}
+                  {{ t(balance.key, { amount: balance.amount }) }}
                 </p>
               }
             </div>
@@ -358,13 +358,13 @@
                   {{ t(message.key, message.params) }}
                 </p>
               }
-              @if (balanceText()) {
+              @if (balanceText(); as balance) {
                 <p
                   id="transaction-account-balance"
                   data-testid="account-balance"
                   class="m-0 text-[12px] text-ig-muted"
                 >
-                  {{ t('transactions.form.balance', { amount: balanceText() }) }}
+                  {{ t(balance.key, { amount: balance.amount }) }}
                 </p>
               }
             </div>
@@ -676,7 +676,7 @@
                           <dl class="m-0 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-[13px] tabular-nums">
                             @if (first) {
                               <dt class="text-ig-muted">{{ t('transactions.form.installments.firstStatement') }}</dt>
-                              <dd class="m-0 text-right">{{ first.statementDate | date: 'mediumDate' : 'UTC' : locale() }}</dd>
+                              <dd class="m-0 text-right">{{ first.statementDate | date: day() : 'UTC' : locale() }}</dd>
                             }
                             <dt class="text-ig-muted">{{ t('transactions.form.installments.totalInterest') }}</dt>
                             <dd data-testid="installments-interest" class="m-0 text-right">{{ money(plan.totalInterest) }}</dd>
@@ -732,7 +732,7 @@
                             t('transactions.form.installments.single', {
                               amount: money(plan.totalAmount),
                               month: (monthDate(first) | date: 'MMMM y' : 'UTC' : locale()),
-                              date: (first.statementDate | date: 'd MMM' : 'UTC' : locale())
+                              date: (first.statementDate | date: shortDay() : 'UTC' : locale())
                             })
                           }}
                         </p>

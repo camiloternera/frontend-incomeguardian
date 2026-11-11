@@ -38,6 +38,7 @@ import {
 } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { LanguageService } from '@core/i18n/language.service';
+import { dayPattern, shortDayPattern } from '@shared/dates/date-patterns';
 import { LockedDateNoteComponent, PeriodOverlaysComponent, ReopenPeriodButtonComponent } from '@features/periods';
 import { DatePickerComponent } from '@shared/ui/date-picker/date-picker.component';
 import { SelectComponent, SelectOption } from '@shared/ui/select/select.component';
@@ -88,6 +89,7 @@ import {
 } from '../../../domain/transaction-error';
 import { currencySymbol, formatMoney } from '../../money-format';
 import { TransactionWorkspace } from '../../transaction-workspace';
+import { injectTransactionsTranslations } from '../../transactions-translations';
 import { amountValidator, parseAmount } from '../../validators/amount.validator';
 
 /** Estado de una lista de opciones que se carga aparte del formulario. */
@@ -168,12 +170,16 @@ export class TransactionPanelComponent {
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly router = inject(Router);
   private readonly transloco = inject(TranslocoService);
+  private readonly translations = injectTransactionsTranslations();
   private readonly heading = viewChild<ElementRef<HTMLElement>>('heading');
   private readonly lockedNote = viewChild(LockedDateNoteComponent);
 
   protected readonly listUrl = LIST_URL;
   protected readonly typeOrder = TYPE_ORDER;
   protected readonly locale = inject(LanguageService).language;
+  /** Patrones de fecha del idioma activo, con el mes en letras. */
+  protected readonly shortDay = computed(() => shortDayPattern(this.locale()));
+  protected readonly day = computed(() => dayPattern(this.locale()));
   protected readonly descriptionMax = TRANSACTION_DESCRIPTION_MAX_LENGTH;
   protected readonly installmentChoices = INSTALLMENT_CHOICES;
   protected readonly installmentLimits = { min: INSTALLMENTS_MIN, max: INSTALLMENTS_MAX };
@@ -256,6 +262,14 @@ export class TransactionPanelComponent {
   protected readonly destination = computed(() =>
     this.type() === 'transfer' ? this.findAccount(this.formValue().toAccountId) : null,
   );
+  /** Cuentas de las que puede salir una transferencia; al pagar una tarjeta, todas menos esa tarjeta. */
+  protected readonly sourceOptions = computed<SelectOption<number>[]>(() => {
+    const cardId = this.cardPayment()?.cardId;
+
+    return this.usableAccounts()
+      .filter((account) => account.id !== cardId)
+      .map(toAccountOption);
+  });
   /** Cuentas a las que puede llegar la transferencia: todas las utilizables menos el origen. */
   protected readonly destinationOptions = computed<SelectOption<number>[]>(() =>
     this.usableAccounts()
@@ -275,12 +289,12 @@ export class TransactionPanelComponent {
 
   /** Opciones del selector de categoría: solo las activas del tipo, sin opción vacía. */
   protected readonly categoryOptions = computed<SelectOption<number>[]>(() => {
-    // Las categorías de sistema se nombran por su código, en el idioma activo.
-    this.locale();
+    // Las categorías de sistema se nombran por su código, en el idioma activo, cuando el scope ya cargó.
+    const ready = this.translations() !== null;
 
     return this.categories().map((category) => ({
       value: category.id,
-      label: category.code
+      label: category.code && ready
         ? this.transloco.translate(`transactions.systemCategories.${category.code}`)
         : category.name,
     }));
@@ -490,6 +504,9 @@ export class TransactionPanelComponent {
 
   /** Filtros del listado que el panel conserva al cerrarse. */
   private readonly queryParams = toSignal(this.route.queryParams, { initialValue: {} as Record<string, unknown> });
+
+  /** Las pestañas de tipo conservan los filtros del listado, pero no los datos de un pago de tarjeta. */
+  protected readonly typeTabQuery = computed(() => (this.cardPayment() ? {} : this.queryParams()));
 
   /** Al cerrar, un pago de tarjeta vuelve a su extracto; cualquier otro movimiento, al listado. */
   protected readonly closeLink = computed(() => {
@@ -820,11 +837,25 @@ export class TransactionPanelComponent {
     return control.hasError('future') ? { key: 'transactions.form.dateFuture' } : { key: 'transactions.form.dateRequired' };
   }
 
-  /** Saldo actual de una cuenta, ya formateado; `null` si no se conoce. */
-  private balanceOf(account: TransactionAccountOption | null): string | null {
-    return account?.currentBalance == null
-      ? null
-      : formatMoney(account.currentBalance, account.currency, this.locale());
+  /**
+   * Ayuda con el saldo de una cuenta, ya formateado; `null` si no se conoce. En una tarjeta el saldo
+   * negativo es deuda, así que se muestra lo que se debe (o el saldo a favor) en positivo.
+   */
+  private balanceOf(account: TransactionAccountOption | null): { key: string; amount: string } | null {
+    if (account?.currentBalance == null) {
+      return null;
+    }
+
+    const balance = account.currentBalance;
+    const money = (value: number) => formatMoney(value, account.currency, this.locale());
+
+    if (!account.isCreditCard) {
+      return { key: 'transactions.form.balance', amount: money(balance) };
+    }
+
+    return balance > 0
+      ? { key: 'transactions.form.cardCredit', amount: money(balance) }
+      : { key: 'transactions.form.cardDebt', amount: money(-balance) };
   }
 
   protected loadAccounts(): void {
