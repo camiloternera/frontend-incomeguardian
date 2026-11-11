@@ -238,4 +238,10 @@
       </form>
     }
   }
+
+  @if (row(); as current) {
+    @if (status() === 'ready' || status() === 'readOnly') {
+      <app-budget-month-detail [row]="current" [month]="month()" />
+    }
+  }
 </section>
