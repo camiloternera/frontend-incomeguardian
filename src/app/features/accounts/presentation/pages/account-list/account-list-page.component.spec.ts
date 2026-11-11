@@ -33,11 +33,18 @@ describe('AccountListPageComponent', () => {
   }
 
   function account(id: number, name: string, overrides: Partial<Account> = {}): Account {
-    const base = {
+    const base: Omit<Account, 'currentBalance'> = {
       id,
       name,
+      kind: 'standard' as const,
       initialBalance: 0,
       currency: 'COP' as const,
+      creditLimit: null,
+      statementDay: null,
+      paymentDay: null,
+      availableCredit: null,
+      nextStatementDate: null,
+      nextPaymentDueDate: null,
       isActive: true,
       hasTransactions: false,
       openingDate: '2026-10-20T00:00:00Z',
@@ -243,5 +250,130 @@ describe('AccountListPageComponent', () => {
     expect(element.querySelector('h1')?.textContent).toContain('Cuentas');
     expect(element.textContent).toContain('Nueva cuenta');
     expect(element.textContent).toContain('Desactivadas');
+  });
+  describe('with credit cards', () => {
+    /** Tarjeta activa con cupo, días y fechas del próximo corte y pago. */
+    function card(id: number, name: string, overrides: Partial<Account> = {}): Account {
+      return account(id, name, {
+        kind: 'credit_card',
+        initialBalance: -500000,
+        creditLimit: 2000000,
+        statementDay: 15,
+        paymentDay: 5,
+        availableCredit: 1500000,
+        nextStatementDate: '2026-11-15',
+        nextPaymentDueDate: '2026-12-05',
+        ...overrides,
+      });
+    }
+
+    function row(element: HTMLElement, id: number): HTMLElement {
+      return element.querySelector<HTMLElement>(`[data-testid="account-${id}"]`)!;
+    }
+
+    it('keeps the plain totals while there is no active card', async () => {
+      fake.accounts.push(card(30, 'Visa vieja', { isActive: false }));
+      const { element } = await open();
+
+      expect(element.querySelector('[data-testid="account-totals"]')).toBeTruthy();
+      expect(element.querySelector('[data-testid="account-positions"]')).toBeNull();
+    });
+
+    it('separates what is in the accounts, the card debt and the net per currency', async () => {
+      fake.accounts.push(card(30, 'Visa Oro'), card(31, 'Amex', { currency: 'USD', initialBalance: -200, creditLimit: null, availableCredit: null }));
+      const { element } = await open();
+
+      expect(element.querySelector('[data-testid="account-totals"]')).toBeNull();
+      const cop = element.querySelector('[data-testid="position-COP"]')!;
+      // Bancolombia 1.250.000 y la cuenta normal en negativo (−250.000) contra la deuda de la tarjeta.
+      expect(cop.querySelector('[data-testid="position-assets"]')?.textContent).toContain('1,000,000');
+      expect(cop.querySelector('[data-testid="position-debt"]')?.textContent).toContain('500,000');
+      expect(cop.querySelector('[data-testid="position-net"]')?.textContent).toContain('500,000');
+      expect(cop.textContent).toContain('In your accounts (COP)');
+      expect(cop.textContent).toContain('Owed on cards (COP)');
+      expect(cop.textContent).toContain('Net in COP');
+
+      const usd = element.querySelector('[data-testid="position-USD"]')!;
+      expect(usd.querySelector('[data-testid="position-debt"]')?.textContent).toContain('200');
+      expect(usd.querySelector('[data-testid="position-net"]')?.textContent).toContain('-$200.00');
+    });
+
+    it('shows the card meta, what is owed and the available credit', async () => {
+      fake.accounts.push(card(30, 'Visa Oro'));
+      const { element } = await open();
+      const visa = row(element, 30);
+
+      const meta = visa.querySelector('[data-testid="row-card-meta"]')?.textContent ?? '';
+      expect(meta).toContain('Credit card');
+      expect(meta).toContain('COP');
+      expect(meta).toContain('Statement 15 Nov');
+      expect(meta).toContain('Due 5 Dec');
+      expect(visa.querySelector('[data-testid="row-card-debt"]')?.textContent).toContain('You owe');
+      // La deuda se muestra en positivo.
+      expect(visa.querySelector('[data-testid="row-balance"]')?.textContent?.trim()).toBe('COP500,000');
+      expect(visa.querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('Credit used: 25%');
+      expect(visa.querySelector('[data-testid="row-card-available"]')?.textContent).toContain(
+        'COP1,500,000 available of COP2,000,000',
+      );
+      expect(visa.querySelector('[data-testid="row-card-over"]')).toBeNull();
+    });
+
+    it('marks a card over its limit', async () => {
+      fake.accounts.push(card(30, 'Visa Oro', { initialBalance: -2300000, availableCredit: -300000 }));
+      const { element } = await open();
+      const visa = row(element, 30);
+
+      expect(visa.querySelector('[data-testid="row-card-over"]')?.textContent).toContain('Over the limit by COP300,000');
+      expect(visa.querySelector('[data-testid="row-card-available"]')).toBeNull();
+      expect(visa.querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('Credit used: 100%');
+    });
+
+    it('shows a credit balance instead of a debt', async () => {
+      fake.accounts.push(card(30, 'Visa Oro', { initialBalance: 12000, availableCredit: 2012000 }));
+      const { element } = await open();
+      const visa = row(element, 30);
+
+      expect(visa.querySelector('[data-testid="row-card-debt"]')?.textContent).toContain('Credit balance');
+      expect(visa.querySelector('[data-testid="row-balance"]')?.textContent?.trim()).toBe('COP12,000');
+    });
+
+    it('says when the card has no credit limit', async () => {
+      fake.accounts.push(card(30, 'Visa Oro', { creditLimit: null, availableCredit: null }));
+      const { element } = await open();
+      const visa = row(element, 30);
+
+      expect(visa.textContent).toContain('No credit limit recorded.');
+      expect(visa.querySelector('[role="img"]')).toBeNull();
+    });
+
+    it('links to the statement from the row and from the menu', async () => {
+      fake.accounts.push(card(30, 'Visa Oro'));
+      const { harness, element } = await open();
+
+      expect(element.querySelector('[data-testid="row-statement-30"]')?.getAttribute('href')).toBe('/accounts/30/statement');
+      // Una cuenta normal no tiene extracto.
+      expect(element.querySelector('[data-testid="row-statement-2"]')).toBeNull();
+
+      click(element, 'menu-30');
+      harness.detectChanges();
+      const item = element.querySelector('[data-testid="statement-30"]');
+      expect(item?.textContent).toContain('View statement');
+      expect(item?.getAttribute('href')).toBe('/accounts/30/statement');
+
+      click(element, 'menu-2');
+      harness.detectChanges();
+      expect(element.querySelector('[data-testid="statement-2"]')).toBeNull();
+    });
+
+    it('does not link the statement of a deactivated card from the row', async () => {
+      fake.accounts.push(card(30, 'Visa vieja', { isActive: false }));
+      const { harness, element } = await open();
+
+      click(element, 'tab-inactive');
+      harness.detectChanges();
+
+      expect(row(element, 30)).toBeTruthy();
+      expect(element.querySelector('[data-testid="row-statement-30"]')).toBeNull();
+    });
   });
 });
