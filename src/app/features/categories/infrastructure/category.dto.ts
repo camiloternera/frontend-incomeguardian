@@ -8,6 +8,8 @@ export interface CategoryDto {
   transactionTypeName: string;
   isActive: boolean;
   hasTransactions?: boolean | null;
+  /** Código de una categoría de sistema; null en las del usuario. */
+  code?: string | null;
   createdAt: string;
   updatedAt: string | null;
 }

@@ -56,6 +56,8 @@ describe('CategoryHttpRepository', () => {
         isActive: true,
         // Sin el campo en la respuesta, la categoría se toma como sin movimientos.
         hasTransactions: false,
+        // Sin el campo, la categoría es del usuario.
+        code: null,
         createdAt: '2026-10-29T12:00:00+00:00',
         updatedAt: null,
       },
@@ -79,6 +81,23 @@ describe('CategoryHttpRepository', () => {
     });
 
     expect(result!.map((category) => category.hasTransactions)).toEqual([true, false, false]);
+  });
+
+  it('maps the code of a system category', () => {
+    let result: { code: string | null }[] | undefined;
+    repository.list().subscribe((value) => (result = value));
+
+    http.expectOne(`${URL}?status=all`).flush({
+      data: [
+        { ...DTO, id: 7, code: 'CARD_PAYMENT', transactionTypeId: 3 },
+        { ...DTO, id: 8, code: null },
+      ],
+      isSuccess: true,
+      message: 'ok',
+      errors: [],
+    });
+
+    expect(result!.map((category) => category.code)).toEqual(['CARD_PAYMENT', null]);
   });
 
   it('skips categories of an unknown type', () => {
@@ -158,6 +177,15 @@ describe('CategoryHttpRepository', () => {
     http.expectOne(`${URL}/7`).flush(failure(CategoryErrorCode.NameLocked), { status: 409, statusText: 'Conflict' });
 
     expect((error as CategoryError).message).toBe('La categoría ya tiene movimientos, así que su nombre no se puede cambiar.');
+  });
+
+  it('keeps the system lock code and translates it', () => {
+    let error: unknown;
+    repository.update(7, { name: 'Pagos', description: 'x' }).subscribe({ error: (value) => (error = value) });
+    http.expectOne(`${URL}/7`).flush(failure(CategoryErrorCode.SystemLocked), { status: 409, statusText: 'Conflict' });
+
+    expect((error as CategoryError).code).toBe(CategoryErrorCode.SystemLocked);
+    expect((error as CategoryError).message).toBe("This is a system category: it can't be renamed, deactivated or deleted.");
   });
 
   it('interpolates the length limits in the active language', () => {
