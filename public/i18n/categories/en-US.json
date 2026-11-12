@@ -105,6 +105,8 @@
     "transfer": "Transfer"
   },
   "systemNames": {
-    "CARD_PAYMENT": "Card payment"
+    "CARD_PAYMENT": "Card payment",
+    "BANK_FEES": "Bank fees",
+    "CARD_ADVANCE": "Card advance"
   }
 }

@@ -48,7 +48,12 @@
     "edit": "Editar",
     "delete": "Eliminar",
     "moreActions": "Acciones de {{name}}",
-    "locked": "No se puede editar ni eliminar: su mes está cerrado o la cuenta es de solo lectura. Reabre el mes para modificarlo."
+    "locked": "No se puede editar ni eliminar: su mes está cerrado o la cuenta es de solo lectura. Reabre el mes para modificarlo.",
+    "advance": "Avance",
+    "advanceFee": "Comisión {{amount}}",
+    "feeOf": "Comisión del avance",
+    "managedByParent": "Esta comisión es parte de un avance: se cambia o se elimina desde él.",
+    "openAdvance": "Abrir avance"
   },
   "form": {
     "title": {
@@ -207,6 +212,20 @@
       "subtitle": "Los cambios actualizan los saldos, los topes y el Resumen.",
       "submit": "Guardar cambios",
       "inactiveOption": "{{name}} (inactiva)"
+    },
+    "advance": {
+      "title": "Avance",
+      "note": "Sacas plata de la tarjeta y la pagas en sus extractos",
+      "feeLabel": "Comisión del banco",
+      "feeHelp": "Lo que cobra el banco por el avance. Se registra aparte como un gasto en Comisiones bancarias.",
+      "fee": "Comisión del banco",
+      "total": "Total con comisión",
+      "feeExpense": "La comisión y los intereses cuentan como gasto en Comisiones bancarias; el avance no.",
+      "closedMonth": "Una cuota cae en {{month}}, que está cerrado. Reábrelo o cambia la fecha o las cuotas para guardar el avance.",
+      "availableAfter": "Después de este avance",
+      "overLimit": "Con este avance pasas el cupo. Puedes guardarlo igual.",
+      "submit": "Guardar avance",
+      "submitInstallments": "Guardar avance a {{count}} cuotas"
     }
   },
   "errors": {
@@ -227,12 +246,17 @@
     "EXCHANGE_RATE_UNAVAILABLE": "La TRM no está disponible en este momento.",
     "EXCHANGE_RATE_DATE_INVALID": "No hay TRM para esa fecha. Elige hoy o una fecha anterior.",
     "PERIOD_CLOSED": "El mes de esa fecha está cerrado. Reábrelo para registrar o modificar movimientos.",
-    "TRANSACTION_INSTALLMENTS_NOT_ALLOWED": "Las cuotas solo aplican a gastos con tarjeta de crédito.",
+    "TRANSACTION_INSTALLMENTS_NOT_ALLOWED": "Las cuotas solo aplican a gastos con tarjeta de crédito y a avances.",
     "TRANSACTION_INSTALLMENTS_OUT_OF_RANGE": "El número de cuotas debe estar entre 1 y 48.",
-    "TRANSACTION_INTEREST_RATE_OUT_OF_RANGE": "La tasa debe estar entre 0 y 200 % EA."
+    "TRANSACTION_INTEREST_RATE_OUT_OF_RANGE": "La tasa debe estar entre 0 y 200 % EA.",
+    "TRANSACTION_ADVANCE_FEE_NOT_ALLOWED": "La comisión solo aplica a avances: de una tarjeta de crédito a una cuenta normal.",
+    "TRANSACTION_ADVANCE_FEE_INVALID": "La comisión debe ser mayor que cero y tener hasta 2 decimales.",
+    "TRANSACTION_MANAGED_BY_PARENT": "Esta comisión pertenece a un avance: cámbiala o elimínala desde el avance."
   },
   "systemCategories": {
-    "CARD_PAYMENT": "Pago de tarjeta"
+    "CARD_PAYMENT": "Pago de tarjeta",
+    "BANK_FEES": "Comisiones bancarias",
+    "CARD_ADVANCE": "Avance de tarjeta"
   },
   "detail": {
     "title": "Movimiento",
@@ -260,13 +284,17 @@
     "viewStatement": "Ver el extracto de {{month}}",
     "budgetTitle": "Presupuesto de {{category}}",
     "budgetBody": "Cada cuota cuenta en el presupuesto de su mes de corte. Las cuotas que caen después del mes de la compra subieron el tope de su mes.",
-    "viewBudget": "Ver presupuesto"
+    "viewBudget": "Ver presupuesto",
+    "afterCutAdvance": "El avance fue después del corte de su mes, así que la primera cuota cayó en {{month}}.",
+    "advanceBudgetTitle": "El avance en el presupuesto",
+    "advanceBudgetBody": "El avance no cuenta como gasto. Los intereses de cada cuota y la comisión sí: cuentan en Comisiones bancarias, en el mes de su corte."
   },
   "delete": {
     "question": "¿Eliminar «{{name}}»?",
     "warning": "No se puede deshacer: sale del historial, los saldos, los topes y el Resumen. Si te equivocaste, tendrás que registrarlo de nuevo.",
     "cancel": "Cancelar",
     "confirm": "Eliminar",
-    "deleting": "Eliminando…"
+    "deleting": "Eliminando…",
+    "withFee": "También se elimina su comisión del banco."
   }
 }

@@ -83,7 +83,9 @@
       "error": "We could not load your recent transactions.",
       "retry": "Try again",
       "received": "{{amount}} received",
-      "installments": "{{count}} installments"
+      "installments": "{{count}} installments",
+      "advance": "Card advance",
+      "advanceFee": "Advance fee"
     }
   },
   "errors": {

@@ -191,6 +191,10 @@
     "paymentsTitle": "Pagos",
     "paymentLine": "Transferencia desde {{account}} el {{date}}",
     "paymentSplit": "(de un pago de {{amount}})",
-    "transferNote": "Pagar la tarjeta es una transferencia desde tu banco. No cuenta como gasto: cada cuota ya cuenta en el presupuesto de su mes."
+    "transferNote": "Pagar la tarjeta es una transferencia desde tu banco. No cuenta como gasto: cada cuota ya cuenta en el presupuesto de su mes.",
+    "kinds": {
+      "advance": "Avance",
+      "fee": "Comisión"
+    }
   }
 }

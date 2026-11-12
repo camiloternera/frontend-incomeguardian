@@ -191,6 +191,10 @@
     "paymentsTitle": "Payments",
     "paymentLine": "Transfer from {{account}} on {{date}}",
     "paymentSplit": "(from a {{amount}} payment)",
-    "transferNote": "Paying the card is a transfer from your bank. It doesn't count as spending: each installment already counts in its month's budget."
+    "transferNote": "Paying the card is a transfer from your bank. It doesn't count as spending: each installment already counts in its month's budget.",
+    "kinds": {
+      "advance": "Advance",
+      "fee": "Fee"
+    }
   }
 }

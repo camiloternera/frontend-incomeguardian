@@ -105,6 +105,8 @@
     "transfer": "Transferencia"
   },
   "systemNames": {
-    "CARD_PAYMENT": "Pago de tarjeta"
+    "CARD_PAYMENT": "Pago de tarjeta",
+    "BANK_FEES": "Comisiones bancarias",
+    "CARD_ADVANCE": "Avance de tarjeta"
   }
 }
