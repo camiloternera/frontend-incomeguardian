@@ -5,7 +5,7 @@ import { translocoTesting } from '@core/i18n/i18n.testing';
 import { LanguageService } from '@core/i18n/language.service';
 import { throwError } from 'rxjs';
 import { InstallmentScheduleItem } from '../../../domain/transaction';
-import { TransactionError } from '../../../domain/transaction-error';
+import { TransactionError, TransactionErrorCode } from '../../../domain/transaction-error';
 import { TransactionFakes, fakeTransactionsRoutes, transaction } from '../../transaction-repository.fake';
 import { installmentState } from './transaction-detail.component';
 
@@ -188,5 +188,86 @@ describe('TransactionDetailComponent', () => {
     expect(text(element, 'installment-1')).not.toContain('Billed');
     expect(text(element, 'detail-remaining')).toContain('2');
     expect(query(element, 'transaction-detail')?.textContent).toContain('24,5 % EA');
+  });
+
+  describe('editing and deleting', () => {
+    async function settle(harness: RouterTestingHarness): Promise<void> {
+      harness.detectChanges();
+      await harness.fixture.whenStable();
+      harness.detectChanges();
+    }
+
+    it('links to the edit panel keeping the filters of the list', async () => {
+      const { element } = await open('/transactions/41?month=2026-10');
+
+      expect(query(element, 'detail-edit')?.getAttribute('href')).toBe('/transactions/41/edit?month=2026-10');
+      expect(text(element, 'detail-edit')).toBe('Edit');
+      expect(text(element, 'detail-delete')).toBe('Delete');
+      expect(query(element, 'detail-locked')).toBeNull();
+    });
+
+    it('explains why a locked transaction cannot change', async () => {
+      fakes.transactions.transactions = fakes.transactions.transactions.map((item) =>
+        item.id === 41 ? { ...item, canModify: false } : item,
+      );
+      const { element } = await open('/transactions/41');
+
+      expect(text(element, 'detail-locked')).toContain('Can’t be edited or deleted');
+      expect(query(element, 'detail-edit')).toBeNull();
+      expect(query(element, 'detail-delete')).toBeNull();
+    });
+
+    it('asks to confirm and cancels without deleting', async () => {
+      const { harness, element } = await open('/transactions/41');
+
+      query(element, 'detail-delete')!.click();
+      await settle(harness);
+
+      expect(text(element, 'delete-confirmation')).toContain('Delete “Televisor”?');
+      expect(query(element, 'detail-edit')).toBeNull();
+
+      query(element, 'cancel-delete')!.click();
+      await settle(harness);
+
+      expect(query(element, 'delete-confirmation')).toBeNull();
+      expect(query(element, 'detail-edit')).toBeTruthy();
+      expect(fakes.transactions.removed).toEqual([]);
+    });
+
+    it('deletes and goes back to the list keeping its filters', async () => {
+      const { harness, element } = await open('/transactions/41?month=2026-10');
+
+      query(element, 'detail-delete')!.click();
+      await settle(harness);
+      query(element, 'confirm-delete')!.click();
+      await settle(harness);
+
+      expect(fakes.transactions.removed).toEqual([41]);
+      expect(TestBed.inject(Router).url).toBe('/transactions?month=2026-10');
+      expect(text(element, 'transaction-notice')).toContain('Transaction deleted');
+    });
+
+    it('keeps the detail open with the reason when the month was closed meanwhile', async () => {
+      const { harness, element } = await open('/transactions/41');
+      fakes.transactions.remove = () =>
+        throwError(() => new TransactionError('The month of that date is closed.', TransactionErrorCode.PeriodClosed));
+
+      query(element, 'detail-delete')!.click();
+      await settle(harness);
+      query(element, 'confirm-delete')!.click();
+      await settle(harness);
+
+      expect(text(element, 'delete-error')).toBe('The month of that date is closed.');
+      expect(query(element, 'confirm-delete')).toBeNull();
+      expect(TestBed.inject(Router).url).toBe('/transactions/41');
+    });
+
+    it('translates the actions into Spanish', async () => {
+      TestBed.inject(LanguageService).setLanguage('es-CO');
+      const { element } = await open('/transactions/41');
+
+      expect(text(element, 'detail-edit')).toBe('Editar');
+      expect(text(element, 'detail-delete')).toBe('Eliminar');
+    });
   });
 });
