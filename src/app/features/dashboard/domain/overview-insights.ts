@@ -1,4 +1,5 @@
-import { DashboardOverview, MovementSummary } from './dashboard-overview';
+import { DashboardOverview } from './dashboard-overview';
+import { RecentMovement } from './recent-movement';
 
 /** Cómo va el mes: cuánto queda para gastar y cómo se reparte el ingreso. */
 export interface MonthOutlook {
@@ -31,7 +32,7 @@ export interface MovementDay {
   date: string;
   /** `today` o `yesterday` respecto a `asOf`; `null` para días anteriores. */
   relative: 'today' | 'yesterday' | null;
-  movements: MovementSummary[];
+  movements: RecentMovement[];
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -111,22 +112,24 @@ export function projectedSavingsRate(overview: DashboardOverview): number | null
   return (overview.income - overview.expenses - overview.committed) / overview.income;
 }
 
-/** Agrupa los movimientos por día, del más reciente al más antiguo, conservando su orden dentro del día. */
-export function groupByDay(movements: MovementSummary[], asOf: string): MovementDay[] {
-  const days = new Map<string, MovementSummary[]>();
+/** Agrupa por día (hora de Colombia) una lista ya ordenada del más reciente al más antiguo, sin reordenarla. */
+export function groupByDay(movements: readonly RecentMovement[], today: string): MovementDay[] {
+  const groups: MovementDay[] = [];
+  const todayMs = toUtc(today);
 
   for (const movement of movements) {
-    days.set(movement.date, [...(days.get(movement.date) ?? []), movement]);
+    const last = groups.at(-1);
+
+    if (last?.date === movement.day) {
+      last.movements.push(movement);
+      continue;
+    }
+
+    const difference = Math.round((todayMs - toUtc(movement.day)) / DAY_MS);
+    const relative = difference === 0 ? 'today' : difference === 1 ? 'yesterday' : null;
+
+    groups.push({ date: movement.day, relative, movements: [movement] });
   }
 
-  const today = toUtc(asOf);
-
-  return [...days.entries()]
-    .sort(([a], [b]) => b.localeCompare(a))
-    .map(([date, items]) => {
-      const difference = Math.round((today - toUtc(date)) / DAY_MS);
-      const relative = difference === 0 ? 'today' : difference === 1 ? 'yesterday' : null;
-
-      return { date, relative, movements: items };
-    });
+  return groups;
 }
