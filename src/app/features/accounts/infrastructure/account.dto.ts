@@ -42,6 +42,8 @@ export interface StatementMonthDto {
 
 export interface StatementItemDto {
   transactionId: number;
+  /** `purchase`, `advance` o `fee`; opcional mientras el backend desplegado no lo envíe. */
+  kind?: string | null;
   description: string | null;
   categoryName: string | null;
   purchaseDate: string;

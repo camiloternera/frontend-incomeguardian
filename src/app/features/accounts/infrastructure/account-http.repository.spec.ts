@@ -298,6 +298,36 @@ describe('AccountHttpRepository', () => {
       next: null,
     };
 
+    it('maps the kind of every item and treats an unknown or missing one as a purchase', () => {
+      let result: { items: { transactionId: number; kind: string; categoryName: string | null }[] } | undefined;
+      repository.statement(5).subscribe((value) => (result = value));
+
+      const [item] = STATEMENT.items;
+      http.expectOne((req) => req.url === `${URL}/5/statement`).flush(
+        ok({
+          ...STATEMENT,
+          items: [
+            { ...item, transactionId: 1, kind: 'purchase' },
+            { ...item, transactionId: 2, kind: 'advance' },
+            { ...item, transactionId: 3, kind: 'fee', description: null, categoryName: 'Comisiones bancarias' },
+            { ...item, transactionId: 4, kind: 'refund' },
+            { ...item, transactionId: 5, kind: null },
+            { ...item, transactionId: 6 },
+          ],
+        }),
+      );
+
+      expect(result?.items.map((each) => [each.transactionId, each.kind])).toEqual([
+        [1, 'purchase'],
+        [2, 'advance'],
+        [3, 'fee'],
+        [4, 'purchase'],
+        [5, 'purchase'],
+        [6, 'purchase'],
+      ]);
+      expect(result?.items[2].categoryName).toBe('Comisiones bancarias');
+    });
+
     it('asks for the next statement without a month', () => {
       repository.statement(5).subscribe();
 
@@ -331,6 +361,7 @@ describe('AccountHttpRepository', () => {
         items: [
           {
             transactionId: 41,
+            kind: 'purchase',
             description: null,
             categoryName: 'Mercado',
             purchaseDate: '2026-10-20',
