@@ -74,21 +74,20 @@
       "yesterday": "Ayer",
       "income": "Ingreso",
       "expense": "Gasto",
-      "empty": "Aún no hay movimientos este mes."
+      "empty": "Aún no hay movimientos.",
+      "transfer": "Transferencia",
+      "cardPayment": "Pago de tarjeta",
+      "route": "{{from}} → {{to}}",
+      "seeAll": "Ver todos",
+      "loading": "Cargando movimientos…",
+      "error": "No pudimos cargar los movimientos recientes.",
+      "retry": "Reintentar",
+      "received": "Llegan {{amount}}",
+      "installments": "{{count}} cuotas"
     }
   },
-  "categories": {
-    "housing": "Vivienda",
-    "food": "Comida y mercado",
-    "transport": "Transporte",
-    "subscriptions": "Suscripciones",
-    "health": "Salud",
-    "other": "Lo demás",
-    "salary": "Salario",
-    "freelance": "Trabajo independiente",
-    "investment": "Inversión"
-  },
   "errors": {
-    "PERIOD_INVALID": "Ese mes no es válido."
+    "PERIOD_INVALID": "Ese mes no es válido.",
+    "DASHBOARD_RECENT_LIMIT_INVALID": "La cantidad de movimientos recientes debe estar entre 1 y 20."
   }
 }
