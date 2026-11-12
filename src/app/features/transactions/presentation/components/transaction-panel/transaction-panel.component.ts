@@ -52,6 +52,7 @@ import {
   UpdateTransactionUseCase,
 } from '../../../application/transaction-use-cases';
 import {
+  CARD_ADVANCE_CATEGORY_CODE,
   CARD_PAYMENT_CATEGORY_CODE,
   ExchangeRate,
   INSTALLMENTS_MAX,
@@ -74,6 +75,7 @@ import {
   TransactionType,
   categoryAppliesTo,
   dayOf,
+  isCardAdvanceRoute,
   isCrossCurrency,
   isTransactionCurrency,
   isTransactionType,
@@ -84,6 +86,7 @@ import {
 } from '../../../domain/transaction';
 import {
   ACCOUNT_ERROR_CODES,
+  ADVANCE_FEE_ERROR_CODES,
   AMOUNT_ERROR_CODES,
   CATEGORY_ERROR_CODES,
   DESCRIPTION_ERROR_CODES,
@@ -97,6 +100,7 @@ import { TransactionWorkspace } from '../../transaction-workspace';
 import { injectTransactionsTranslations } from '../../transactions-translations';
 import { TransactionDeleteConfirmationComponent } from '../delete-confirmation/delete-confirmation.component';
 import { amountValidator, parseAmount } from '../../validators/amount.validator';
+import { transactionName } from '../../transaction-name';
 
 /** Estado de una lista de opciones que se carga aparte del formulario. */
 type OptionsStatus = 'loading' | 'ready' | 'error';
@@ -236,6 +240,7 @@ export class TransactionPanelComponent {
   protected readonly categoryServerError = signal<TransactionErrorCode | null>(null);
   protected readonly descriptionServerError = signal<TransactionErrorCode | null>(null);
   protected readonly installmentsServerError = signal<TransactionErrorCode | null>(null);
+  protected readonly advanceFeeServerError = signal<TransactionErrorCode | null>(null);
   /** Mes cerrado de una cuota (distinto del de la fecha) que impidió guardar la compra. */
   protected readonly closedInstallmentMonth = signal<TransactionMonth | null>(null);
 
@@ -264,6 +269,8 @@ export class TransactionPanelComponent {
     withInterest: this.formBuilder.control(false),
     /** Tasa efectiva anual (%) cuando hay interés. */
     interestRate: ['', interestRateValidator],
+    /** Comisión del banco por un avance; opcional. Deshabilitada (sin validar) fuera de un avance. */
+    advanceFee: this.formBuilder.control({ value: '', disabled: true }, optionalAmountValidator),
   });
 
   protected readonly formValue = toSignal(this.form.valueChanges.pipe(map(() => this.form.getRawValue())), {
@@ -472,11 +479,45 @@ export class TransactionPanelComponent {
       !this.isSubmitting() &&
       !this.dateLocked() &&
       (!this.crossCurrency() || this.rateState().status === 'ready') &&
-      (!this.isCardExpense() || this.interestRate() !== undefined),
+      (!this.installable() || this.interestRate() !== undefined),
   );
 
   /** Un gasto con tarjeta: puede ser a cuotas y muestra el cupo que queda. */
   protected readonly isCardExpense = computed(() => this.type() === 'expense' && this.account()?.isCreditCard === true);
+
+  /**
+   * Un avance: transferencia de una tarjeta a una cuenta normal. Puede ser a cuotas y llevar la
+   * comisión del banco. Un pago de tarjeta nunca lo es: su destino es la tarjeta.
+   */
+  protected readonly isCardAdvance = computed(
+    () => this.type() === 'transfer' && !this.cardPayment() && isCardAdvanceRoute(this.account(), this.destination()),
+  );
+
+  /** Movimiento que sale de una tarjeta y se cobra en cuotas: una compra o un avance. */
+  protected readonly installable = computed(() => this.isCardExpense() || this.isCardAdvance());
+
+  /** Comisión del avance escrita y válida; null sin comisión, fuera de un avance o si no es válida. */
+  private readonly advanceFee = computed(() => {
+    const text = this.formValue().advanceFee.trim();
+
+    if (!this.isCardAdvance() || !text || amountValidator(this.form.controls.advanceFee) !== null) {
+      return null;
+    }
+
+    return parseAmount(text);
+  });
+
+  /** Comisión y total a pagar del avance con ella; la comisión no entra en el plan de cuotas. */
+  protected readonly advanceTotal = computed(() => {
+    const fee = this.advanceFee();
+    const state = this.installmentPreview();
+
+    if (fee === null || state.status !== 'ready') {
+      return null;
+    }
+
+    return { fee: this.money(fee), total: this.money(state.preview.totalAmount + fee) };
+  });
 
   /** Tasa escrita, si aplica y es válida; null sin interés. `undefined` si falta o no es válida. */
   private readonly interestRate = computed<number | null | undefined>(() => {
@@ -498,7 +539,7 @@ export class TransactionPanelComponent {
     const value = this.formValue();
     const rate = this.interestRate();
 
-    if (!this.isCardExpense() || !account || amount === null || !value.date || value.date > todayInputDate()) {
+    if (!this.installable() || !account || amount === null || !value.date || value.date > todayInputDate()) {
       return null;
     }
 
@@ -512,7 +553,8 @@ export class TransactionPanelComponent {
       date: toUtcIso(value.date),
       installments: value.installments,
       annualInterestRate: rate,
-      categoryId: value.categoryId,
+      // Un avance se simula sin categoría: la de transferencia no aplica a las cuotas.
+      categoryId: this.isCardAdvance() ? null : value.categoryId,
     };
   });
 
@@ -525,16 +567,19 @@ export class TransactionPanelComponent {
     return this.categoryOptions().find((option) => option.value === id)?.label ?? null;
   });
 
-  /** Cupo disponible de la tarjeta antes y después de la compra (la compra baja todo el capital). */
+  /**
+   * Cupo disponible de la tarjeta antes y después de la compra o el avance: baja todo el capital y,
+   * en un avance, también la comisión.
+   */
   protected readonly creditAfterPurchase = computed(() => {
     const account = this.account();
     const amount = this.amount();
 
-    if (!this.isCardExpense() || !account || account.availableCredit === null) {
+    if (!this.installable() || !account || account.availableCredit === null) {
       return null;
     }
 
-    const after = amount === null ? null : account.availableCredit - amount;
+    const after = amount === null ? null : account.availableCredit - amount - (this.advanceFee() ?? 0);
 
     return {
       name: account.name,
@@ -649,6 +694,8 @@ export class TransactionPanelComponent {
   });
 
   private categoriesRequest: Subscription | null = null;
+  /** Categoría de avance que propuso el panel, para soltarla si la transferencia deja de ser avance. */
+  private advanceCategoryId: number | null = null;
 
   constructor() {
     const controls = this.form.controls;
@@ -668,6 +715,23 @@ export class TransactionPanelComponent {
 
     controls.installments.valueChanges.subscribe(() => this.installmentsServerError.set(null));
     controls.interestRate.valueChanges.subscribe(() => this.installmentsServerError.set(null));
+    controls.advanceFee.valueChanges.subscribe(() => this.advanceFeeServerError.set(null));
+    // La comisión solo se valida (y se envía) en un avance; fuera de él conserva lo escrito.
+    // Al volverse avance se propone la categoría de sistema de avances; si deja de serlo, se suelta.
+    effect(() => {
+      const advance = this.isCardAdvance();
+      const categories = this.categories();
+
+      untracked(() => {
+        if (advance) {
+          controls.advanceFee.enable({ emitEvent: false });
+        } else {
+          controls.advanceFee.disable({ emitEvent: false });
+        }
+
+        this.preselectCardAdvanceCategory(advance, categories);
+      });
+    });
     controls.date.valueChanges.subscribe(() => this.closedInstallmentMonth.set(null));
     controls.accountId.valueChanges.subscribe(() => this.closedInstallmentMonth.set(null));
     controls.installments.valueChanges.subscribe(() => this.closedInstallmentMonth.set(null));
@@ -837,6 +901,18 @@ export class TransactionPanelComponent {
       : null;
   }
 
+  protected advanceFeeError(): FieldMessage | null {
+    const server = this.advanceFeeServerError();
+
+    if (server) {
+      return this.codeMessage(server);
+    }
+
+    const control = this.form.controls.advanceFee;
+
+    return control.touched && control.invalid ? { key: 'transactions.errors.TRANSACTION_ADVANCE_FEE_INVALID' } : null;
+  }
+
   protected interestRateError(): FieldMessage | null {
     const control = this.form.controls.interestRate;
     const value = this.formValue();
@@ -969,7 +1045,7 @@ export class TransactionPanelComponent {
   protected submit(): void {
     this.formError.set('');
 
-    if (this.form.invalid || (this.isCardExpense() && this.interestRate() === undefined)) {
+    if (this.form.invalid || (this.installable() && this.interestRate() === undefined)) {
       this.form.markAllAsTouched();
       return;
     }
@@ -1040,13 +1116,13 @@ export class TransactionPanelComponent {
 
   /** Nombre del movimiento que se edita: su descripción o su tipo. */
   protected editLabel(transaction: Transaction): string {
-    return transaction.description || this.transloco.translate(`transactions.types.${transaction.type}`);
+    return transactionName(transaction, (key) => this.transloco.translate(key));
   }
 
   /** Llena el formulario con un movimiento guardado, sin marcarlo como modificado. */
   private fill(transaction: Transaction): void {
     const controls = this.form.controls;
-    const installments = transaction.type === 'expense' ? transaction.installments : 1;
+    const installments = transaction.type === 'expense' || transaction.isCardAdvance ? transaction.installments : 1;
     const rate = transaction.annualInterestRate;
 
     this.form.patchValue({
@@ -1062,6 +1138,7 @@ export class TransactionPanelComponent {
       customInstallments: (INSTALLMENT_CHOICES as readonly number[]).includes(installments) ? '' : String(installments),
       withInterest: installments > 1 && rate !== null && rate > 0,
       interestRate: installments > 1 && rate !== null && rate > 0 ? String(rate) : '',
+      advanceFee: transaction.advanceFee === null ? '' : String(Math.round(transaction.advanceFee * 100) / 100),
     });
     // `open` deja la categoría vacía y la vuelve a cargar: se fija después y se recuerda.
     controls.categoryId.setValue(transaction.categoryId);
@@ -1093,14 +1170,22 @@ export class TransactionPanelComponent {
           annualInterestRate: installments > 1 ? (this.interestRate() ?? null) : null,
         };
       }
-      case 'transfer':
+      case 'transfer': {
+        // Solo un avance lleva cuotas, tasa y comisión; al dejar de serlo se envían vacías.
+        const advance = this.isCardAdvance();
+        const installments = advance ? value.installments : 1;
+
         return {
           ...base,
           type: 'transfer',
           categoryId: value.categoryId,
           fromAccountId: value.fromAccountId!,
           toAccountId: value.toAccountId!,
+          installments,
+          annualInterestRate: installments > 1 ? (this.interestRate() ?? null) : null,
+          advanceFee: advance ? this.advanceFee() : null,
         };
+      }
     }
   }
 
@@ -1118,6 +1203,7 @@ export class TransactionPanelComponent {
     this.categoryServerError.set(null);
     this.descriptionServerError.set(null);
     this.installmentsServerError.set(null);
+    this.advanceFeeServerError.set(null);
     this.closedInstallmentMonth.set(null);
     controls.categoryId.setValue(null);
 
@@ -1185,6 +1271,34 @@ export class TransactionPanelComponent {
     }
   }
 
+  /**
+   * En un avance nuevo, elige la categoría de sistema de avances si existe y no hay otra elegida. Si
+   * la transferencia deja de ser avance y la categoría sigue siendo la propuesta, se vacía.
+   */
+  private preselectCardAdvanceCategory(advance: boolean, categories: readonly TransactionCategoryOption[]): void {
+    const control = this.form.controls.categoryId;
+
+    if (this.editing()) {
+      return;
+    }
+
+    if (!advance) {
+      if (this.advanceCategoryId !== null && control.value === this.advanceCategoryId) {
+        control.setValue(null);
+      }
+
+      this.advanceCategoryId = null;
+      return;
+    }
+
+    const category = categories.find((item) => item.code === CARD_ADVANCE_CATEGORY_CODE);
+
+    if (category && control.value === null) {
+      control.setValue(category.id);
+      this.advanceCategoryId = category.id;
+    }
+  }
+
   private fetchRate(date: string): Observable<RateState> {
     return this.getExchangeRate.execute(date).pipe(
       map((rate): RateState => ({ status: 'ready', date, rate })),
@@ -1210,6 +1324,8 @@ export class TransactionPanelComponent {
       }
     } else if (code && INSTALLMENT_ERROR_CODES.includes(code)) {
       this.installmentsServerError.set(code);
+    } else if (code && ADVANCE_FEE_ERROR_CODES.includes(code) && this.isCardAdvance()) {
+      this.advanceFeeServerError.set(code);
     } else if (code && AMOUNT_ERROR_CODES.includes(code)) {
       this.amountServerError.set(code);
     } else if (code && ACCOUNT_ERROR_CODES.includes(code)) {
@@ -1292,6 +1408,11 @@ function customInstallmentsValidator(control: AbstractControl<string>): Validati
   return !text || (Number.isInteger(value) && value >= INSTALLMENTS_MIN && value <= INSTALLMENTS_MAX)
     ? null
     : { installmentsOutOfRange: true };
+}
+
+/** Comisión opcional: vacía, o un monto con las mismas reglas que el del movimiento. */
+function optionalAmountValidator(control: AbstractControl<string>): ValidationErrors | null {
+  return control.value.trim() ? amountValidator(control) : null;
 }
 
 /** Tasa EA: vacía (la exige la vista solo con interés), o un número entre 0 y 200 con hasta 2 decimales. */

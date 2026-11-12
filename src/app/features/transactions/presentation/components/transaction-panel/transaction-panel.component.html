@@ -86,10 +86,27 @@
       </div>
     }
     @case ('locked') {
-      <p data-testid="edit-locked" class="m-0 flex gap-3 rounded-lg border border-ig-border bg-ig-surface-raised px-4 py-3 text-[14px] leading-normal">
-        <svg lucideLock [size]="16" class="mt-0.5 shrink-0 text-ig-muted" aria-hidden="true"></svg>
-        {{ t('transactions.list.locked') }}
-      </p>
+      @if (editing()?.parentTransactionId; as parentId) {
+        <div data-testid="edit-managed" class="flex flex-col items-start gap-3 rounded-lg border border-ig-border bg-ig-surface-raised px-4 py-3 text-[14px] leading-normal">
+          <p class="m-0 flex gap-3">
+            <svg lucideLock [size]="16" class="mt-0.5 shrink-0 text-ig-muted" aria-hidden="true"></svg>
+            {{ t('transactions.list.managedByParent') }}
+          </p>
+          <a
+            data-testid="edit-open-advance"
+            class="inline-flex min-h-11 items-center rounded-lg border border-ig-border px-4 text-[14px] font-bold text-ig-text hover:bg-ig-surface focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+            [routerLink]="['/transactions', parentId, 'edit']"
+            queryParamsHandling="preserve"
+          >
+            {{ t('transactions.list.openAdvance') }}
+          </a>
+        </div>
+      } @else {
+        <p data-testid="edit-locked" class="m-0 flex gap-3 rounded-lg border border-ig-border bg-ig-surface-raised px-4 py-3 text-[14px] leading-normal">
+          <svg lucideLock [size]="16" class="mt-0.5 shrink-0 text-ig-muted" aria-hidden="true"></svg>
+          {{ t('transactions.list.locked') }}
+        </p>
+      }
     }
     @default {
   @switch (accountsStatus()) {
@@ -565,15 +582,19 @@
             (useToday)="useToday($event)"
           />
 
-          @if (isCardExpense()) {
+          @if (installable()) {
             <section
               data-testid="installments"
               class="flex flex-col gap-4 rounded-lg border border-ig-border bg-ig-surface p-4"
               aria-labelledby="installments-title"
             >
               <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                <h3 id="installments-title" class="m-0 text-[15px] font-bold">{{ t('transactions.form.installments.title') }}</h3>
-                <span class="text-[12px] text-ig-muted">{{ t('transactions.form.installments.onlyCards') }}</span>
+                <h3 id="installments-title" class="m-0 text-[15px] font-bold">
+                  {{ t(isCardAdvance() ? 'transactions.form.advance.title' : 'transactions.form.installments.title') }}
+                </h3>
+                <span class="text-[12px] text-ig-muted">
+                  {{ t(isCardAdvance() ? 'transactions.form.advance.note' : 'transactions.form.installments.onlyCards') }}
+                </span>
               </div>
 
               <div class="flex flex-wrap gap-2" role="radiogroup" [attr.aria-label]="t('transactions.form.installments.count')">
@@ -663,6 +684,38 @@
                     <p id="interest-rate-help" class="m-0 text-[12px] text-ig-muted">{{ t('transactions.form.installments.rateHelp') }}</p>
                   </div>
                 }
+              }
+
+              @if (isCardAdvance()) {
+                <div class="flex flex-col gap-2">
+                  <label class="text-[13px] font-bold" for="transaction-advance-fee">
+                    {{ t('transactions.form.advance.feeLabel') }}
+                    <span class="font-normal text-ig-muted">{{ t('transactions.form.optional') }}</span>
+                  </label>
+                  <div
+                    class="flex min-h-12 items-center rounded-lg border bg-ig-canvas focus-within:border-ig-accent focus-within:outline-2 focus-within:outline-ig-accent focus-within:outline-offset-2 lg:min-h-11"
+                    [class]="advanceFeeError() ? 'border-ig-text' : 'border-ig-border'"
+                  >
+                    <span class="shrink-0 pl-3 text-[13px] text-ig-muted" aria-hidden="true">{{ symbol() }}</span>
+                    <input
+                      id="transaction-advance-fee"
+                      data-testid="transaction-advance-fee"
+                      class="min-h-11 w-full min-w-0 flex-1 border-0 bg-transparent px-2 text-[16px] tabular-nums text-ig-text outline-none lg:text-[14px]"
+                      formControlName="advanceFee"
+                      type="text"
+                      inputmode="decimal"
+                      autocomplete="off"
+                      [attr.aria-invalid]="advanceFeeError() !== null"
+                      [attr.aria-describedby]="advanceFeeError() ? 'advance-fee-error advance-fee-help' : 'advance-fee-help'"
+                    />
+                  </div>
+                  @if (advanceFeeError(); as message) {
+                    <p id="advance-fee-error" data-testid="advance-fee-error" class="m-0 text-[13px] leading-snug text-ig-text" role="alert">
+                      {{ t(message.key, message.params) }}
+                    </p>
+                  }
+                  <p id="advance-fee-help" class="m-0 text-[12px] text-ig-muted">{{ t('transactions.form.advance.feeHelp') }}</p>
+                </div>
               }
 
               @switch (installmentPreview().status) {
@@ -774,9 +827,19 @@
                 }
               }
 
+              @if (advanceTotal(); as advance) {
+                <dl data-testid="advance-total" class="m-0 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 border-t border-ig-border pt-3 text-[13px] tabular-nums">
+                  <dt class="text-ig-muted">{{ t('transactions.form.advance.fee') }}</dt>
+                  <dd data-testid="advance-fee-amount" class="m-0 text-right">{{ advance.fee }}</dd>
+                  <dt class="text-ig-muted">{{ t('transactions.form.advance.total') }}</dt>
+                  <dd data-testid="advance-total-amount" class="m-0 text-right font-bold">{{ advance.total }}</dd>
+                  <dt class="col-span-2 text-[12px] text-ig-muted">{{ t('transactions.form.advance.feeExpense') }}</dt>
+                </dl>
+              }
+
               @if (closedInstallmentMonth(); as closed) {
                 <div data-testid="installment-month-closed" class="flex flex-col items-start gap-2 rounded-lg border border-ig-border bg-ig-surface-raised px-4 py-3 text-[13px]" role="alert">
-                  <p class="m-0">{{ t('transactions.form.installments.closedMonth', { month: (monthDate(closed) | date: 'MMMM y' : 'UTC' : locale()) }) }}</p>
+                  <p class="m-0">{{ t((isCardAdvance() ? 'transactions.form.advance' : 'transactions.form.installments') + '.closedMonth', { month: (monthDate(closed) | date: 'MMMM y' : 'UTC' : locale()) }) }}</p>
                   <app-reopen-period-button [year]="closed.year" [month]="closed.month" />
                 </div>
               }
@@ -787,11 +850,11 @@
                 <dt class="text-ig-muted">{{ t('transactions.form.installments.available', { name: credit.name }) }}</dt>
                 <dd class="m-0 text-right">{{ credit.before }}</dd>
                 @if (credit.after) {
-                  <dt class="text-ig-muted">{{ t('transactions.form.installments.availableAfter') }}</dt>
+                  <dt class="text-ig-muted">{{ t((isCardAdvance() ? 'transactions.form.advance' : 'transactions.form.installments') + '.availableAfter') }}</dt>
                   <dd class="m-0 text-right font-bold">{{ credit.after }}</dd>
                 }
                 @if (credit.over) {
-                  <dt class="col-span-2 text-[12px] font-bold">{{ t('transactions.form.installments.overLimit') }}</dt>
+                  <dt class="col-span-2 text-[12px] font-bold">{{ t((isCardAdvance() ? 'transactions.form.advance' : 'transactions.form.installments') + '.overLimit') }}</dt>
                 }
               </dl>
             }
@@ -852,6 +915,8 @@
               } @else {
                 @if (editing()) {
                   {{ t('transactions.form.edit.submit') }}
+                } @else if (isCardAdvance()) {
+                  {{ formValue().installments > 1 ? t('transactions.form.advance.submitInstallments', { count: formValue().installments }) : t('transactions.form.advance.submit') }}
                 } @else if (isCardExpense() && formValue().installments > 1) {
                   {{ t('transactions.form.installments.submit', { count: formValue().installments }) }}
                 } @else if (payingCard()) {
