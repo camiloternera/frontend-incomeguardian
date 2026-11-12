@@ -1,5 +1,3 @@
-export type MovementKind = 'income' | 'expense';
-
 /** Grupos de gasto. La clave nombra una traducción, nunca el copy. */
 export type CategoryKey =
   | 'housing'
@@ -21,17 +19,6 @@ export interface CategorySpend {
   amount: number;
   /** Parte del gasto del mes, de 0 a 1. */
   share: number;
-}
-
-export interface MovementSummary {
-  id: string;
-  /** Fecha ISO, por ejemplo `2026-10-16`. */
-  date: string;
-  description: string;
-  category: CategoryKey | 'salary' | 'freelance' | 'investment';
-  account: string;
-  amount: number;
-  kind: MovementKind;
 }
 
 /** Metas del usuario contra las que se comparan los indicadores. */
@@ -62,5 +49,4 @@ export interface DashboardOverview {
   /** Últimos meses, incluido el actual, del más antiguo al más reciente. */
   cashFlow: CashFlowPoint[];
   categories: CategorySpend[];
-  recent: MovementSummary[];
 }

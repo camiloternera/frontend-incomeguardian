@@ -4,18 +4,10 @@ import { TranslocoService } from '@jsverse/transloco';
 import { Observable, catchError, map, throwError } from 'rxjs';
 import { environment } from '@env/environment';
 import { ApiResponse } from '@core/http/api-response';
-import { apiErrorCode, resolveApiError } from '@core/http/api-error';
-import { DashboardError, DashboardErrorCode } from '../domain/dashboard-error';
 import { CategorySpent, MonthSummary, SummaryMonth } from '../domain/month-summary';
 import { MonthSummaryRepository } from '../domain/month-summary.repository';
+import { toDashboardError } from './dashboard-api-error';
 import { CategorySpentDto, MonthSummaryDto } from './month-summary.dto';
-
-/** Cada código conocido del backend para el Resumen, asociado a su clave de traducción. */
-const DASHBOARD_ERROR_KEYS: Record<string, string> = Object.fromEntries(
-  Object.values(DashboardErrorCode).map((code) => [code, `dashboard.errors.${code}`]),
-);
-
-const KNOWN_CODES: readonly string[] = Object.values(DashboardErrorCode);
 
 /** Una categoría con un tipo desconocido no suma al gasto: se descarta en vez de inventarle uno. */
 function toCategories(dtos: CategorySpentDto[]): CategorySpent[] {
@@ -66,15 +58,7 @@ export class MonthSummaryHttpRepository extends MonthSummaryRepository {
 
         return toSummary(response.data);
       }),
-      catchError((error: unknown) => throwError(() => this.toError(error))),
+      catchError((error: unknown) => throwError(() => toDashboardError(error, (key) => this.transloco.translate(key)))),
     );
-  }
-
-  /** Convierte cualquier fallo en un `DashboardError` traducido que conserva su código. */
-  private toError(error: unknown): DashboardError {
-    const code = apiErrorCode(error);
-    const message = resolveApiError(error, DASHBOARD_ERROR_KEYS, (key) => this.transloco.translate(key));
-
-    return new DashboardError(message, code !== undefined && KNOWN_CODES.includes(code) ? (code as DashboardErrorCode) : null);
   }
 }
