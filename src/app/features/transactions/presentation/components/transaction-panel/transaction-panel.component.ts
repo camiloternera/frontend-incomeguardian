@@ -21,7 +21,7 @@ import {
 } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
-import { LucideCircleAlert, LucideLock, LucidePlus, LucideX } from '@lucide/angular';
+import { LucideCircleAlert, LucideLock, LucidePlus, LucideTrash2, LucideX } from '@lucide/angular';
 import {
   Observable,
   Subject,
@@ -45,9 +45,11 @@ import { SelectComponent, SelectOption } from '@shared/ui/select/select.componen
 import {
   CreateTransactionUseCase,
   GetExchangeRateUseCase,
+  GetTransactionUseCase,
   ListTransactionAccountOptionsUseCase,
   ListTransactionCategoryOptionsUseCase,
   PreviewInstallmentsUseCase,
+  UpdateTransactionUseCase,
 } from '../../../application/transaction-use-cases';
 import {
   CARD_PAYMENT_CATEGORY_CODE,
@@ -59,6 +61,7 @@ import {
   INTEREST_RATE_MIN,
   InstallmentPreview,
   InstallmentPreviewRequest,
+  Transaction,
   TransactionMonth,
   TRANSACTION_AMOUNT_MAX_DECIMALS,
   TRANSACTION_AMOUNT_MAX_INTEGER_DIGITS,
@@ -70,6 +73,7 @@ import {
   TransactionDraft,
   TransactionType,
   categoryAppliesTo,
+  dayOf,
   isCrossCurrency,
   isTransactionType,
   isUsableAccount,
@@ -90,6 +94,7 @@ import {
 import { currencySymbol, formatMoney } from '../../money-format';
 import { TransactionWorkspace } from '../../transaction-workspace';
 import { injectTransactionsTranslations } from '../../transactions-translations';
+import { TransactionDeleteConfirmationComponent } from '../delete-confirmation/delete-confirmation.component';
 import { amountValidator, parseAmount } from '../../validators/amount.validator';
 
 /** Estado de una lista de opciones que se carga aparte del formulario. */
@@ -111,6 +116,12 @@ type InstallmentPreviewState =
   | { status: 'loading' }
   | { status: 'ready'; preview: InstallmentPreview }
   | { status: 'error'; message: string };
+
+/**
+ * Estado del movimiento que se edita: sin edición (registro nuevo), cargando, listo, bloqueado
+ * por un mes cerrado o una cuenta de solo lectura, inexistente, o error al cargarlo.
+ */
+type EditStatus = 'none' | 'loading' | 'ready' | 'locked' | 'notFound' | 'error';
 
 /** Montos sugeridos al pagar una tarjeta: lo que falta del extracto o toda la deuda. */
 type PayPreset = 'statement' | 'all';
@@ -150,10 +161,12 @@ const TYPE_ORDER: readonly TransactionType[] = ['expense', 'income', 'transfer']
     LucideCircleAlert,
     LucideLock,
     LucidePlus,
+    LucideTrash2,
     LucideX,
     SelectComponent,
     DatePickerComponent,
     LockedDateNoteComponent,
+    TransactionDeleteConfirmationComponent,
     PeriodOverlaysComponent,
     ReopenPeriodButtonComponent,
   ],
@@ -161,6 +174,8 @@ const TYPE_ORDER: readonly TransactionType[] = ['expense', 'income', 'transfer']
 })
 export class TransactionPanelComponent {
   private readonly createTransaction = inject(CreateTransactionUseCase);
+  private readonly updateTransaction = inject(UpdateTransactionUseCase);
+  private readonly getTransaction = inject(GetTransactionUseCase);
   private readonly getExchangeRate = inject(GetExchangeRateUseCase);
   private readonly listAccounts = inject(ListTransactionAccountOptionsUseCase);
   private readonly listCategories = inject(ListTransactionCategoryOptionsUseCase);
@@ -196,12 +211,22 @@ export class TransactionPanelComponent {
   protected readonly type = signal<TransactionType>('expense');
 
   protected readonly isSubmitting = signal(false);
+
+  /** Movimiento que se edita (ruta `:id/edit`); `null` al registrar uno nuevo. */
+  protected readonly editing = signal<Transaction | null>(null);
+  protected readonly editStatus = signal<EditStatus>('none');
+  protected readonly editError = signal('');
+  /** Si se pidió eliminar el movimiento que se edita y se espera la confirmación. */
+  protected readonly askingDelete = signal(false);
+  private editId: number | null = null;
   protected readonly formError = signal('');
 
   protected readonly accountsStatus = signal<OptionsStatus>('loading');
   private readonly accounts = signal<TransactionAccountOption[]>([]);
   protected readonly categoriesStatus = signal<OptionsStatus>('loading');
   protected readonly categories = signal<TransactionCategoryOption[]>([]);
+  /** Todas las categorías del tipo, también las desactivadas, para nombrar la de un movimiento que se edita. */
+  private readonly allCategories = signal<TransactionCategoryOption[]>([]);
   /** Último resultado de la consulta de la TRM; `rateState` lo cruza con la fecha vigente. */
   private readonly rateResult = signal<RateState>({ status: 'idle' });
 
@@ -422,6 +447,29 @@ export class TransactionPanelComponent {
   protected readonly dateLocked = computed(() => this.lockedNote()?.locked() ?? false);
 
   /**
+   * Al editar, la cuenta o la categoría elegida que ya está desactivada. El backend no deja guardar
+   * un movimiento con ellas, así que se nombran y hay que elegir otras activas antes de guardar.
+   */
+  protected readonly inactiveChoices = computed(() => {
+    if (!this.editing()) {
+      return [];
+    }
+
+    const value = this.formValue();
+    const accountIds = this.type() === 'transfer' ? [value.fromAccountId, value.toAccountId] : [value.accountId];
+    const accounts = accountIds
+      .map((id) => this.findAccount(id))
+      .filter((account): account is TransactionAccountOption => account !== null && !isUsableAccount(account))
+      .map((account) => account.name);
+    const category =
+      value.categoryId !== null && !this.categories().some((item) => item.id === value.categoryId)
+        ? (this.allCategories().find((item) => item.id === value.categoryId)?.name ?? null)
+        : null;
+
+    return category ? [...accounts, category] : accounts;
+  });
+
+  /**
    * Sin TRM no se puede calcular ni crear una transferencia entre monedas, y no se guarda un
    * movimiento con fecha en un mes cerrado.
    */
@@ -429,6 +477,7 @@ export class TransactionPanelComponent {
     () =>
       !this.isSubmitting() &&
       !this.dateLocked() &&
+      this.inactiveChoices().length === 0 &&
       (!this.crossCurrency() || this.rateState().status === 'ready') &&
       (!this.isCardExpense() || this.interestRate() !== undefined),
   );
@@ -684,6 +733,14 @@ export class TransactionPanelComponent {
     inject(ActivatedRoute)
       .paramMap.pipe(takeUntilDestroyed())
       .subscribe((params) => {
+        const id = params.get('id');
+
+        if (id !== null) {
+          this.editId = Number(id);
+          this.loadForEdit();
+          return;
+        }
+
         const type = params.get('type');
         this.open(isTransactionType(type) ? type : 'expense');
       });
@@ -881,6 +938,7 @@ export class TransactionPanelComponent {
       next: (categories) => {
         // El backend ya filtra por tipo; se comprueba aquí también para no ofrecer una categoría
         // que luego rechace con TRANSACTION_CATEGORY_TYPE_MISMATCH. Las desactivadas no se ofrecen.
+        this.allCategories.set(categories);
         this.categories.set(categories.filter((category) => category.isActive && categoryAppliesTo(category, type)));
         this.categoriesStatus.set('ready');
         this.preselectCardPaymentCategory();
@@ -923,16 +981,94 @@ export class TransactionPanelComponent {
     }
 
     this.isSubmitting.set(true);
-    this.createTransaction
-      .execute(this.draft())
-      .pipe(finalize(() => this.isSubmitting.set(false)))
-      .subscribe({
-        next: (transaction) => {
+    const editing = this.editing();
+    const request = editing
+      ? this.updateTransaction.execute(editing.id, this.draft())
+      : this.createTransaction.execute(this.draft());
+
+    request.pipe(finalize(() => this.isSubmitting.set(false))).subscribe({
+      next: (transaction) => {
+        if (editing) {
+          this.workspace.updated();
+        } else {
           this.workspace.saved(transaction);
-          this.close();
-        },
-        error: (error: unknown) => this.handleSubmitError(error),
-      });
+        }
+
+        this.close();
+      },
+      error: (error: unknown) => this.handleSubmitError(error),
+    });
+  }
+
+  /**
+   * Carga el movimiento de la ruta `:id/edit` y llena el formulario con sus datos. Si ya no se
+   * puede modificar (mes cerrado o cuenta de solo lectura) no se muestra el formulario.
+   */
+  protected loadForEdit(): void {
+    const id = this.editId;
+
+    if (id === null || !Number.isInteger(id)) {
+      this.editStatus.set('notFound');
+      return;
+    }
+
+    this.editStatus.set('loading');
+    this.editError.set('');
+    this.askingDelete.set(false);
+    this.getTransaction.execute(id).subscribe({
+      next: (transaction) => {
+        this.editing.set(transaction);
+
+        if (!transaction.canModify) {
+          this.editStatus.set('locked');
+          return;
+        }
+
+        this.open(transaction.type);
+        this.fill(transaction);
+        this.editStatus.set('ready');
+      },
+      error: (error: unknown) => {
+        if (error instanceof TransactionError && error.code === TransactionErrorCode.NotFound) {
+          this.editStatus.set('notFound');
+          return;
+        }
+
+        this.editError.set(this.messageOf(error));
+        this.editStatus.set('error');
+      },
+    });
+  }
+
+  /** Nombre del movimiento que se edita: su descripción o su tipo. */
+  protected editLabel(transaction: Transaction): string {
+    return transaction.description || this.transloco.translate(`transactions.types.${transaction.type}`);
+  }
+
+  /** Llena el formulario con un movimiento guardado, sin marcarlo como modificado. */
+  private fill(transaction: Transaction): void {
+    const controls = this.form.controls;
+    const installments = transaction.type === 'expense' ? transaction.installments : 1;
+    const rate = transaction.annualInterestRate;
+
+    this.form.patchValue({
+      // El backend guarda hasta 3 decimales; el formulario admite 2.
+      amount: String(Math.round(transaction.amount * 100) / 100),
+      description: transaction.description ?? '',
+      date: dayOf(transaction.date),
+      categoryId: transaction.categoryId,
+      accountId: transaction.type === 'income' ? transaction.toAccountId : transaction.fromAccountId,
+      fromAccountId: transaction.type === 'transfer' ? transaction.fromAccountId : null,
+      toAccountId: transaction.type === 'transfer' ? transaction.toAccountId : null,
+      installments,
+      customInstallments: (INSTALLMENT_CHOICES as readonly number[]).includes(installments) ? '' : String(installments),
+      withInterest: installments > 1 && rate !== null && rate > 0,
+      interestRate: installments > 1 && rate !== null && rate > 0 ? String(rate) : '',
+    });
+    // `open` deja la categoría vacía y la vuelve a cargar: se fija después y se recuerda.
+    controls.categoryId.setValue(transaction.categoryId);
+    this.form.markAsPristine();
+    this.form.markAsUntouched();
   }
 
   /** Arma el borrador del tipo elegido con los valores del formulario. */

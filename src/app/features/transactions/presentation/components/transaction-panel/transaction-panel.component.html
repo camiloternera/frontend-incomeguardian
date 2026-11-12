@@ -13,14 +13,18 @@
         tabindex="-1"
         class="m-0 break-words text-[20px] font-bold tracking-[-0.02em] outline-none"
       >
-        @if (payingCard(); as card) {
+        @if (editStatus() !== 'none') {
+          {{ t('transactions.form.edit.title') }}
+        } @else if (payingCard(); as card) {
           {{ t('transactions.form.pay.title', { name: card.name }) }}
         } @else {
           {{ t('transactions.form.title.' + type()) }}
         }
       </h2>
       <p class="m-0 text-[13px] leading-normal text-ig-muted">
-        @if (cardPayment()?.statement; as month) {
+        @if (editStatus() !== 'none') {
+          {{ t('transactions.form.edit.subtitle') }}
+        } @else if (cardPayment()?.statement; as month) {
           {{ t('transactions.form.pay.subtitle', { month: (monthDate(month) | date: 'MMMM y' : 'UTC' : locale()) }) }}
         } @else {
           {{ t('transactions.form.subtitle.' + type()) }}
@@ -38,6 +42,7 @@
     </a>
   </div>
 
+  @if (editStatus() === 'none') {
   <nav
     class="grid grid-cols-3 gap-1 rounded-lg border border-ig-border p-1"
     [attr.aria-label]="t('transactions.form.typeLabel')"
@@ -59,7 +64,34 @@
       </a>
     }
   </nav>
+  }
 
+  @switch (editStatus()) {
+    @case ('loading') {
+      <p class="m-0 text-[14px] text-ig-muted" role="status">{{ t('transactions.detail.loading') }}</p>
+    }
+    @case ('notFound') {
+      <p data-testid="edit-not-found" class="m-0 text-[14px] text-ig-muted">{{ t('transactions.errors.TRANSACTION_NOT_FOUND') }}</p>
+    }
+    @case ('error') {
+      <div class="flex flex-col items-start gap-4">
+        <p data-testid="edit-error" class="m-0 text-[14px]" role="alert">{{ editError() }}</p>
+        <button
+          class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-border bg-transparent px-5 text-[14px] font-bold text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+          type="button"
+          (click)="loadForEdit()"
+        >
+          {{ t('transactions.form.retry') }}
+        </button>
+      </div>
+    }
+    @case ('locked') {
+      <p data-testid="edit-locked" class="m-0 flex gap-3 rounded-lg border border-ig-border bg-ig-surface-raised px-4 py-3 text-[14px] leading-normal">
+        <svg lucideLock [size]="16" class="mt-0.5 shrink-0 text-ig-muted" aria-hidden="true"></svg>
+        {{ t('transactions.list.locked') }}
+      </p>
+    }
+    @default {
   @switch (accountsStatus()) {
     @case ('loading') {
       <p class="m-0 text-[14px] text-ig-muted" role="status">
@@ -779,6 +811,17 @@
             </dl>
           }
 
+          @if (inactiveChoices().length) {
+            <p
+              data-testid="inactive-choices"
+              class="m-0 flex gap-3 rounded-lg border border-ig-border bg-ig-surface-raised px-4 py-3 text-[14px] leading-normal"
+              role="status"
+            >
+              <svg lucideCircleAlert [size]="16" class="mt-0.5 shrink-0 text-ig-muted" aria-hidden="true"></svg>
+              {{ t('transactions.form.edit.inactive', { names: inactiveChoices().join(', ') }) }}
+            </p>
+          }
+
           @if (formError()) {
             <p
               data-testid="form-error"
@@ -790,6 +833,17 @@
           }
 
           <div class="flex flex-wrap items-center justify-end gap-2 border-t border-ig-border pt-6">
+            @if (editing() && !askingDelete()) {
+              <button
+                data-testid="panel-delete"
+                class="mr-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-transparent bg-transparent px-3 text-[14px] text-ig-muted hover:bg-ig-surface-raised hover:text-ig-text focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                type="button"
+                (click)="askingDelete.set(true)"
+              >
+                <svg lucideTrash2 [size]="16" aria-hidden="true"></svg>
+                {{ t('transactions.list.delete') }}
+              </button>
+            }
             <a
               class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-border px-4 text-[14px] text-ig-text no-underline hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
               [routerLink]="closeLink()"
@@ -806,7 +860,9 @@
               @if (isSubmitting()) {
                 {{ t('transactions.form.saving') }}
               } @else {
-                @if (isCardExpense() && formValue().installments > 1) {
+                @if (editing()) {
+                  {{ t('transactions.form.edit.submit') }}
+                } @else if (isCardExpense() && formValue().installments > 1) {
                   {{ t('transactions.form.installments.submit', { count: formValue().installments }) }}
                 } @else if (payingCard()) {
                   {{ t('transactions.form.pay.submit') }}
@@ -817,7 +873,20 @@
             </button>
           </div>
         </form>
+
+        @if (editing(); as item) {
+          @if (askingDelete()) {
+            <app-transaction-delete-confirmation
+              [transaction]="item"
+              [label]="editLabel(item)"
+              (cancelled)="askingDelete.set(false)"
+              (deleted)="close()"
+            />
+          }
+        }
       }
+    }
+  }
     }
   }
 
