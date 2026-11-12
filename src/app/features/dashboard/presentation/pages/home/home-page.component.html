@@ -296,55 +296,105 @@
         </section>
       </div>
     }
-
-    <section class="flex flex-col gap-2" aria-labelledby="recent-title">
-      <h2 id="recent-title" class="m-0 text-[16px] font-bold">{{ t('dashboard.home.recent.title') }}</h2>
-
-      @for (day of days(); track day.date) {
-        <div data-testid="movement-day">
-          <h3 class="m-0 flex flex-wrap items-center gap-2 border-b border-ig-border py-2 text-[13px] font-medium text-ig-muted">
-            <span>
-              @switch (day.relative) {
-                @case ('today') { {{ t('dashboard.home.recent.today') }} · {{ longDate(day.date) }} }
-                @case ('yesterday') { {{ t('dashboard.home.recent.yesterday') }} }
-                @default { {{ capitalized(longDate(day.date)) }} }
-              }
-            </span>
-            <app-closed-month-badge [date]="day.date" />
-          </h3>
-          <ul class="m-0 list-none p-0">
-            @for (movement of day.movements; track movement.id) {
-              <li class="grid grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-4 border-b border-ig-border py-4">
-                @if (movement.kind === 'income') {
-                  <span class="grid size-10 place-items-center rounded-full bg-ig-accent/15 text-ig-accent-text">
-                    <svg lucideArrowDownLeft [size]="18"></svg>
-                  </span>
-                } @else {
-                  <span class="grid size-10 place-items-center rounded-full border border-ig-border bg-ig-surface text-ig-muted">
-                    <svg lucideArrowUpRight [size]="18"></svg>
-                  </span>
-                }
-                <div class="min-w-0">
-                  <p class="m-0 truncate text-[15px] font-medium">{{ movement.description }}</p>
-                  <p class="m-0 mt-1 truncate text-[13px] text-ig-muted">{{ t('dashboard.categories.' + movement.category) }} · {{ movement.account }}</p>
-                </div>
-                <p
-                  class="m-0 whitespace-nowrap text-[15px] font-bold tabular-nums"
-                  [class]="movement.kind === 'income' ? 'text-ig-accent-text' : 'text-ig-text'"
-                >
-                  <span class="sr-only">{{ t('dashboard.home.recent.' + movement.kind) }}</span>
-                  <span aria-hidden="true">{{ movement.kind === 'income' ? '+' : '−' }}</span>
-                  {{ money(movement.amount) }}
-                </p>
-              </li>
-            }
-          </ul>
-        </div>
-      } @empty {
-        <p class="m-0 text-[14px] text-ig-muted">{{ t('dashboard.home.recent.empty') }}</p>
-      }
-    </section>
   } @else {
     <p class="m-0 text-[14px] text-ig-muted" role="status">{{ t('dashboard.home.loading') }}</p>
   }
+
+  <section data-testid="recent" class="flex flex-col gap-2" aria-labelledby="recent-title">
+    <div class="flex items-center justify-between gap-4">
+      <h2 id="recent-title" class="m-0 text-[16px] font-bold">{{ t('dashboard.home.recent.title') }}</h2>
+      <a
+        data-testid="recent-see-all"
+        class="inline-flex min-h-11 items-center text-[14px] font-medium text-ig-accent-text no-underline hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ig-accent"
+        routerLink="/transactions"
+      >
+        {{ t('dashboard.home.recent.seeAll') }}
+      </a>
+    </div>
+
+    @let recent = recentState();
+    @switch (recent.status) {
+      @case ('loading') {
+        <p data-testid="recent-loading" class="m-0 text-[14px] text-ig-muted" role="status">{{ t('dashboard.home.recent.loading') }}</p>
+      }
+      @case ('error') {
+        <div data-testid="recent-error" class="flex flex-col items-start gap-4" role="alert">
+          <p class="m-0 text-[14px] text-ig-text">{{ t('dashboard.home.recent.error') }}</p>
+          @if (recent.status === 'error') {
+            <p class="m-0 text-[13px] text-ig-muted">{{ recent.message }}</p>
+          }
+          <button
+            data-testid="recent-retry"
+            type="button"
+            class="inline-flex min-h-11 items-center rounded-lg border border-ig-border bg-transparent px-4 text-[14px] font-bold text-ig-text hover:bg-ig-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ig-accent"
+            (click)="loadRecent()"
+          >
+            {{ t('dashboard.home.recent.retry') }}
+          </button>
+        </div>
+      }
+      @default {
+        @for (day of days(); track day.date) {
+          <div data-testid="movement-day">
+            <h3 class="m-0 flex flex-wrap items-center gap-2 border-b border-ig-border py-2 text-[13px] font-medium text-ig-muted">
+              <span>
+                @switch (day.relative) {
+                  @case ('today') { {{ t('dashboard.home.recent.today') }} · {{ longDate(day.date) }} }
+                  @case ('yesterday') { {{ t('dashboard.home.recent.yesterday') }} }
+                  @default { {{ capitalized(longDate(day.date)) }} }
+                }
+              </span>
+              <app-closed-month-badge [date]="day.date" />
+            </h3>
+            <ul class="m-0 list-none p-0">
+              @for (movement of day.movements; track movement.id) {
+                <li data-testid="recent-movement" class="grid grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-4 border-b border-ig-border py-4">
+                  @switch (movement.kind) {
+                    @case ('income') {
+                      <span class="grid size-10 place-items-center rounded-full bg-ig-accent/15 text-ig-accent-text">
+                        <svg lucideArrowDownLeft [size]="18"></svg>
+                      </span>
+                    }
+                    @case ('transfer') {
+                      <span class="grid size-10 place-items-center rounded-full border border-ig-border bg-ig-surface text-ig-muted">
+                        <svg lucideArrowLeftRight [size]="18"></svg>
+                      </span>
+                    }
+                    @default {
+                      <span class="grid size-10 place-items-center rounded-full border border-ig-border bg-ig-surface text-ig-muted">
+                        <svg lucideArrowUpRight [size]="18"></svg>
+                      </span>
+                    }
+                  }
+                  <div class="min-w-0">
+                    <p class="m-0 line-clamp-2 break-words text-[15px] font-medium">{{ movement.description || movementLabel(movement) }}</p>
+                    <p class="m-0 mt-1 line-clamp-2 break-words text-[13px] text-ig-muted">{{ movementMeta(movement) }}</p>
+                  </div>
+                  <div class="flex flex-col items-end">
+                    <p
+                      class="m-0 whitespace-nowrap text-[15px] font-bold tabular-nums"
+                      [class]="movement.kind === 'income' ? 'text-ig-accent-text' : 'text-ig-text'"
+                    >
+                      <span class="sr-only">{{ t('dashboard.home.recent.' + movement.kind) }}</span>
+                      @if (movement.kind !== 'transfer') {
+                        <span aria-hidden="true">{{ movement.kind === 'income' ? '+' : '−' }}</span>
+                      }
+                      {{ movementMoney(movement.amount, movement.currency) }}
+                    </p>
+                    @if (movement.destination; as destination) {
+                      <p data-testid="recent-destination" class="m-0 mt-1 whitespace-nowrap text-[13px] text-ig-muted tabular-nums">
+                        {{ t('dashboard.home.recent.received', { amount: movementMoney(destination.amount, destination.currency) }) }}
+                      </p>
+                    }
+                  </div>
+                </li>
+              }
+            </ul>
+          </div>
+        } @empty {
+          <p data-testid="recent-empty" class="m-0 text-[14px] text-ig-muted">{{ t('dashboard.home.recent.empty') }}</p>
+        }
+      }
+    }
+  </section>
 </div>

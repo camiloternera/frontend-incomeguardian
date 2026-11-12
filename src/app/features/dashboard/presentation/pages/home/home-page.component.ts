@@ -1,11 +1,11 @@
-import { formatCurrency, formatDate, formatNumber, formatPercent } from '@angular/common';
+import { formatCurrency, formatDate, formatNumber, formatPercent, getCurrencySymbol } from '@angular/common';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { SelectComponent, SelectOption } from '@shared/ui/select/select.component';
-import { LucideArrowDownLeft, LucideArrowUpRight, LucideEye, LucideEyeOff, LucidePlus, LucideShield } from '@lucide/angular';
+import { LucideArrowDownLeft, LucideArrowLeftRight, LucideArrowUpRight, LucideEye, LucideEyeOff, LucidePlus, LucideShield } from '@lucide/angular';
 import { LanguageService } from '@core/i18n/language.service';
 import {
   ClosedMonthBadgeComponent,
@@ -16,8 +16,10 @@ import {
 import { ThemeService } from '@core/theme/theme.service';
 import { GetMonthSummaryUseCase } from '../../../application/get-month-summary.use-case';
 import { GetOverviewUseCase } from '../../../application/get-overview.use-case';
+import { GetRecentMovementsUseCase } from '../../../application/get-recent-movements.use-case';
 import { CategorySpent, MonthSummary, monthKey, monthOfDay, todayInDashboardZone } from '../../../domain/month-summary';
 import { cushionMonths, groupByDay, monthOutlook, previousAverages } from '../../../domain/overview-insights';
+import { RecentMovement } from '../../../domain/recent-movement';
 import { CashFlowBar, CashFlowChartComponent } from '../../components/cash-flow-chart.component';
 
 /** Texto que reemplaza un monto cuando el usuario decide ocultarlos. */
@@ -43,6 +45,12 @@ type SummaryState =
   | { status: 'error'; message: string }
   | { status: 'ready'; summary: MonthSummary };
 
+/** Estado de «Movimientos recientes», que carga aparte del bloque principal. */
+type RecentState =
+  | { status: 'loading' }
+  | { status: 'error'; message: string }
+  | { status: 'ready'; movements: RecentMovement[] };
+
 @Component({
   selector: 'app-home-page',
   imports: [
@@ -56,6 +64,7 @@ type SummaryState =
     PeriodOverlaysComponent,
     PeriodSelectorComponent,
     LucideArrowDownLeft,
+    LucideArrowLeftRight,
     LucideArrowUpRight,
     LucideEye,
     LucideEyeOff,
@@ -70,6 +79,7 @@ export class HomePageComponent {
   private readonly languageService = inject(LanguageService);
   private readonly themeService = inject(ThemeService);
   private readonly getMonthSummary = inject(GetMonthSummaryUseCase);
+  private readonly getRecentMovements = inject(GetRecentMovementsUseCase);
   private readonly transloco = inject(TranslocoService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -87,6 +97,9 @@ export class HomePageComponent {
 
   /** Cifras reales del mes en curso, por moneda. */
   protected readonly summaryState = signal<SummaryState>({ status: 'loading' });
+
+  /** Últimos movimientos del usuario, de cualquier mes. */
+  protected readonly recentState = signal<RecentState>({ status: 'loading' });
 
   /** Moneda pedida en `?currency=`; `null` muestra la primera disponible. */
   private readonly currency = signal<string | null>(null);
@@ -213,10 +226,11 @@ export class HomePageComponent {
     return overview && averages ? cushionMonths(overview.savings, averages.expenses) : null;
   });
 
+  /** Movimientos recientes agrupados por día, con «Hoy» y «Ayer» respecto a hoy en Colombia. */
   protected readonly days = computed(() => {
-    const overview = this.overview();
+    const state = this.recentState();
 
-    return overview ? groupByDay(overview.recent, overview.asOf) : [];
+    return state.status === 'ready' ? groupByDay(state.movements, this.today) : [];
   });
 
   /** Un segmento por mes de la meta; el colchón llena los primeros. */
@@ -254,6 +268,7 @@ export class HomePageComponent {
     this.currencyFilter.valueChanges.pipe(takeUntilDestroyed()).subscribe((currency) => this.chooseCurrency(currency));
 
     this.loadSummary();
+    this.loadRecent();
   }
 
   /** Pide las cifras del mes en curso; también sirve de reintento tras un error. */
@@ -267,6 +282,46 @@ export class HomePageComponent {
           message: error instanceof Error ? error.message : this.transloco.translate('errors.generic'),
         }),
     });
+  }
+
+  /** Pide los últimos movimientos; también sirve de reintento tras un error. */
+  protected loadRecent(): void {
+    this.recentState.set({ status: 'loading' });
+    this.getRecentMovements.execute().subscribe({
+      next: (movements) => this.recentState.set({ status: 'ready', movements }),
+      error: (error: unknown) =>
+        this.recentState.set({
+          status: 'error',
+          message: error instanceof Error ? error.message : this.transloco.translate('errors.generic'),
+        }),
+    });
+  }
+
+  /** Título de un movimiento sin descripción: su categoría, o el tipo si no tiene. */
+  protected movementLabel(movement: RecentMovement): string {
+    if (movement.isCardPayment) {
+      return this.transloco.translate('dashboard.home.recent.cardPayment');
+    }
+
+    return movement.categoryName ?? this.transloco.translate(`dashboard.home.recent.${movement.kind}`);
+  }
+
+  /** Línea secundaria: «Origen → Destino» en una transferencia; «Categoría · Cuenta» en los demás. */
+  protected movementMeta(movement: RecentMovement): string {
+    if (movement.kind === 'transfer') {
+      return this.transloco.translate('dashboard.home.recent.route', {
+        from: movement.fromAccountName ?? '',
+        to: movement.toAccountName ?? '',
+      });
+    }
+
+    const account = movement.kind === 'income' ? movement.toAccountName : movement.fromAccountName;
+    const installments =
+      movement.installments > 1
+        ? this.transloco.translate('dashboard.home.recent.installments', { count: movement.installments })
+        : null;
+
+    return [movement.categoryName, account, installments].filter(Boolean).join(' · ');
   }
 
   /** Lleva la moneda a la URL; la primera disponible no se escribe, como el mes actual. */
@@ -307,6 +362,17 @@ export class HomePageComponent {
     const hasCents = currency !== 'COP' && !Number.isInteger(value);
 
     return formatCurrency(value, this.locale(), '$', currency, hasCents ? '1.2-2' : '1.0-0');
+  }
+
+  /** Monto de un movimiento con el símbolo de su moneda (US$ en dólares), igual que el listado de movimientos. */
+  protected movementMoney(value: number, currency: string): string {
+    if (this.amountsHidden()) {
+      return MASK;
+    }
+
+    const hasCents = currency !== 'COP' && !Number.isInteger(value);
+
+    return formatCurrency(value, this.locale(), getCurrencySymbol(currency, 'wide', this.locale()), currency, hasCents ? '1.2-2' : '1.0-0');
   }
 
   /** Porcentaje con hasta un decimal en el idioma activo. */

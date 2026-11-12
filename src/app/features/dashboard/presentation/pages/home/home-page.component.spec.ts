@@ -2,7 +2,7 @@ import { formatDate } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { Subject, firstValueFrom, of } from 'rxjs';
+import { Observable, Subject, firstValueFrom, of } from 'rxjs';
 import { translocoTesting } from '@core/i18n/i18n.testing';
 import { LanguageService } from '@core/i18n/language.service';
 import { FakePeriodRepository, periodYear, provideFakePeriods } from '@features/periods/testing';
@@ -22,8 +22,11 @@ import {
 } from '../../../domain/month-summary';
 import { MonthSummaryRepository } from '../../../domain/month-summary.repository';
 import { monthOutlook } from '../../../domain/overview-insights';
+import { RECENT_MOVEMENTS_LIMIT, RecentMovement } from '../../../domain/recent-movement';
+import { RecentMovementsRepository } from '../../../domain/recent-movements.repository';
 import { InMemoryDashboardRepository } from '../../../infrastructure/in-memory-dashboard.repository';
 import { FakeMonthSummaryRepository, sampleMonthSummary } from '../../month-summary-repository.fake';
+import { FakeRecentMovementsRepository, daysBefore, recentMovement } from '../../recent-movements-repository.fake';
 
 /** El bloque principal pide el mes en curso en hora de Colombia: depende del reloj real. */
 const TODAY = todayInDashboardZone();
@@ -69,11 +72,14 @@ function categories(count: number): CategorySpent[] {
 
 interface Setup {
   overview?: Partial<DashboardOverview>;
+  /** Reemplaza el flujo del colchón, por ejemplo para dejarlo cargando. */
+  overviewSource?: Observable<DashboardOverview>;
   periods?: FakePeriodRepository;
   summaries?: MonthSummaryRepository;
+  recent?: RecentMovementsRepository;
 }
 
-async function setup({ overview = {}, periods = new FakePeriodRepository(), summaries }: Setup = {}) {
+async function setup({ overview = {}, overviewSource, periods = new FakePeriodRepository(), summaries, recent }: Setup = {}) {
   const sample = await firstValueFrom(new InMemoryDashboardRepository().overview());
   const fake = new FakeMonthSummaryRepository();
 
@@ -83,8 +89,9 @@ async function setup({ overview = {}, periods = new FakePeriodRepository(), summ
       provideRouter([{ path: '', component: HomePageComponent }]),
       provideDashboard(),
       provideFakePeriods(periods),
-      { provide: DashboardRepository, useValue: { overview: () => of({ ...sample, ...overview }) } },
+      { provide: DashboardRepository, useValue: { overview: () => overviewSource ?? of({ ...sample, ...overview }) } },
       { provide: MonthSummaryRepository, useValue: summaries ?? fake },
+      { provide: RecentMovementsRepository, useValue: recent ?? new FakeRecentMovementsRepository(TODAY) },
     ],
   }).compileComponents();
 
@@ -750,6 +757,244 @@ describe('HomePageComponent', () => {
     });
   });
 
+  describe('with the recent movements', () => {
+    /** Monta la vista con estos movimientos y devuelve el repositorio falso. */
+    async function renderWith(movements: RecentMovement[]) {
+      const recent = new FakeRecentMovementsRepository(TODAY);
+      recent.movements = movements;
+      await setup({ recent });
+
+      return { recent, ...render() };
+    }
+
+    /** Párrafos de cada fila (título, meta, monto y lo que llegó) separados por « | ». */
+    function rows(element: HTMLElement): string[] {
+      return [...element.querySelectorAll('[data-testid="recent-movement"]')].map((row) =>
+        [...row.querySelectorAll('p')].map((p) => p.textContent!.replace(/\s+/g, ' ').trim()).join(' | '),
+      );
+    }
+
+    it('asks for the last six movements', async () => {
+      const { recent } = await renderWith([]);
+
+      expect(RECENT_MOVEMENTS_LIMIT).toBe(6);
+      expect(recent.requested).toEqual([RECENT_MOVEMENTS_LIMIT]);
+    });
+
+    it('links to every transaction', async () => {
+      const { element } = await renderWith([]);
+      const link = element.querySelector('[data-testid="recent-see-all"]')!;
+
+      expect(link.getAttribute('href')).toBe('/transactions');
+      expect(link.textContent?.trim()).toBe('See all');
+    });
+
+    it('says when there are no movements yet', async () => {
+      const { element } = await renderWith([]);
+
+      expect(text(element, 'recent-empty')).toBe('No transactions yet.');
+      expect(element.querySelector('[data-testid="movement-day"]')).toBeNull();
+    });
+
+    it('names today with its date, yesterday alone and older days by their date', async () => {
+      const older = daysBefore(TODAY, 4);
+      const { element } = await renderWith([
+        recentMovement(TODAY, { id: 1 }),
+        recentMovement(daysBefore(TODAY, 1), { id: 2 }),
+        recentMovement(older, { id: 3 }),
+      ]);
+      const headings = [...element.querySelectorAll('[data-testid="movement-day"] h3')].map((h3) =>
+        h3.textContent!.replace(/\s+/g, ' ').trim(),
+      );
+
+      expect(headings[0]).toBe(`Today · ${formatDate(`${TODAY}T00:00:00`, 'EEEE, MMMM d', 'en-US')}`);
+      expect(headings[1]).toBe('Yesterday');
+      expect(headings[2]).toBe(formatDate(`${older}T00:00:00`, 'EEEE, MMMM d', 'en-US'));
+    });
+
+    it('signs an income and shows the account it reached', async () => {
+      const { element } = await renderWith([
+        recentMovement(TODAY, {
+          kind: 'income',
+          description: 'Pago Estudio Norte',
+          amount: 3_200_000,
+          categoryName: 'Freelance',
+          fromAccountName: 'Otra',
+          toAccountName: 'Bancolombia',
+        }),
+      ]);
+
+      expect(rows(element)).toEqual(['Pago Estudio Norte | Freelance · Bancolombia | Income+ COP3,200,000']);
+    });
+
+    it('signs an expense and shows the account it left', async () => {
+      const { element } = await renderWith([
+        recentMovement(TODAY, { description: 'Mercado', amount: 186_400, categoryName: 'Comida', fromAccountName: 'Nequi', toAccountName: 'Otra' }),
+      ]);
+
+      expect(rows(element)).toEqual(['Mercado | Comida · Nequi | Expense− COP186,400']);
+    });
+
+    it('counts the installments of a purchase only when there are several', async () => {
+      const { element } = await renderWith([
+        recentMovement(TODAY, { id: 1, description: 'Portátil', categoryName: 'Tecnología', fromAccountName: 'Visa', installments: 12 }),
+        recentMovement(TODAY, { id: 2, description: 'Café', categoryName: 'Comida', fromAccountName: 'Visa', installments: 1 }),
+      ]);
+
+      expect(rows(element)[0]).toContain('Tecnología · Visa · 12 installments');
+      expect(rows(element)[1]).toContain('Comida · Visa |');
+      expect(rows(element)[1]).not.toContain('installments');
+    });
+
+    it('titles a movement without description by card payment, then category, then type', async () => {
+      const { element } = await renderWith([
+        recentMovement(TODAY, { id: 1, isCardPayment: true, categoryName: 'Tarjeta' }),
+        recentMovement(TODAY, { id: 2, categoryName: 'Transporte' }),
+        recentMovement(TODAY, { id: 3, categoryName: null }),
+      ]);
+
+      // El título es el primer párrafo del primer bloque de texto de la fila (el ícono es un span).
+      const titles = [...element.querySelectorAll('[data-testid="recent-movement"] > div:first-of-type > p:first-child')].map((p) =>
+        p.textContent!.trim(),
+      );
+
+      expect(titles).toEqual(['Card payment', 'Transporte', 'Expense']);
+    });
+
+    it('prefers the description over the card payment label', async () => {
+      const { element } = await renderWith([recentMovement(TODAY, { description: 'Pago Visa octubre', isCardPayment: true })]);
+
+      expect(rows(element)[0]).toMatch(/^Pago Visa octubre \|/);
+      expect(rows(element)[0]).not.toContain('Card payment');
+    });
+
+    it('shows a transfer as a route without a sign', async () => {
+      const { element } = await renderWith([
+        recentMovement(TODAY, { kind: 'transfer', amount: 500_000, categoryName: null, fromAccountName: 'Bancolombia', toAccountName: 'Nequi' }),
+      ]);
+
+      expect(rows(element)).toEqual(['Transfer | Bancolombia → Nequi | Transfer COP500,000']);
+      expect(element.querySelector('[data-testid="recent-destination"]')).toBeNull();
+    });
+
+    it('shows the amount in the currency of the movement and what arrived in another currency', async () => {
+      const { element } = await renderWith([
+        recentMovement(TODAY, {
+          kind: 'transfer',
+          amount: 400.5,
+          currency: 'USD',
+          categoryName: null,
+          fromAccountName: 'Wise',
+          toAccountName: 'Bancolombia',
+          destination: { amount: 1_600_000, currency: 'COP' },
+        }),
+      ]);
+
+      // Símbolo «wide» de la moneda: en en-US el dólar es «$» y el peso «COP».
+      expect(rows(element)[0]).toMatch(/\| Transfer \$400\.50 \|/);
+      expect(text(element, 'recent-destination')).toBe('COP1,600,000 received');
+    });
+
+    it('masks the movement amounts with the others', async () => {
+      const { fixture, element } = await renderWith([
+        recentMovement(TODAY, { kind: 'transfer', amount: 400, currency: 'USD', destination: { amount: 1_600_000, currency: 'COP' } }),
+      ]);
+
+      element.querySelector<HTMLButtonElement>('[data-testid="toggle-amounts"]')!.click();
+      fixture.detectChanges();
+
+      expect(rows(element)[0]).toContain('| Transfer ••••• |');
+      expect(text(element, 'recent')).not.toContain('400');
+      expect(text(element, 'recent')).not.toContain('1,600,000');
+      expect(text(element, 'recent-destination')).toBe('••••• received');
+    });
+
+    it('translates the rows into Spanish', async () => {
+      const recent = new FakeRecentMovementsRepository(TODAY);
+      recent.movements = [
+        recentMovement(TODAY, { id: 1, isCardPayment: true, categoryName: null, fromAccountName: 'Nequi', installments: 3 }),
+        recentMovement(TODAY, {
+          id: 2,
+          kind: 'transfer',
+          amount: 400,
+          currency: 'USD',
+          categoryName: null,
+          fromAccountName: 'Wise',
+          toAccountName: 'Bancolombia',
+          destination: { amount: 1_600_000, currency: 'COP' },
+        }),
+      ];
+      await setup({ recent });
+      TestBed.inject(LanguageService).setLanguage('es-CO');
+      const { element } = render();
+
+      expect(text(element, 'recent')).toContain('Movimientos recientes');
+      expect(text(element, 'recent-see-all')).toBe('Ver todos');
+      expect(rows(element)[0]).toContain('Pago de tarjeta');
+      expect(rows(element)[0]).toContain('Nequi · 3 cuotas');
+      expect(rows(element)[1]).toContain('Transferencia');
+      expect(rows(element)[1]).toContain('Wise → Bancolombia');
+      // En es-CO el dólar se distingue del peso: «US$ 400» frente a «$ 1.600.000».
+      expect(rows(element)[1]).toContain('Transferencia US$ 400 |');
+      expect(text(element, 'recent-destination')).toBe('Llegan $ 1.600.000');
+    });
+
+    it('says it is loading while the movements arrive', async () => {
+      const pending = new Subject<RecentMovement[]>();
+      await setup({ recent: { recent: () => pending } as unknown as RecentMovementsRepository });
+      const { fixture, element } = render();
+
+      expect(element.querySelector('[data-testid="recent-loading"]')?.getAttribute('role')).toBe('status');
+      expect(text(element, 'recent-loading')).toBe('Loading transactions…');
+      expect(element.querySelector('[data-testid="movement-day"]')).toBeNull();
+
+      pending.next([recentMovement(TODAY)]);
+      fixture.detectChanges();
+
+      expect(element.querySelector('[data-testid="recent-loading"]')).toBeNull();
+      expect(element.querySelectorAll('[data-testid="recent-movement"]').length).toBe(1);
+    });
+
+    it('shows the error and retries on demand without reloading the month', async () => {
+      const recent = new FakeRecentMovementsRepository(TODAY);
+      recent.failWith = new DashboardError('The number of recent transactions must be between 1 and 20.', DashboardErrorCode.RecentLimitInvalid);
+      const summaries = new FakeMonthSummaryRepository();
+      await setup({ recent, summaries });
+      const { fixture, element } = render();
+
+      expect(element.querySelector('[data-testid="recent-error"]')?.getAttribute('role')).toBe('alert');
+      expect(text(element, 'recent-error')).toContain('We could not load your recent transactions.');
+      expect(text(element, 'recent-error')).toContain('The number of recent transactions must be between 1 and 20.');
+      expect(text(element, 'available')).toBe('$2,840,000');
+
+      element.querySelector<HTMLButtonElement>('[data-testid="recent-retry"]')!.click();
+      fixture.detectChanges();
+
+      expect(recent.requested).toEqual([RECENT_MOVEMENTS_LIMIT, RECENT_MOVEMENTS_LIMIT]);
+      expect(summaries.requested).toEqual([CURRENT]);
+      expect(element.querySelector('[data-testid="recent-error"]')).toBeNull();
+      expect(element.querySelectorAll('[data-testid="movement-day"]').length).toBe(3);
+    });
+
+    it('falls back to the generic message for a failure that is not an Error', async () => {
+      await setup({
+        recent: { recent: () => new Observable<RecentMovement[]>((subscriber) => subscriber.error('boom')) } as unknown as RecentMovementsRepository,
+      });
+      const { element } = render();
+
+      expect(element.querySelector('[data-testid="recent-error"]')).toBeTruthy();
+      expect(text(element, 'recent-error')).not.toContain('boom');
+    });
+
+    it('shows the movements while the rest of the overview is still loading', async () => {
+      await setup({ overviewSource: new Subject<DashboardOverview>() });
+      const { element } = render();
+
+      expect(element.querySelector('[data-testid="hero"]')).toBeNull();
+      expect(element.querySelectorAll('[data-testid="movement-day"]').length).toBe(3);
+    });
+  });
+
   describe('with the period closing', () => {
     it('shows the month selector and proposes closing the month that ended', async () => {
       const periods = new FakePeriodRepository();
@@ -769,7 +1014,13 @@ describe('HomePageComponent', () => {
     it('marks the days of a closed month', async () => {
       const periods = new FakePeriodRepository();
       periods.years[2026] = periodYear(2026, Array(10).fill('closed').concat(['current']));
-      await setup({ periods });
+      const recent = new FakeRecentMovementsRepository(TODAY);
+      recent.movements = [
+        recentMovement('2026-10-20', { id: 1 }),
+        recentMovement('2026-10-19', { id: 2 }),
+        recentMovement('2026-10-17', { id: 3 }),
+      ];
+      await setup({ periods, recent });
       const { element } = render();
 
       expect(element.querySelectorAll('[data-testid="movement-day"] [data-testid="closed-month-badge"]').length).toBe(3);
