@@ -8,7 +8,7 @@
     <div class="flex min-w-0 flex-col gap-1">
       @if (transaction(); as item) {
         <p class="m-0 text-[13px] text-ig-muted">
-          {{ t('transactions.types.' + item.type) }}
+          {{ t(item.isCardAdvance ? 'transactions.list.advance' : 'transactions.types.' + item.type) }}
           @if (categoryName(); as category) {
             · {{ category }}
           }
@@ -22,7 +22,7 @@
         class="m-0 break-words text-[20px] font-bold tracking-[-0.02em] outline-none"
       >
         @if (transaction(); as item) {
-          {{ item.description || t('transactions.types.' + item.type) }}
+          {{ label(item) }}
         } @else {
           {{ t('transactions.detail.title') }}
         }
@@ -75,6 +75,9 @@
             @if (item.annualInterestRate) {
               · {{ t('transactions.detail.rate', { rate: (item.annualInterestRate | number: '1.0-2' : locale()) }) }}
             }
+            @if (item.advanceFee) {
+              · <span data-testid="detail-advance-fee">{{ t('transactions.list.advanceFee', { amount: money(item.advanceFee) }) }}</span>
+            }
           </p>
         </div>
 
@@ -108,6 +111,21 @@
               </button>
             </div>
           }
+        } @else if (item.parentTransactionId; as parentId) {
+          <div data-testid="detail-managed" class="flex flex-col items-start gap-2">
+            <p class="m-0 flex gap-3 text-[13px] leading-normal text-ig-muted">
+              <svg lucideLock [size]="16" class="mt-0.5 shrink-0" aria-hidden="true"></svg>
+              {{ t('transactions.list.managedByParent') }}
+            </p>
+            <a
+              data-testid="detail-open-advance"
+              class="inline-flex min-h-11 items-center rounded-lg border border-ig-border px-4 text-[14px] font-bold text-ig-text no-underline hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+              [routerLink]="[listUrl, parentId]"
+              queryParamsHandling="preserve"
+            >
+              {{ t('transactions.list.openAdvance') }}
+            </a>
+          </div>
         } @else {
           <p data-testid="detail-locked" class="m-0 flex gap-3 text-[13px] leading-normal text-ig-muted">
             <svg lucideLock [size]="16" class="mt-0.5 shrink-0" aria-hidden="true"></svg>
@@ -137,7 +155,7 @@
             <h3 id="detail-plan-title" class="m-0 text-[15px] font-bold">{{ t('transactions.detail.plan') }}</h3>
             @if (firstAfterCut(); as first) {
               <p class="m-0 text-[13px] text-ig-muted">
-                {{ t('transactions.detail.afterCut', { month: (monthDate(first) | date: 'MMMM' : 'UTC' : locale()) }) }}
+                {{ t(item.isCardAdvance ? 'transactions.detail.afterCutAdvance' : 'transactions.detail.afterCut', { month: (monthDate(first) | date: 'MMMM' : 'UTC' : locale()) }) }}
               </p>
             }
             <div class="overflow-x-auto rounded-lg border border-ig-border">
@@ -194,9 +212,15 @@
 
           <section class="flex flex-col gap-2 rounded-lg border border-ig-border bg-ig-surface-raised p-4" aria-labelledby="detail-budget-title">
             <h3 id="detail-budget-title" class="m-0 text-[14px] font-bold">
-              {{ t('transactions.detail.budgetTitle', { category: categoryName() ?? '' }) }}
+              @if (item.isCardAdvance) {
+                {{ t('transactions.detail.advanceBudgetTitle') }}
+              } @else {
+                {{ t('transactions.detail.budgetTitle', { category: categoryName() ?? '' }) }}
+              }
             </h3>
-            <p class="m-0 text-[13px] text-ig-muted">{{ t('transactions.detail.budgetBody') }}</p>
+            <p class="m-0 text-[13px] text-ig-muted">
+              {{ t(item.isCardAdvance ? 'transactions.detail.advanceBudgetBody' : 'transactions.detail.budgetBody') }}
+            </p>
             <a
               class="self-start text-[13px] font-medium text-ig-accent-text focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
               routerLink="/budgets"

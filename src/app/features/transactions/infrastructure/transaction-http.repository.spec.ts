@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { TranslocoService } from '@jsverse/transloco';
 import { environment } from '@env/environment';
 import { translocoTesting } from '@core/i18n/i18n.testing';
 import { TransactionError, TransactionErrorCode } from '../domain/transaction-error';
@@ -46,7 +47,17 @@ const TRANSFER_DTO = {
 };
 
 /** Campos de cuotas de un movimiento de una sola cuota, y `canModify` cuando el backend no lo envía. */
-const SINGLE = { installments: 1, annualInterestRate: null, installmentAmount: null, schedule: [], canModify: true };
+const SINGLE = {
+  installments: 1,
+  annualInterestRate: null,
+  installmentAmount: null,
+  schedule: [],
+  canModify: true,
+  isCardAdvance: false,
+  advanceFee: null,
+  feeTransactionId: null,
+  parentTransactionId: null,
+};
 
 function ok(data: unknown) {
   return { data, isSuccess: true, message: 'ok', errors: [] };
@@ -138,6 +149,11 @@ describe('TransactionHttpRepository', () => {
           schedule: [],
           // Sin el campo, no se bloquea nada: el backend sigue validando el mes cerrado.
           canModify: true,
+          // Sin los campos de avances, no es avance ni comisión.
+          isCardAdvance: false,
+          advanceFee: null,
+          feeTransactionId: null,
+          parentTransactionId: null,
         },
         { ...TRANSFER_DTO, ...SINGLE },
       ],
@@ -430,6 +446,158 @@ describe('TransactionHttpRepository', () => {
 
       expect(error()).toBeInstanceOf(TransactionError);
       expect((error() as TransactionError).code).toBe(TransactionErrorCode.NotFound);
+    });
+  });
+
+  describe('card advances', () => {
+    const ADVANCE = {
+      type: 'transfer' as const,
+      amount: 600000,
+      date: '2026-11-01T15:00:00.000Z',
+      fromAccountId: 20,
+      toAccountId: 2,
+      categoryId: 6,
+      description: null,
+    };
+
+    function body(): Record<string, unknown> {
+      const request = http.expectOne(URL);
+      const sent = request.request.body as Record<string, unknown>;
+      request.flush(ok(TRANSFER_DTO), { status: 201, statusText: 'Created' });
+
+      return sent;
+    }
+
+    it('maps an advance with its fee', () => {
+      let result: unknown;
+      repository.get(10).subscribe((value) => (result = value));
+
+      http
+        .expectOne(`${URL}/10`)
+        .flush(ok({ ...TRANSFER_DTO, isCardAdvance: true, advanceFee: 15000, feeTransactionId: 11, parentTransactionId: null }));
+
+      expect(result).toMatchObject({ id: 10, isCardAdvance: true, advanceFee: 15000, feeTransactionId: 11, parentTransactionId: null });
+    });
+
+    it('maps the fee of an advance with its parent', () => {
+      let result: unknown;
+      repository.get(11).subscribe((value) => (result = value));
+
+      http.expectOne(`${URL}/11`).flush(ok({ ...LEGACY_DTO, id: 11, parentTransactionId: 10, canModify: false }));
+
+      expect(result).toMatchObject({ id: 11, isCardAdvance: false, advanceFee: null, parentTransactionId: 10, canModify: false });
+    });
+
+    it('defaults the advance fields when the backend does not send them or sends null', () => {
+      let result: { items: unknown[] } | undefined;
+      repository.list({ page: 1, pageSize: 5 }).subscribe((value) => (result = value));
+
+      http.expectOne((req) => req.url === URL).flush(
+        ok({
+          items: [
+            LEGACY_DTO,
+            { ...LEGACY_DTO, id: 2, isCardAdvance: null, advanceFee: null, feeTransactionId: null, parentTransactionId: null },
+          ],
+          page: 1,
+          pageSize: 5,
+          totalItems: 2,
+        }),
+      );
+
+      const defaults = { isCardAdvance: false, advanceFee: null, feeTransactionId: null, parentTransactionId: null };
+      expect(result?.items).toEqual([expect.objectContaining(defaults), expect.objectContaining(defaults)]);
+    });
+
+    it('sends the installments, the rate and the fee of an advance', () => {
+      repository.create({ ...ADVANCE, installments: 6, annualInterestRate: 24.5, advanceFee: 15000 }).subscribe();
+
+      expect(body()).toEqual({
+        type: 'transfer',
+        amount: 600000,
+        date: ADVANCE.date,
+        fromAccountId: 20,
+        toAccountId: 2,
+        categoryId: 6,
+        installments: 6,
+        annualInterestRate: 24.5,
+        advanceFee: 15000,
+      });
+    });
+
+    it('sends the fee of a one-installment advance without installments', () => {
+      repository.create({ ...ADVANCE, installments: 1, annualInterestRate: 24.5, advanceFee: 15000 }).subscribe();
+
+      const sent = body();
+      expect(sent['advanceFee']).toBe(15000);
+      expect('installments' in sent).toBe(false);
+      expect('annualInterestRate' in sent).toBe(false);
+    });
+
+    it('omits the rate of an advance without interest', () => {
+      repository.create({ ...ADVANCE, installments: 3, annualInterestRate: null, advanceFee: null }).subscribe();
+
+      const sent = body();
+      expect(sent['installments']).toBe(3);
+      expect('annualInterestRate' in sent).toBe(false);
+      expect('advanceFee' in sent).toBe(false);
+    });
+
+    it('sends a plain transfer without installments nor fee', () => {
+      repository.create({ ...ADVANCE, installments: 1, annualInterestRate: null, advanceFee: null }).subscribe();
+
+      expect(body()).toEqual({ type: 'transfer', amount: 600000, date: ADVANCE.date, fromAccountId: 20, toAccountId: 2, categoryId: 6 });
+    });
+
+    it('drops the fee on update by leaving it out', () => {
+      repository.update(10, { ...ADVANCE, installments: 6, annualInterestRate: 0, advanceFee: null }).subscribe();
+
+      const request = http.expectOne(`${URL}/10`);
+      expect(request.request.method).toBe('PUT');
+      expect(request.request.body).toEqual({
+        type: 'transfer',
+        amount: 600000,
+        date: ADVANCE.date,
+        fromAccountId: 20,
+        toAccountId: 2,
+        categoryId: 6,
+        installments: 6,
+        annualInterestRate: 0,
+      });
+      request.flush(ok(TRANSFER_DTO));
+    });
+
+    it.each([
+      [TransactionErrorCode.AdvanceFeeNotAllowed, 'A fee only applies to cash advances: from a credit card to a regular account.'],
+      [TransactionErrorCode.AdvanceFeeInvalid, 'The fee must be greater than zero with up to 2 decimals.'],
+    ])('keeps %s with its message', (code, message) => {
+      const error = captureError((handlers) => repository.create({ ...ADVANCE, advanceFee: -1 }).subscribe(handlers));
+
+      http.expectOne(URL).flush(failure(code), { status: 400, statusText: 'Bad Request' });
+
+      expect((error() as TransactionError).code).toBe(code);
+      expect((error() as TransactionError).message).toBe(message);
+    });
+
+    it('keeps the managed by parent code when deleting a fee', () => {
+      const error = captureError((handlers) => repository.remove(11).subscribe(handlers));
+
+      http.expectOne(`${URL}/11`).flush(failure(TransactionErrorCode.ManagedByParent), { status: 409, statusText: 'Conflict' });
+
+      expect((error() as TransactionError).code).toBe(TransactionErrorCode.ManagedByParent);
+      expect((error() as TransactionError).message).toBe(
+        'This fee belongs to a cash advance: change or delete it from the advance.',
+      );
+    });
+
+    it('translates the managed by parent message into Spanish', () => {
+      TestBed.inject(TranslocoService).setActiveLang('es-CO');
+      const error = captureError((handlers) => repository.update(11, { ...ADVANCE }).subscribe(handlers));
+
+      http.expectOne(`${URL}/11`).flush(failure(TransactionErrorCode.ManagedByParent), { status: 409, statusText: 'Conflict' });
+
+      expect((error() as TransactionError).message).toBe(
+        'Esta comisión pertenece a un avance: cámbiala o elimínala desde el avance.',
+      );
     });
   });
 

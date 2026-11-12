@@ -342,6 +342,10 @@ export function transaction(
     installmentAmount: null,
     schedule: [],
     canModify: true,
+    isCardAdvance: false,
+    advanceFee: null,
+    feeTransactionId: null,
+    parentTransactionId: null,
     ...overrides,
   };
 }

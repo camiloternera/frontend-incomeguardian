@@ -17,6 +17,10 @@ export const INTEREST_RATE_MIN = 0;
 export const INTEREST_RATE_MAX = 200;
 /** Código de la categoría de sistema para los pagos de tarjeta (tipo transferencia). */
 export const CARD_PAYMENT_CATEGORY_CODE = 'CARD_PAYMENT';
+/** Código de la categoría de sistema para los avances de tarjeta (tipo transferencia). */
+export const CARD_ADVANCE_CATEGORY_CODE = 'CARD_ADVANCE';
+/** Código de la categoría de sistema de las comisiones del banco (tipo gasto), como la de un avance. */
+export const BANK_FEES_CATEGORY_CODE = 'BANK_FEES';
 
 /** Clases de movimiento que registra el usuario. */
 export const TRANSACTION_TYPES = ['income', 'expense', 'transfer'] as const;
@@ -68,6 +72,17 @@ export interface Transaction {
    * cerrado, o cuando la cuenta es de solo lectura (EUR).
    */
   canModify: boolean;
+  /** Transferencia de una tarjeta de crédito a una cuenta normal: sacar plata de la tarjeta. */
+  isCardAdvance: boolean;
+  /** Comisión del banco por el avance, en la moneda de la tarjeta; null sin comisión. */
+  advanceFee: number | null;
+  /** Gasto hijo con la comisión del avance; null sin comisión. */
+  feeTransactionId: number | null;
+  /**
+   * Avance del que salió esta comisión. Una comisión no se edita ni se elimina sola: se cambia
+   * desde su avance.
+   */
+  parentTransactionId: number | null;
 }
 
 /** Una cuota del plan de una compra con tarjeta. */
@@ -274,11 +289,28 @@ export interface ExpenseDraft extends TransactionDraftBase {
   annualInterestRate?: number | null;
 }
 
-/** Dinero que pasa de una cuenta a otra; el backend calcula el monto destino si cambian las monedas. */
+/**
+ * Dinero que pasa de una cuenta a otra; el backend calcula el monto destino si cambian las monedas.
+ * De una tarjeta a una cuenta normal es un avance: puede ser a cuotas y llevar la comisión del banco.
+ */
 export interface TransferDraft extends TransactionDraftBase {
   type: 'transfer';
   fromAccountId: number;
   toAccountId: number;
+  /** Solo en un avance; 1 en cualquier otra transferencia. */
+  installments?: number;
+  /** % EA del avance; null o ausente sin interés. */
+  annualInterestRate?: number | null;
+  /** Comisión del avance (> 0), en la moneda de la tarjeta; null sin comisión. */
+  advanceFee?: number | null;
+}
+
+/** Indica si una transferencia entre estas cuentas es un avance: de una tarjeta a una cuenta normal. */
+export function isCardAdvanceRoute(
+  from: Pick<TransactionAccountOption, 'isCreditCard'> | null,
+  to: Pick<TransactionAccountOption, 'isCreditCard'> | null,
+): boolean {
+  return from?.isCreditCard === true && to !== null && !to.isCreditCard;
 }
 
 export type TransactionDraft = IncomeDraft | ExpenseDraft | TransferDraft;

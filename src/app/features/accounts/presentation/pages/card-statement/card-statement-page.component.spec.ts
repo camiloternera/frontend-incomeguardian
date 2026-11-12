@@ -45,6 +45,7 @@ const STATEMENT: CardStatement = {
   items: [
     {
       transactionId: 41,
+      kind: 'purchase',
       description: 'Televisor',
       categoryName: 'Hogar',
       purchaseDate: '2026-09-20',
@@ -56,6 +57,7 @@ const STATEMENT: CardStatement = {
     },
     {
       transactionId: 42,
+      kind: 'purchase',
       description: null,
       categoryName: null,
       purchaseDate: '2026-10-02',
@@ -373,4 +375,64 @@ describe('CardStatementPageComponent', () => {
       expect(element.textContent).toContain('15 de octubre');
     });
   });
+
+  describe('advances and their fees', () => {
+    const [purchase] = STATEMENT.items;
+
+    beforeEach(() => {
+      fake.statementResult = {
+        ...STATEMENT,
+        items: [
+          purchase,
+          { ...purchase, transactionId: 50, kind: 'advance', description: 'Avance viaje', categoryName: 'Avance de tarjeta' },
+          { ...purchase, transactionId: 51, kind: 'fee', description: null, categoryName: 'Comisiones bancarias' },
+          { ...purchase, transactionId: 52, kind: 'fee', description: 'Comisión avance', categoryName: 'Comisiones bancarias' },
+        ],
+      };
+    });
+
+    /** Fila del extracto que enlaza a ese movimiento. */
+    function row(element: HTMLElement, id: number): HTMLElement {
+      return byTestId(element, 'statement-items')!.querySelector(`a[href="/transactions/${id}"]`)!.closest('tr')!;
+    }
+
+    function kind(element: HTMLElement, id: number): string | null {
+      return row(element, id).querySelector('[data-testid="statement-item-kind"]')?.textContent?.trim() ?? null;
+    }
+
+    it('marks the advances and the fees, not the purchases', async () => {
+      const { element } = await open('/accounts/9/statement?month=2026-10');
+
+      expect(kind(element, 41)).toBeNull();
+      expect(kind(element, 50)).toBe('Advance');
+      expect(kind(element, 51)).toBe('Fee');
+    });
+
+    it('names a fee without description by its category', async () => {
+      const { element } = await open('/accounts/9/statement?month=2026-10');
+
+      expect(row(element, 51).querySelector('a')?.textContent?.trim()).toBe('Comisiones bancarias');
+      expect(row(element, 52).querySelector('a')?.textContent?.trim()).toBe('Comisión avance');
+      expect(row(element, 50).querySelector('a')?.textContent?.trim()).toBe('Avance viaje');
+    });
+
+    it('keeps "No description" for a purchase without description, even with a category', async () => {
+      fake.statementResult = {
+        ...STATEMENT,
+        items: [{ ...purchase, transactionId: 53, description: null, categoryName: 'Hogar' }],
+      };
+      const { element } = await open('/accounts/9/statement?month=2026-10');
+
+      expect(row(element, 53).querySelector('a')?.textContent?.trim()).toBe('No description');
+    });
+
+    it('marks them in Spanish', async () => {
+      TestBed.inject(LanguageService).setLanguage('es-CO');
+      const { element } = await open('/accounts/9/statement?month=2026-10');
+
+      expect(kind(element, 50)).toBe('Avance');
+      expect(kind(element, 51)).toBe('Comisión');
+    });
+  });
+
 });

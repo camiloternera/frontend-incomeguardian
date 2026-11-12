@@ -89,6 +89,8 @@ describe('RecentMovementsHttpRepository', () => {
         currency: 'COP',
         categoryName: 'Salario',
         isCardPayment: false,
+        isCardAdvance: false,
+        isAdvanceFee: false,
         installments: 1,
         fromAccountName: null,
         toAccountName: 'Bancolombia',
@@ -111,6 +113,27 @@ describe('RecentMovementsHttpRepository', () => {
 
     expect(movement.isCardPayment).toBe(true);
     expect(movement.categoryName).toBeNull();
+  });
+
+  it('keeps the advance and advance fee flags', () => {
+    const [advance, fee] = fetch([
+      dto({ id: 1, type: 'transfer', isCardAdvance: true, installmentCount: 6, toAccountName: 'Bancolombia' }),
+      dto({ id: 2, isAdvanceFee: true, description: null }),
+    ]);
+
+    expect(advance).toMatchObject({ kind: 'transfer', isCardAdvance: true, isAdvanceFee: false, installments: 6 });
+    expect(fee).toMatchObject({ kind: 'expense', isCardAdvance: false, isAdvanceFee: true });
+  });
+
+  it('defaults missing advance flags to false', () => {
+    const [missing, nulls] = fetch([dto({ id: 1 }), dto({ id: 2, isCardAdvance: null, isAdvanceFee: null })]);
+
+    expect([missing.isCardAdvance, missing.isAdvanceFee, nulls.isCardAdvance, nulls.isAdvanceFee]).toEqual([
+      false,
+      false,
+      false,
+      false,
+    ]);
   });
 
   it('turns a blank description into null', () => {

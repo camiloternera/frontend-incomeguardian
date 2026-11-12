@@ -22,6 +22,8 @@ export function recentMovement(day: string, changes: Partial<RecentMovement> = {
     currency: 'COP',
     categoryName: 'Comida',
     isCardPayment: false,
+    isCardAdvance: false,
+    isAdvanceFee: false,
     installments: 1,
     fromAccountName: 'Nequi',
     toAccountName: null,

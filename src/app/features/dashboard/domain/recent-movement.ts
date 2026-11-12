@@ -32,6 +32,10 @@ export interface RecentMovement {
   currency: string;
   categoryName: string | null;
   isCardPayment: boolean;
+  /** Transferencia de una tarjeta a una cuenta normal. */
+  isCardAdvance: boolean;
+  /** Gasto con la comisión del banco por un avance. */
+  isAdvanceFee: boolean;
   /** Cuotas de una compra con tarjeta; 1 en cualquier otro movimiento. */
   installments: number;
   fromAccountName: string | null;

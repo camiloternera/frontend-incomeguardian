@@ -53,6 +53,10 @@ const TRANSACTION: Transaction = {
   installmentAmount: null,
   schedule: [],
   canModify: true,
+  isCardAdvance: false,
+  advanceFee: null,
+  feeTransactionId: null,
+  parentTransactionId: null,
 };
 
 const PREVIEW: InstallmentPreview = {

@@ -205,8 +205,15 @@
                           <a
                             class="text-ig-text underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
                             [routerLink]="['/transactions', item.transactionId]"
-                            >{{ item.description || t('accounts.statement.noDescription') }}</a
+                            >{{ item.description || (item.kind === 'fee' ? item.categoryName : null) || t('accounts.statement.noDescription') }}</a
                           >
+                          @if (item.kind !== 'purchase') {
+                            <span
+                              data-testid="statement-item-kind"
+                              class="ml-2 inline-block rounded-full border border-ig-border px-2 py-0.5 text-[11px] font-medium text-ig-muted"
+                              >{{ t('accounts.statement.kinds.' + item.kind) }}</span
+                            >
+                          }
                         </td>
                         <td class="px-4 py-3 text-ig-muted">{{ item.categoryName ?? '—' }}</td>
                         <td class="whitespace-nowrap px-4 py-3 text-ig-muted">

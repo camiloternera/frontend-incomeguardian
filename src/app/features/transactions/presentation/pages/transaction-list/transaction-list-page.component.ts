@@ -15,7 +15,7 @@ import {
   LucidePlus,
   LucideTrash2,
 } from '@lucide/angular';
-import { Subscription, catchError, of } from 'rxjs';
+import { Subscription, catchError, of, startWith, switchMap } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { LanguageService } from '@core/i18n/language.service';
 import { ThemeService } from '@core/theme/theme.service';
@@ -52,6 +52,7 @@ import { formatMoney } from '../../money-format';
 import { injectTransactionsTranslations } from '../../transactions-translations';
 import { TransactionWorkspace } from '../../transaction-workspace';
 import { TransactionDeleteConfirmationComponent } from '../../components/delete-confirmation/delete-confirmation.component';
+import { transactionName } from '../../transaction-name';
 
 /** Texto ya resuelto para la fila de un movimiento. */
 interface TransactionRow {
@@ -170,8 +171,15 @@ export class TransactionListPageComponent {
     { initialValue: [] },
   );
   private readonly translations = injectTransactionsTranslations();
+  /**
+   * Se vuelven a pedir tras cada cambio: el primer avance con comisión crea la categoría de sistema
+   * Comisiones bancarias, que la lista aún no conocía.
+   */
   private readonly categoryOptions = toSignal(
-    this.listCategories.execute().pipe(catchError(() => of<TransactionCategoryOption[]>([]))),
+    this.workspace.changed$.pipe(
+      startWith(undefined),
+      switchMap(() => this.listCategories.execute().pipe(catchError(() => of<TransactionCategoryOption[]>([])))),
+    ),
     { initialValue: [] },
   );
   /** Nombre de cada categoría; las del sistema se nombran por su código cuando el scope ya cargó. */
@@ -352,8 +360,13 @@ export class TransactionListPageComponent {
   }
 
   /** Nombre del movimiento en la confirmación: su descripción o su tipo. */
+  /** Nombre de la fila: la descripción o lo que es el movimiento (comisión, avance o su tipo). */
+  protected rowName(transaction: Transaction): string {
+    return transactionName(transaction, (key) => this.transloco.translate(key));
+  }
+
   protected deleteLabel(transaction: Transaction): string {
-    return transaction.description || this.transloco.translate(`transactions.types.${transaction.type}`);
+    return transactionName(transaction, (key) => this.transloco.translate(key));
   }
 
   protected retry(): void {

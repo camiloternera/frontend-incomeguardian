@@ -270,4 +270,142 @@ describe('TransactionDetailComponent', () => {
       expect(text(element, 'detail-delete')).toBe('Eliminar');
     });
   });
+
+  describe('a card advance', () => {
+    beforeEach(() => {
+      fakes.transactions.transactions.push(
+        // El avance fue después del corte de septiembre: la primera cuota cae en octubre.
+        transaction(42, 'transfer', 100000, {
+          date: '2026-09-20T17:00:00Z',
+          fromAccountId: 20,
+          toAccountId: 2,
+          fromCurrency: 'COP',
+          toCurrency: 'COP',
+          categoryId: 4,
+          isCardAdvance: true,
+          installments: 4,
+          annualInterestRate: 24.5,
+          installmentAmount: 25000,
+          schedule: SCHEDULE,
+          advanceFee: 15000,
+          feeTransactionId: 43,
+        }),
+        transaction(43, 'expense', 15000, {
+          date: '2026-09-20T17:00:00Z',
+          fromAccountId: 20,
+          fromCurrency: 'COP',
+          categoryId: 1,
+          parentTransactionId: 42,
+          canModify: false,
+        }),
+      );
+    });
+
+    /** Título del detalle; el primer h2 de la página es el del mes del listado. */
+    function title(element: HTMLElement): string {
+      return query(element, 'transaction-detail')!.querySelector('h2')!.textContent!.replace(/\s+/g, ' ').trim();
+    }
+
+    async function askDelete(harness: RouterTestingHarness, element: HTMLElement): Promise<void> {
+      query(element, 'detail-delete')!.click();
+      harness.detectChanges();
+      await harness.fixture.whenStable();
+      harness.detectChanges();
+    }
+
+    it('names the advance with its category and its fee', async () => {
+      const { element } = await open('/transactions/42');
+
+      expect(text(element, 'transaction-detail')).toContain('Advance · Ahorro');
+      expect(title(element)).toBe('Advance');
+      expect(text(element, 'detail-advance-fee')).toMatch(/^Fee .*15,000$/);
+      expect(text(element, 'transaction-detail')).toContain('4 installments of');
+    });
+
+    it('says the advance was after the statement closed', async () => {
+      const { element } = await open('/transactions/42');
+
+      expect(text(element, 'transaction-detail')).toContain(
+        "The advance was after its month's statement closed, so the first installment fell in October.",
+      );
+    });
+
+    it('explains how the advance counts in the budget', async () => {
+      const { element } = await open('/transactions/42');
+      const detail = text(element, 'transaction-detail');
+
+      expect(detail).toContain('The advance in your budget');
+      expect(detail).toContain('The advance itself is not spending.');
+      expect(detail).not.toContain('Ahorro budget');
+    });
+
+    it('warns that deleting it also deletes its fee', async () => {
+      const { harness, element } = await open('/transactions/42');
+
+      await askDelete(harness, element);
+
+      expect(text(element, 'delete-confirmation')).toContain('Delete “Advance”?');
+      expect(text(element, 'delete-advance-fee')).toBe('Its bank fee is deleted too.');
+    });
+
+    it('sends the fee to its advance', async () => {
+      const { element } = await open('/transactions/43?month=2026-09');
+
+      expect(title(element)).toBe('Advance fee');
+      expect(text(element, 'detail-managed')).toContain(
+        'This fee is part of a cash advance: change or delete it from the advance.',
+      );
+      expect(query(element, 'detail-open-advance')?.getAttribute('href')).toBe('/transactions/42?month=2026-09');
+      expect(query(element, 'detail-locked')).toBeNull();
+      expect(query(element, 'detail-edit')).toBeNull();
+      expect(query(element, 'detail-delete')).toBeNull();
+    });
+
+    it('opens the advance from its fee', async () => {
+      const { harness, element } = await open('/transactions/43');
+
+      query(element, 'detail-open-advance')!.click();
+      harness.detectChanges();
+      await harness.fixture.whenStable();
+      harness.detectChanges();
+
+      expect(TestBed.inject(Router).url).toBe('/transactions/42');
+      expect(text(element, 'detail-advance-fee')).toMatch(/15,000$/);
+    });
+
+    it('keeps the detail when the backend says it is managed by an advance', async () => {
+      const { harness, element } = await open('/transactions/42');
+      fakes.transactions.remove = () =>
+        throwError(() => new TransactionError('Managed by its advance.', TransactionErrorCode.ManagedByParent));
+
+      await askDelete(harness, element);
+      query(element, 'confirm-delete')!.click();
+      harness.detectChanges();
+      await harness.fixture.whenStable();
+      harness.detectChanges();
+
+      expect(text(element, 'delete-error')).toBe('Managed by its advance.');
+      expect(query(element, 'confirm-delete')).toBeNull();
+      expect(TestBed.inject(Router).url).toBe('/transactions/42');
+    });
+
+    it('speaks of the advance in Spanish', async () => {
+      TestBed.inject(LanguageService).setLanguage('es-CO');
+      const { element } = await open('/transactions/42');
+
+      expect(text(element, 'transaction-detail')).toContain('Avance · Ahorro');
+      expect(text(element, 'detail-advance-fee')).toMatch(/^Comisión .*15\.000$/);
+      expect(text(element, 'transaction-detail')).toContain('El avance en el presupuesto');
+      expect(text(element, 'transaction-detail')).toContain('El avance fue después del corte de su mes');
+    });
+
+    it('names the fee in Spanish', async () => {
+      TestBed.inject(LanguageService).setLanguage('es-CO');
+      const { element } = await open('/transactions/43');
+
+      expect(title(element)).toBe('Comisión del avance');
+      expect(text(element, 'detail-open-advance')).toBe('Abrir avance');
+    });
+  });
+
 });

@@ -28,6 +28,9 @@ import { TransactionWorkspace } from '../../transaction-workspace';
           {{ t('transactions.delete.question', { name: label() }) }}
         </p>
         <p class="m-0 text-[13px] text-ig-muted">{{ t('transactions.delete.warning') }}</p>
+        @if (transaction().advanceFee) {
+          <p data-testid="delete-advance-fee" class="m-0 text-[13px] text-ig-muted">{{ t('transactions.delete.withFee') }}</p>
+        }
       </div>
       @if (error()) {
         <p data-testid="delete-error" class="m-0 text-[13px] text-ig-text" role="alert">{{ error() }}</p>
@@ -99,7 +102,11 @@ export class TransactionDeleteConfirmationComponent {
           this.error.set(message);
 
           // Otro dispositivo pudo cerrar el mes o borrar el movimiento: el listado lo refleja.
-          if (code === TransactionErrorCode.PeriodClosed || code === TransactionErrorCode.NotFound) {
+          if (
+            code === TransactionErrorCode.PeriodClosed ||
+            code === TransactionErrorCode.NotFound ||
+            code === TransactionErrorCode.ManagedByParent
+          ) {
             this.blocked.set(true);
             this.blockedBy.emit(message);
             this.workspace.refresh();

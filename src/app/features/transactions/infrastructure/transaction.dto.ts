@@ -21,6 +21,11 @@ export interface TransactionDto {
   schedule?: InstallmentScheduleItemDto[] | null;
   /** Si se puede editar o eliminar; opcional mientras el backend desplegado no lo envíe. */
   canModify?: boolean | null;
+  /** Campos de avances: opcionales mientras el backend desplegado no los envíe. */
+  isCardAdvance?: boolean | null;
+  advanceFee?: number | null;
+  feeTransactionId?: number | null;
+  parentTransactionId?: number | null;
 }
 
 export interface InstallmentScheduleItemDto {
@@ -93,9 +98,11 @@ export interface TransactionRequestDto {
   toAccountId?: number;
   categoryId?: number;
   description?: string;
-  /** Solo en gastos con tarjeta a más de una cuota. */
+  /** Solo en gastos con tarjeta y avances a más de una cuota. */
   installments?: number;
   annualInterestRate?: number;
+  /** Comisión de un avance; ausente (null) la quita. */
+  advanceFee?: number;
 }
 
 /** Lo que este dominio lee de `GET /api/v1/accounts`; ignora el resto de campos. */
