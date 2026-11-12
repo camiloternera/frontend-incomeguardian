@@ -123,6 +123,7 @@ function item(id: number, type: Transaction['type'], amount: number, date: strin
     annualInterestRate: null,
     installmentAmount: null,
     schedule: [],
+    canModify: true,
   };
 }
 

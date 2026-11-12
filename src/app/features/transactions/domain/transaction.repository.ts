@@ -31,6 +31,12 @@ export abstract class TransactionRepository {
   /** Un movimiento con su plan de cuotas. */
   abstract get(id: number): Observable<Transaction>;
 
+  /** Reemplaza un movimiento con los datos del borrador; valida también el mes de la nueva fecha. */
+  abstract update(id: number, draft: TransactionDraft): Observable<Transaction>;
+
+  /** Elimina un movimiento. No se puede deshacer: sale del historial, los saldos, los topes y el Resumen. */
+  abstract remove(id: number): Observable<void>;
+
   /** Calcula el plan de cuotas de una compra con tarjeta sin guardarla. */
   abstract previewInstallments(request: InstallmentPreviewRequest): Observable<InstallmentPreview>;
 }

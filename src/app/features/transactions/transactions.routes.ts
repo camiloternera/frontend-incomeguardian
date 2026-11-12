@@ -9,7 +9,7 @@ import { TransactionListPageComponent } from './presentation/pages/transaction-l
 /** Ruta del listado, a la que vuelve cualquier dirección de panel que no exista. */
 export const TRANSACTIONS_URL = '/transactions';
 
-/** Registrar un movimiento abre un panel junto a la lista; en mobile el panel ocupa la pantalla. */
+/** Registrar o editar un movimiento abre un panel junto a la lista; en mobile el panel ocupa la pantalla. */
 const loadPanel = () =>
   import('./presentation/components/transaction-panel/transaction-panel.component').then(
     (m) => m.TransactionPanelComponent,
@@ -55,6 +55,8 @@ export const transactionsRoutes: Routes = [
     children: [
       { path: 'new', pathMatch: 'full', redirectTo: 'new/expense' },
       { path: 'new/:type', canActivate: [knownType], loadComponent: loadPanel },
+      // Editar reutiliza el panel de registro con los datos del movimiento.
+      { path: ':id/edit', canActivate: [numericId], loadComponent: loadPanel },
       { path: ':id', canActivate: [numericId], loadComponent: loadDetail },
     ],
   },
