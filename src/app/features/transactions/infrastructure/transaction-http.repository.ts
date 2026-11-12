@@ -137,6 +137,10 @@ function toTransaction(dto: TransactionDto): Transaction {
     schedule: (dto.schedule ?? []).map(toScheduleItem),
     // Un backend que aún no envía el campo no bloquea nada: él sigue validando el mes cerrado.
     canModify: dto.canModify ?? true,
+    isCardAdvance: dto.isCardAdvance ?? false,
+    advanceFee: dto.advanceFee ?? null,
+    feeTransactionId: dto.feeTransactionId ?? null,
+    parentTransactionId: dto.parentTransactionId ?? null,
   };
 }
 
@@ -179,13 +183,17 @@ function toRequest(draft: TransactionDraft): TransactionRequestDto {
   if (draft.description !== null) {
     body.description = draft.description;
   }
-  // Una sola cuota es el valor por defecto: no se envía.
-  if (draft.type === 'expense' && draft.installments !== undefined && draft.installments > 1) {
+  // Una sola cuota es el valor por defecto: no se envía. En una transferencia solo la lleva un avance.
+  if (draft.type !== 'income' && draft.installments !== undefined && draft.installments > 1) {
     body.installments = draft.installments;
 
     if (draft.annualInterestRate != null) {
       body.annualInterestRate = draft.annualInterestRate;
     }
+  }
+  // Sin comisión no se envía: en un PUT, eso la quita.
+  if (draft.type === 'transfer' && draft.advanceFee != null) {
+    body.advanceFee = draft.advanceFee;
   }
 
   return body;

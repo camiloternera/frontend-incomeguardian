@@ -8,11 +8,13 @@ import {
   parseMonth,
   shiftMonth,
   hasInstallments,
+  isCardAdvanceRoute,
   isUsableAccount,
   previewDestinationAmount,
   roundAwayFromZero,
   TransactionAccountOption,
 } from './transaction';
+import { ADVANCE_FEE_ERROR_CODES, TransactionErrorCode, isTransactionErrorCode } from './transaction-error';
 
 describe('previewDestinationAmount', () => {
   it('devuelve el mismo monto cuando las monedas coinciden', () => {
@@ -124,6 +126,10 @@ function item(id: number, type: Transaction['type'], amount: number, date: strin
     installmentAmount: null,
     schedule: [],
     canModify: true,
+    isCardAdvance: false,
+    advanceFee: null,
+    feeTransactionId: null,
+    parentTransactionId: null,
   };
 }
 
@@ -151,5 +157,38 @@ describe('hasInstallments', () => {
     expect(hasInstallments({ installments: 1 })).toBe(false);
     expect(hasInstallments({ installments: 2 })).toBe(true);
     expect(hasInstallments({ installments: 48 })).toBe(true);
+  });
+});
+
+describe('isCardAdvanceRoute', () => {
+  const card = { isCreditCard: true };
+  const bank = { isCreditCard: false };
+
+  it('es avance de una tarjeta a una cuenta normal', () => {
+    expect(isCardAdvanceRoute(card, bank)).toBe(true);
+  });
+
+  it('no es avance entre tarjetas, entre cuentas normales ni hacia una tarjeta', () => {
+    expect(isCardAdvanceRoute(card, card)).toBe(false);
+    expect(isCardAdvanceRoute(bank, bank)).toBe(false);
+    expect(isCardAdvanceRoute(bank, card)).toBe(false);
+  });
+
+  it('no es avance mientras falte alguna de las cuentas', () => {
+    expect(isCardAdvanceRoute(card, null)).toBe(false);
+    expect(isCardAdvanceRoute(null, bank)).toBe(false);
+    expect(isCardAdvanceRoute(null, null)).toBe(false);
+  });
+});
+
+describe('errores de avances', () => {
+  it('agrupa los dos códigos de la comisión', () => {
+    expect(ADVANCE_FEE_ERROR_CODES).toEqual([TransactionErrorCode.AdvanceFeeNotAllowed, TransactionErrorCode.AdvanceFeeInvalid]);
+  });
+
+  it('reconoce los códigos nuevos del backend', () => {
+    expect(isTransactionErrorCode('TRANSACTION_ADVANCE_FEE_NOT_ALLOWED')).toBe(true);
+    expect(isTransactionErrorCode('TRANSACTION_ADVANCE_FEE_INVALID')).toBe(true);
+    expect(isTransactionErrorCode('TRANSACTION_MANAGED_BY_PARENT')).toBe(true);
   });
 });
