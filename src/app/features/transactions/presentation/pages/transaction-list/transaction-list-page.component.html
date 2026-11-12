@@ -181,26 +181,35 @@
                           }
                         </span>
                         <span class="min-w-0 flex-1">
-                          @if (item.installments > 1) {
+                          @if (item.installments > 1 || item.isCardAdvance) {
                             <span class="flex min-w-0 items-center gap-2">
                               <a
                                 data-testid="row-description"
                                 class="truncate text-[14px] font-bold text-ig-text underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 sm:text-[15px]"
                                 [routerLink]="[item.id]"
                                 queryParamsHandling="preserve"
-                                >{{ item.description || t('transactions.types.' + item.type) }}</a
+                                >{{ rowName(item) }}</a
                               >
-                              <span
-                                data-testid="row-installments"
-                                class="shrink-0 rounded-full border border-ig-border px-2 py-0.5 text-[11px] font-medium text-ig-muted"
-                                >{{ t('transactions.list.installments', { count: item.installments }) }}</span
-                              >
+                              @if (item.isCardAdvance) {
+                                <span
+                                  data-testid="row-advance"
+                                  class="shrink-0 rounded-full border border-ig-border px-2 py-0.5 text-[11px] font-medium text-ig-muted"
+                                  >{{ t('transactions.list.advance') }}</span
+                                >
+                              }
+                              @if (item.installments > 1) {
+                                <span
+                                  data-testid="row-installments"
+                                  class="shrink-0 rounded-full border border-ig-border px-2 py-0.5 text-[11px] font-medium text-ig-muted"
+                                  >{{ t('transactions.list.installments', { count: item.installments }) }}</span
+                                >
+                              }
                             </span>
                           } @else {
                             <span
                               data-testid="row-description"
                               class="block truncate text-[14px] font-bold sm:text-[15px]"
-                              >{{ item.description || t('transactions.types.' + item.type) }}</span
+                              >{{ rowName(item) }}</span
                             >
                           }
                           <span
@@ -228,6 +237,15 @@
                                 | currency: row.currency : 'symbol' : moneyDigits(row.currency, item.amount) : locale()
                             }}
                           </span>
+                          @if (item.advanceFee) {
+                            <span data-testid="row-advance-fee" class="whitespace-nowrap text-[12px] font-medium text-ig-muted sm:text-[13px]">
+                              {{
+                                t('transactions.list.advanceFee', {
+                                  amount: (item.advanceFee | currency: row.currency : 'symbol' : moneyDigits(row.currency, item.advanceFee) : locale())
+                                })
+                              }}
+                            </span>
+                          }
                           @if (row.destination; as destination) {
                             <span
                               data-testid="row-destination"
@@ -290,6 +308,20 @@
                                 <svg lucideTrash2 [size]="16" aria-hidden="true"></svg>
                                 {{ t('transactions.list.delete') }}
                               </button>
+                            } @else if (item.parentTransactionId; as parentId) {
+                              <p [attr.data-testid]="'managed-' + item.id" class="m-0 flex gap-3 px-3 py-2 text-[13px] leading-normal text-ig-muted">
+                                <svg lucideLock [size]="16" class="mt-0.5 shrink-0" aria-hidden="true"></svg>
+                                {{ t('transactions.list.managedByParent') }}
+                              </p>
+                              <a
+                                [attr.data-testid]="'open-advance-' + item.id"
+                                class="flex min-h-11 items-center gap-3 rounded-md px-3 text-[14px] text-ig-text no-underline hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:-outline-offset-2"
+                                [routerLink]="[parentId]"
+                                queryParamsHandling="preserve"
+                              >
+                                <svg lucideArrowRightLeft [size]="16" aria-hidden="true"></svg>
+                                {{ t('transactions.list.openAdvance') }}
+                              </a>
                             } @else {
                               <p [attr.data-testid]="'locked-' + item.id" class="m-0 flex gap-3 px-3 py-2 text-[13px] leading-normal text-ig-muted">
                                 <svg lucideLock [size]="16" class="mt-0.5 shrink-0" aria-hidden="true"></svg>
