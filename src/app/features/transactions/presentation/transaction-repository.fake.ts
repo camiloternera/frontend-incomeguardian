@@ -226,6 +226,47 @@ export class FakeTransactionRepository extends TransactionRepository {
     });
   }
 
+  /** Último movimiento editado y sus datos, y los ids eliminados. */
+  lastUpdate: { id: number; draft: TransactionDraft } | null = null;
+  readonly removed: number[] = [];
+
+  update(id: number, draft: TransactionDraft): Observable<Transaction> {
+    this.lastUpdate = { id, draft };
+
+    return respond(this, () => {
+      const index = this.transactions.findIndex((item) => item.id === id);
+
+      if (index < 0) {
+        throw new TransactionError('Not found', TransactionErrorCode.NotFound);
+      }
+
+      const updated = transaction(id, draft.type, draft.amount, {
+        date: draft.date,
+        categoryId: draft.categoryId,
+        description: draft.description,
+        fromAccountId: draft.type === 'income' ? null : draft.fromAccountId,
+        toAccountId: draft.type === 'expense' ? null : draft.toAccountId,
+        installments: draft.type === 'expense' ? draft.installments : 1,
+        annualInterestRate: draft.type === 'expense' ? draft.annualInterestRate : null,
+      });
+      this.transactions = this.transactions.map((item, position) => (position === index ? updated : item));
+
+      return updated;
+    });
+  }
+
+  remove(id: number): Observable<void> {
+    this.removed.push(id);
+
+    return respond(this, () => {
+      if (!this.transactions.some((item) => item.id === id)) {
+        throw new TransactionError('Not found', TransactionErrorCode.NotFound);
+      }
+
+      this.transactions = this.transactions.filter((item) => item.id !== id);
+    });
+  }
+
   get(id: number): Observable<Transaction> {
     return respond(this, () => {
       const found = this.transactions.find((item) => item.id === id);
@@ -300,6 +341,7 @@ export function transaction(
     annualInterestRate: null,
     installmentAmount: null,
     schedule: [],
+    canModify: true,
     ...overrides,
   };
 }

@@ -19,6 +19,8 @@ export interface TransactionDto {
   annualInterestRate?: number | null;
   installmentAmount?: number | null;
   schedule?: InstallmentScheduleItemDto[] | null;
+  /** Si se puede editar o eliminar; opcional mientras el backend desplegado no lo envíe. */
+  canModify?: boolean | null;
 }
 
 export interface InstallmentScheduleItemDto {

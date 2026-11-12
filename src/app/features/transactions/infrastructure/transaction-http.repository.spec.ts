@@ -45,8 +45,8 @@ const TRANSFER_DTO = {
   exchangeRateDate: '2026-11-01',
 };
 
-/** Campos de cuotas de un movimiento de una sola cuota. */
-const SINGLE = { installments: 1, annualInterestRate: null, installmentAmount: null, schedule: [] };
+/** Campos de cuotas de un movimiento de una sola cuota, y `canModify` cuando el backend no lo envía. */
+const SINGLE = { installments: 1, annualInterestRate: null, installmentAmount: null, schedule: [], canModify: true };
 
 function ok(data: unknown) {
   return { data, isSuccess: true, message: 'ok', errors: [] };
@@ -136,6 +136,8 @@ describe('TransactionHttpRepository', () => {
           annualInterestRate: null,
           installmentAmount: null,
           schedule: [],
+          // Sin el campo, no se bloquea nada: el backend sigue validando el mes cerrado.
+          canModify: true,
         },
         { ...TRANSFER_DTO, ...SINGLE },
       ],
@@ -285,6 +287,152 @@ describe('TransactionHttpRepository', () => {
     expect((error() as TransactionError).code).toBeNull();
     expect((error() as TransactionError).message).toBe(GENERIC);
   });
+  describe('edit and delete', () => {
+    const INCOME = {
+      type: 'income' as const,
+      amount: 1500000,
+      date: '2026-11-01T15:00:00.000Z',
+      toAccountId: 3,
+      categoryId: 1,
+      description: 'Salario',
+    };
+
+    it('maps canModify when the backend sends it', () => {
+      let result: { items: { canModify: boolean }[] } | undefined;
+      repository.list({ page: 1, pageSize: 5 }).subscribe((value) => (result = value));
+
+      http.expectOne((req) => req.url === URL).flush(
+        ok({
+          items: [
+            { ...LEGACY_DTO, id: 1, canModify: false },
+            { ...LEGACY_DTO, id: 2, canModify: true },
+            { ...LEGACY_DTO, id: 3, canModify: null },
+          ],
+          page: 1,
+          pageSize: 5,
+          totalItems: 3,
+        }),
+      );
+
+      expect(result?.items.map((item) => item.canModify)).toEqual([false, true, true]);
+    });
+
+    it('keeps canModify when getting one transaction', () => {
+      let result: { canModify: boolean } | undefined;
+      repository.get(9).subscribe((value) => (result = value));
+
+      http.expectOne(`${URL}/9`).flush(ok({ ...LEGACY_DTO, canModify: false }));
+
+      expect(result?.canModify).toBe(false);
+    });
+
+    it('updates with a PUT to the id and the same body as creating', () => {
+      let created: unknown;
+      repository.create(INCOME).subscribe();
+      const post = http.expectOne(URL);
+      created = post.request.body;
+      post.flush(ok({ ...LEGACY_DTO, type: 'income', fromAccountId: null, toAccountId: 3 }), { status: 201, statusText: 'Created' });
+
+      let result: unknown;
+      repository.update(9, INCOME).subscribe((value) => (result = value));
+
+      const request = http.expectOne(`${URL}/9`);
+      expect(request.request.method).toBe('PUT');
+      expect(request.request.body).toEqual(created);
+      request.flush(ok({ ...LEGACY_DTO, type: 'income', fromAccountId: null, toAccountId: 3, description: 'Salario', canModify: true }));
+
+      expect(result).toMatchObject({ id: 9, type: 'income', toAccountId: 3, description: 'Salario', canModify: true });
+    });
+
+    it('sends the installments of a card purchase when updating', () => {
+      repository
+        .update(9, { type: 'expense', amount: 30000, date: '2026-11-01T15:00:00.000Z', fromAccountId: 9, categoryId: null, description: null, installments: 3, annualInterestRate: 24.5 })
+        .subscribe();
+
+      const request = http.expectOne(`${URL}/9`);
+      expect(request.request.body).toMatchObject({ installments: 3, annualInterestRate: 24.5 });
+      request.flush(ok(LEGACY_DTO));
+    });
+
+    it('keeps the closed month when an update hits PERIOD_CLOSED', () => {
+      const error = captureError((handlers) => repository.update(9, INCOME).subscribe(handlers));
+
+      http.expectOne(`${URL}/9`).flush(
+        {
+          data: null,
+          isSuccess: false,
+          message: '',
+          errors: [{ code: TransactionErrorCode.PeriodClosed, message: 'Closed', data: { year: 2026, month: 10 } }],
+        },
+        { status: 409, statusText: 'Conflict' },
+      );
+
+      expect(error()).toBeInstanceOf(TransactionError);
+      expect((error() as TransactionError).code).toBe(TransactionErrorCode.PeriodClosed);
+      expect((error() as TransactionError).closedMonth).toEqual({ year: 2026, month: 10 });
+    });
+
+    it.each([TransactionErrorCode.AccountInactive, TransactionErrorCode.CategoryNotFound, TransactionErrorCode.NotFound])(
+      'keeps %s when updating',
+      (code) => {
+        const error = captureError((handlers) => repository.update(9, INCOME).subscribe(handlers));
+
+        http.expectOne(`${URL}/9`).flush(failure(code), { status: 400, statusText: 'Bad Request' });
+
+        expect((error() as TransactionError).code).toBe(code);
+        expect((error() as TransactionError).message).not.toContain('transactions.errors');
+      },
+    );
+
+    it('deletes with a DELETE to the id and completes without a value', () => {
+      const values: unknown[] = [];
+      let completed = false;
+      repository.remove(9).subscribe({ next: (value) => values.push(value), complete: () => (completed = true) });
+
+      const request = http.expectOne(`${URL}/9`);
+      expect(request.request.method).toBe('DELETE');
+      request.flush(ok(true));
+
+      expect(values).toEqual([undefined]);
+      expect(completed).toBe(true);
+    });
+
+    it('keeps the closed month when a delete hits PERIOD_CLOSED', () => {
+      const error = captureError((handlers) => repository.remove(9).subscribe(handlers));
+
+      http.expectOne(`${URL}/9`).flush(
+        {
+          data: null,
+          isSuccess: false,
+          message: '',
+          errors: [{ code: TransactionErrorCode.PeriodClosed, message: 'Closed', data: { year: 2026, month: 10 } }],
+        },
+        { status: 409, statusText: 'Conflict' },
+      );
+
+      expect((error() as TransactionError).code).toBe(TransactionErrorCode.PeriodClosed);
+      expect((error() as TransactionError).closedMonth).toEqual({ year: 2026, month: 10 });
+      expect((error() as TransactionError).message).not.toContain('transactions.errors');
+    });
+
+    it('keeps TRANSACTION_NOT_FOUND when deleting', () => {
+      const error = captureError((handlers) => repository.remove(9).subscribe(handlers));
+
+      http.expectOne(`${URL}/9`).flush(failure(TransactionErrorCode.NotFound), { status: 404, statusText: 'Not Found' });
+
+      expect((error() as TransactionError).code).toBe(TransactionErrorCode.NotFound);
+    });
+
+    it('rejects a 2xx delete whose envelope reports a failure', () => {
+      const error = captureError((handlers) => repository.remove(9).subscribe(handlers));
+
+      http.expectOne(`${URL}/9`).flush(failure(TransactionErrorCode.NotFound));
+
+      expect(error()).toBeInstanceOf(TransactionError);
+      expect((error() as TransactionError).code).toBe(TransactionErrorCode.NotFound);
+    });
+  });
+
   describe('installments', () => {
     const SCHEDULE_DTO = [
       { number: 1, year: 2026, month: 11, statementDate: '2026-11-15', principal: 15000, interest: 0, amount: 15000 },

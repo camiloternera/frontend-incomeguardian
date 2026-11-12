@@ -4,7 +4,7 @@ import { DashboardOverview } from '../domain/dashboard-overview';
 import { DashboardRepository } from '../domain/dashboard.repository';
 
 /**
- * Datos de ejemplo mientras el backend no tiene endpoints del resumen. Cambiarlo
+ * Datos de ejemplo del colchón mientras el backend no los expone. Cambiarlo
  * por un adaptador HTTP es una línea en `dashboard.providers.ts`; ni application
  * ni presentation notan la diferencia.
  */
@@ -33,62 +33,6 @@ const OVERVIEW: DashboardOverview = {
     { key: 'subscriptions', amount: 180_000, share: 0.08 },
     { key: 'health', amount: 150_000, share: 0.06 },
     { key: 'other', amount: 120_000, share: 0.05 },
-  ],
-  recent: [
-    {
-      id: 'mv-1',
-      date: '2026-10-20',
-      description: 'Pago Estudio Norte — diseño web',
-      category: 'freelance',
-      account: 'Bancolombia ahorros',
-      amount: 3_200_000,
-      kind: 'income',
-    },
-    {
-      id: 'mv-2',
-      date: '2026-10-20',
-      description: 'Mercado Éxito',
-      category: 'food',
-      account: 'Tarjeta Visa',
-      amount: 186_400,
-      kind: 'expense',
-    },
-    {
-      id: 'mv-3',
-      date: '2026-10-19',
-      description: 'Netflix',
-      category: 'subscriptions',
-      account: 'Tarjeta Visa',
-      amount: 44_900,
-      kind: 'expense',
-    },
-    {
-      id: 'mv-4',
-      date: '2026-10-19',
-      description: 'Uber',
-      category: 'transport',
-      account: 'Nequi',
-      amount: 23_500,
-      kind: 'expense',
-    },
-    {
-      id: 'mv-5',
-      date: '2026-10-17',
-      description: 'Pago Lumen Labs — retainer',
-      category: 'freelance',
-      account: 'Bancolombia ahorros',
-      amount: 1_800_000,
-      kind: 'income',
-    },
-    {
-      id: 'mv-6',
-      date: '2026-10-17',
-      description: 'Droguería Cruz Verde',
-      category: 'health',
-      account: 'Nequi',
-      amount: 58_200,
-      kind: 'expense',
-    },
   ],
 };
 

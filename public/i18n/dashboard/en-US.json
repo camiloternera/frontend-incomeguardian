@@ -74,21 +74,20 @@
       "yesterday": "Yesterday",
       "income": "Income",
       "expense": "Expense",
-      "empty": "No transactions this month yet."
+      "empty": "No transactions yet.",
+      "transfer": "Transfer",
+      "cardPayment": "Card payment",
+      "route": "{{from}} → {{to}}",
+      "seeAll": "See all",
+      "loading": "Loading transactions…",
+      "error": "We could not load your recent transactions.",
+      "retry": "Try again",
+      "received": "{{amount}} received",
+      "installments": "{{count}} installments"
     }
   },
-  "categories": {
-    "housing": "Housing",
-    "food": "Food & groceries",
-    "transport": "Transport",
-    "subscriptions": "Subscriptions",
-    "health": "Health",
-    "other": "Everything else",
-    "salary": "Salary",
-    "freelance": "Freelance work",
-    "investment": "Investment"
-  },
   "errors": {
-    "PERIOD_INVALID": "That month is not valid."
+    "PERIOD_INVALID": "That month is not valid.",
+    "DASHBOARD_RECENT_LIMIT_INVALID": "The number of recent transactions must be between 1 and 20."
   }
 }

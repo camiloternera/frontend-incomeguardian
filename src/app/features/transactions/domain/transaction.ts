@@ -63,6 +63,11 @@ export interface Transaction {
   installmentAmount: number | null;
   /** Plan de cuotas; solo llega al consultar un movimiento (`get`), vacío en el listado. */
   schedule: InstallmentScheduleItem[];
+  /**
+   * Si se puede editar o eliminar. Es `false` cuando su mes (o el de alguna cuota) o su año está
+   * cerrado, o cuando la cuenta es de solo lectura (EUR).
+   */
+  canModify: boolean;
 }
 
 /** Una cuota del plan de una compra con tarjeta. */

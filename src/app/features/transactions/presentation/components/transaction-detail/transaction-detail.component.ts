@@ -1,9 +1,9 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, ElementRef, afterNextRender, computed, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
-import { LucideX } from '@lucide/angular';
+import { LucideLock, LucidePencil, LucideTrash2, LucideX } from '@lucide/angular';
 import { catchError, of } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { LanguageService } from '@core/i18n/language.service';
@@ -23,6 +23,7 @@ import {
 import { TransactionError, TransactionErrorCode } from '../../../domain/transaction-error';
 import { formatMoney } from '../../money-format';
 import { injectTransactionsTranslations } from '../../transactions-translations';
+import { TransactionDeleteConfirmationComponent } from '../delete-confirmation/delete-confirmation.component';
 
 /** Estado del detalle: cargando, listo, error al cargar o movimiento inexistente. */
 type DetailStatus = 'loading' | 'ready' | 'error' | 'notFound';
@@ -61,7 +62,19 @@ export function installmentState(item: InstallmentScheduleItem, nextStatementDat
  */
 @Component({
   selector: 'app-transaction-detail',
-  imports: [DatePipe, DecimalPipe, RouterLink, TranslocoDirective, LucideX, ClosedMonthBadgeComponent, PeriodOverlaysComponent],
+  imports: [
+    DatePipe,
+    DecimalPipe,
+    RouterLink,
+    TranslocoDirective,
+    LucideLock,
+    LucidePencil,
+    LucideTrash2,
+    LucideX,
+    ClosedMonthBadgeComponent,
+    PeriodOverlaysComponent,
+    TransactionDeleteConfirmationComponent,
+  ],
   templateUrl: './transaction-detail.component.html',
 })
 export class TransactionDetailComponent {
@@ -75,6 +88,9 @@ export class TransactionDetailComponent {
   protected readonly status = signal<DetailStatus>('loading');
   protected readonly loadError = signal('');
   protected readonly transaction = signal<Transaction | null>(null);
+  /** Si se pidió eliminar el movimiento y se espera la confirmación. */
+  protected readonly askingDelete = signal(false);
+  private readonly router = inject(Router);
   private transactionId: number | null = null;
 
   private readonly accounts = toSignal(
@@ -185,6 +201,7 @@ export class TransactionDetailComponent {
 
     this.status.set('loading');
     this.loadError.set('');
+    this.askingDelete.set(false);
     this.getTransaction.execute(id).subscribe({
       next: (transaction) => {
         this.transaction.set(transaction);
@@ -202,6 +219,16 @@ export class TransactionDetailComponent {
         this.status.set('error');
       },
     });
+  }
+
+  /** Nombre del movimiento en la confirmación: su descripción o su tipo. */
+  protected label(transaction: Transaction): string {
+    return transaction.description || this.transloco.translate(`transactions.types.${transaction.type}`);
+  }
+
+  /** Tras eliminarlo, vuelve al listado conservando sus filtros. */
+  protected afterDelete(): void {
+    void this.router.navigate([LIST_URL], { queryParams: this.router.parseUrl(this.router.url).queryParams });
   }
 
   protected money(amount: number): string {

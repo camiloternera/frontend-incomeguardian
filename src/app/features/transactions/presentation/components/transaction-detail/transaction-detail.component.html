@@ -78,6 +78,43 @@
           </p>
         </div>
 
+        @if (item.canModify) {
+          @if (askingDelete()) {
+            <app-transaction-delete-confirmation
+              [transaction]="item"
+              [label]="label(item)"
+              (cancelled)="askingDelete.set(false)"
+              (deleted)="afterDelete()"
+            />
+          } @else {
+            <div class="flex flex-wrap gap-2">
+              <a
+                data-testid="detail-edit"
+                class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-ig-border px-4 text-[14px] font-bold text-ig-text no-underline hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                [routerLink]="[listUrl, item.id, 'edit']"
+                queryParamsHandling="preserve"
+              >
+                <svg lucidePencil [size]="16" aria-hidden="true"></svg>
+                {{ t('transactions.list.edit') }}
+              </a>
+              <button
+                data-testid="detail-delete"
+                class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-transparent bg-transparent px-4 text-[14px] text-ig-muted hover:bg-ig-surface-raised hover:text-ig-text focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                type="button"
+                (click)="askingDelete.set(true)"
+              >
+                <svg lucideTrash2 [size]="16" aria-hidden="true"></svg>
+                {{ t('transactions.list.delete') }}
+              </button>
+            </div>
+          }
+        } @else {
+          <p data-testid="detail-locked" class="m-0 flex gap-3 text-[13px] leading-normal text-ig-muted">
+            <svg lucideLock [size]="16" class="mt-0.5 shrink-0" aria-hidden="true"></svg>
+            {{ t('transactions.list.locked') }}
+          </p>
+        }
+
         @if (rows().length > 1) {
           <dl class="m-0 grid grid-cols-1 gap-4 border-y border-ig-border py-4 text-[14px] tabular-nums sm:grid-cols-3">
             <div class="flex flex-col gap-1">

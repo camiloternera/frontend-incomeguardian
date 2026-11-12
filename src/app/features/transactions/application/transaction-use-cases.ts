@@ -60,6 +60,24 @@ export class CreateTransactionUseCase {
 }
 
 @Injectable()
+export class UpdateTransactionUseCase {
+  private readonly repository = inject(TransactionRepository);
+
+  execute(id: number, draft: TransactionDraft): Observable<Transaction> {
+    return this.repository.update(id, trimmed(draft));
+  }
+}
+
+@Injectable()
+export class DeleteTransactionUseCase {
+  private readonly repository = inject(TransactionRepository);
+
+  execute(id: number): Observable<void> {
+    return this.repository.remove(id);
+  }
+}
+
+@Injectable()
 export class GetTransactionUseCase {
   private readonly repository = inject(TransactionRepository);
 

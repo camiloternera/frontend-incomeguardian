@@ -23,6 +23,7 @@ import {
 import { TRANSACTION_USE_CASES } from '../transactions.providers';
 import {
   CreateTransactionUseCase,
+  DeleteTransactionUseCase,
   GetExchangeRateUseCase,
   GetTransactionUseCase,
   PreviewInstallmentsUseCase,
@@ -30,6 +31,7 @@ import {
   ListTransactionAccountOptionsUseCase,
   ListTransactionCategoryOptionsUseCase,
   ListTransactionsUseCase,
+  UpdateTransactionUseCase,
 } from './transaction-use-cases';
 
 const TRANSACTION: Transaction = {
@@ -50,6 +52,7 @@ const TRANSACTION: Transaction = {
   annualInterestRate: null,
   installmentAmount: null,
   schedule: [],
+  canModify: true,
 };
 
 const PREVIEW: InstallmentPreview = {
@@ -75,6 +78,8 @@ class MemoryTransactionRepository extends TransactionRepository {
   drafts: TransactionDraft[] = [];
   ranges: TransactionRange[] = [];
   ids: number[] = [];
+  updates: { id: number; draft: TransactionDraft }[] = [];
+  removed: number[] = [];
   previews: InstallmentPreviewRequest[] = [];
 
   list(query: TransactionQuery): Observable<TransactionPage> {
@@ -95,6 +100,16 @@ class MemoryTransactionRepository extends TransactionRepository {
   get(id: number): Observable<Transaction> {
     this.ids.push(id);
     return of({ ...TRANSACTION, id });
+  }
+
+  update(id: number, draft: TransactionDraft): Observable<Transaction> {
+    this.updates.push({ id, draft });
+    return of({ ...TRANSACTION, id });
+  }
+
+  remove(id: number): Observable<void> {
+    this.removed.push(id);
+    return of(undefined);
   }
 
   previewInstallments(request: InstallmentPreviewRequest): Observable<InstallmentPreview> {
@@ -212,6 +227,44 @@ describe('transaction use cases', () => {
     create.execute({ ...draft, description: null }).subscribe();
 
     expect(transactions.drafts.map((value) => value.description)).toEqual([null, null]);
+  });
+
+  it('trims the description before updating and keeps the id', () => {
+    let result: Transaction | undefined;
+    TestBed.inject(UpdateTransactionUseCase)
+      .execute(7, {
+        type: 'expense',
+        amount: 45000,
+        date: '2026-11-01T15:00:00.000Z',
+        fromAccountId: 2,
+        categoryId: 4,
+        description: '  Mercado  ',
+      })
+      .subscribe((value) => (result = value));
+
+    expect(transactions.updates).toHaveLength(1);
+    expect(transactions.updates[0].id).toBe(7);
+    expect(transactions.updates[0].draft).toMatchObject({ type: 'expense', fromAccountId: 2, categoryId: 4, description: 'Mercado' });
+    expect(transactions.drafts).toEqual([]);
+    expect(result?.id).toBe(7);
+  });
+
+  it('sends a blank description as null when updating', () => {
+    TestBed.inject(UpdateTransactionUseCase)
+      .execute(7, { type: 'income', amount: 1, date: '2026-11-01T15:00:00.000Z', toAccountId: 3, categoryId: null, description: '   ' })
+      .subscribe();
+
+    expect(transactions.updates[0].draft.description).toBeNull();
+  });
+
+  it('deletes a transaction by id', () => {
+    let completed = false;
+    TestBed.inject(DeleteTransactionUseCase)
+      .execute(7)
+      .subscribe({ complete: () => (completed = true) });
+
+    expect(transactions.removed).toEqual([7]);
+    expect(completed).toBe(true);
   });
 
   it('sorts the account options by name ignoring case and accents', () => {
