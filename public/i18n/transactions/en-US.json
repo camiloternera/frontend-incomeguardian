@@ -40,9 +40,15 @@
       "expense": "Expense saved: {{amount}}",
       "transfer": "Transfer saved: {{amount}}",
       "transferConverted": "Transfer saved: {{amount}} arrived",
-      "dismiss": "Dismiss"
+      "dismiss": "Dismiss",
+      "updated": "Transaction updated",
+      "removed": "Transaction deleted"
     },
-    "installments": "{{count}} installments"
+    "installments": "{{count}} installments",
+    "edit": "Edit",
+    "delete": "Delete",
+    "moreActions": "Actions for {{name}}",
+    "locked": "Can’t be edited or deleted: its month is closed or the account is read-only. Reopen the month to change it."
   },
   "form": {
     "title": {
@@ -195,6 +201,12 @@
       "debtAfter": "{{name}} debt ends at",
       "notSpending": "It's a transfer: it doesn't count as spending in your budget or overview.",
       "submit": "Record payment"
+    },
+    "edit": {
+      "title": "Edit transaction",
+      "subtitle": "Changes update your balances, budgets and Summary.",
+      "submit": "Save changes",
+      "inactive": "This transaction uses {{names}}, which is now deactivated. Choose an active one to save your changes, or delete it."
     }
   },
   "errors": {
@@ -214,7 +226,7 @@
     "TRANSACTION_ACCOUNT_CURRENCY_UNSUPPORTED": "That account uses a currency that does not allow transactions. Pick one in pesos or dollars.",
     "EXCHANGE_RATE_UNAVAILABLE": "The exchange rate is not available right now.",
     "EXCHANGE_RATE_DATE_INVALID": "There is no TRM for that date. Pick today or an earlier date.",
-    "PERIOD_CLOSED": "The month of that date is closed. Reopen it to record transactions.",
+    "PERIOD_CLOSED": "The month of that date is closed. Reopen it to record or change transactions.",
     "TRANSACTION_INSTALLMENTS_NOT_ALLOWED": "Installments only apply to credit card expenses.",
     "TRANSACTION_INSTALLMENTS_OUT_OF_RANGE": "The number of installments must be between 1 and 48.",
     "TRANSACTION_INTEREST_RATE_OUT_OF_RANGE": "The rate must be between 0 and 200% EA."
@@ -249,5 +261,12 @@
     "budgetTitle": "{{category}} budget",
     "budgetBody": "Each installment counts in its statement month's budget. Installments after the purchase month raised their month's budget.",
     "viewBudget": "View budget"
+  },
+  "delete": {
+    "question": "Delete “{{name}}”?",
+    "warning": "This can’t be undone: it leaves your history, balances, budgets and Summary. If it was a mistake, you’ll need to record it again.",
+    "cancel": "Cancel",
+    "confirm": "Delete",
+    "deleting": "Deleting…"
   }
 }
