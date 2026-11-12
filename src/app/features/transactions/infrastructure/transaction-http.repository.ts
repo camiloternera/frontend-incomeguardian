@@ -135,6 +135,8 @@ function toTransaction(dto: TransactionDto): Transaction {
     annualInterestRate: dto.annualInterestRate ?? null,
     installmentAmount: dto.installmentAmount ?? null,
     schedule: (dto.schedule ?? []).map(toScheduleItem),
+    // Un backend que aún no envía el campo no bloquea nada: él sigue validando el mes cerrado.
+    canModify: dto.canModify ?? true,
   };
 }
 
@@ -316,6 +318,18 @@ export class TransactionHttpRepository extends TransactionRepository {
     return this.http
       .get<ApiResponse<TransactionDto>>(`${this.baseUrl}/${id}`)
       .pipe(unwrap(), map(toTransaction), toErrors(this.transloco));
+  }
+
+  update(id: number, draft: TransactionDraft): Observable<Transaction> {
+    return this.http
+      .put<ApiResponse<TransactionDto>>(`${this.baseUrl}/${id}`, toRequest(draft))
+      .pipe(unwrap(), map(toTransaction), toErrors(this.transloco));
+  }
+
+  remove(id: number): Observable<void> {
+    return this.http
+      .delete<ApiResponse<boolean>>(`${this.baseUrl}/${id}`)
+      .pipe(unwrap(), map(() => undefined), toErrors(this.transloco));
   }
 
   previewInstallments(request: InstallmentPreviewRequest): Observable<InstallmentPreview> {

@@ -1,11 +1,13 @@
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
+import { throwError } from 'rxjs';
 import { translocoTesting } from '@core/i18n/i18n.testing';
 import { LanguageService } from '@core/i18n/language.service';
 import { periodYear } from '@features/periods/testing';
 import { TransactionError, TransactionErrorCode } from '../../../domain/transaction-error';
-import { TransactionFakes, fakeTransactionsRoutes } from '../../transaction-repository.fake';
+import { Transaction } from '../../../domain/transaction';
+import { TransactionFakes, fakeTransactionsRoutes, transaction } from '../../transaction-repository.fake';
 
 describe('TransactionPanelComponent', () => {
   let fakes: TransactionFakes;
@@ -993,5 +995,285 @@ describe('TransactionPanelComponent', () => {
     const { element } = await open('/transactions/new/expense?month=2026-10');
 
     expect(query(element, 'type-income')?.getAttribute('href')).toBe('/transactions/new/income?month=2026-10');
+  });
+
+  describe('editing a transaction', () => {
+    beforeEach(() => {
+      fakes.accounts.accounts.push({
+        id: 20,
+        name: 'Visa',
+        currency: 'COP',
+        currentBalance: -300000,
+        isActive: true,
+        isCreditCard: true,
+        availableCredit: 1700000,
+        nextStatementDate: '2026-11-15',
+      });
+    });
+
+    /** Reemplaza o agrega un movimiento en el falso. */
+    function store(item: Transaction): void {
+      fakes.transactions.transactions = [item, ...fakes.transactions.transactions.filter((other) => other.id !== item.id)];
+    }
+
+    function title(element: HTMLElement): string {
+      // El primer h2 de la página es el del mes del listado: se lee el del panel.
+      return query(element, 'transaction-panel')!.querySelector('h2')!.textContent!.replace(/\s+/g, ' ').trim();
+    }
+
+    function fieldText(element: HTMLElement, testId: string): string {
+      return query(element, testId)!.textContent!.replace(/\s+/g, ' ').trim();
+    }
+
+    it('opens the same panel without type tabs, with the transaction filled in', async () => {
+      const { element } = await open('/transactions/1/edit');
+
+      expect(query(element, 'transaction-list-page')).toBeTruthy();
+      expect(title(element)).toBe('Edit transaction');
+      expect(element.textContent).toContain('Changes update your balances, budgets and Summary.');
+      expect(query(element, 'type-expense')).toBeNull();
+      expect(query(element, 'type-income')).toBeNull();
+      expect(submitButton(element).textContent?.trim()).toBe('Save changes');
+      expect(query<HTMLInputElement>(element, 'transaction-amount')!.value.replace(/\D/g, '')).toBe('52300');
+      expect(fieldText(element, 'transaction-account')).toContain('Bancolombia');
+      expect(fieldText(element, 'transaction-category')).toContain('Mercado');
+      expect(query<HTMLInputElement>(element, 'transaction-description')!.value).toBe('Mercado semanal');
+      expect(dateValue(element)).toBe('2026-11-02');
+      expect(query(element, 'inactive-choices')).toBeNull();
+      expect(submitButton(element).disabled).toBe(false);
+    });
+
+    it('takes the day of the date in Colombian time', async () => {
+      // 02:00 UTC del 3 son las 21:00 del 2 en Colombia.
+      store(transaction(30, 'expense', 1000, { fromAccountId: 3, categoryId: 1, date: '2026-11-03T02:00:00Z' }));
+      const { element } = await open('/transactions/30/edit');
+
+      expect(dateValue(element)).toBe('2026-11-02');
+    });
+
+    it('rounds the amount to two decimals', async () => {
+      store(transaction(31, 'expense', 120.456, { fromAccountId: 8, categoryId: 1 }));
+      const { element } = await open('/transactions/31/edit');
+
+      expect(query<HTMLInputElement>(element, 'transaction-amount')!.value).toMatch(/^120[.,]46$/);
+    });
+
+    it('fills an income with the account the money reached', async () => {
+      const { element } = await open('/transactions/2/edit');
+
+      expect(fieldText(element, 'transaction-account')).toContain('Bancolombia');
+      expect(fieldText(element, 'transaction-category')).toContain('Salario');
+      expect(query(element, 'amount-prefix')?.textContent).toContain('+');
+    });
+
+    it('fills both accounts of a transfer', async () => {
+      store(transaction(32, 'transfer', 50000, { fromAccountId: 2, toAccountId: 3, categoryId: 4 }));
+      const { element } = await open('/transactions/32/edit');
+
+      expect(fieldText(element, 'transaction-from')).toContain('Bancolombia');
+      expect(fieldText(element, 'transaction-to')).toContain('Nequi');
+      expect(fieldText(element, 'transaction-category')).toContain('Ahorro');
+    });
+
+    it('leaves the form untouched, so Escape closes it', async () => {
+      const { harness, element } = await open('/transactions/1/edit?month=2026-11');
+
+      query(element, 'transaction-panel')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      await settle(harness);
+
+      expect(TestBed.inject(Router).url).toBe('/transactions?month=2026-11');
+    });
+
+    it('saves the changes with an update and confirms them in the list', async () => {
+      const { harness, element } = await open('/transactions/1/edit?month=2026-11');
+
+      type(element, 'transaction-description', '  Mercado del mes ');
+      submit(element);
+      await settle(harness);
+
+      expect(fakes.transactions.lastUpdate).toEqual({
+        id: 1,
+        draft: {
+          type: 'expense',
+          amount: 52300,
+          date: new Date(2026, 10, 2, 12).toISOString(),
+          fromAccountId: 2,
+          categoryId: 1,
+          description: 'Mercado del mes',
+          installments: 1,
+          annualInterestRate: null,
+        },
+      });
+      expect(fakes.transactions.lastDraft).toBeNull();
+      expect(TestBed.inject(Router).url).toBe('/transactions?month=2026-11');
+      expect(query(element, 'transaction-notice')?.textContent).toContain('Transaction updated');
+      expect(fakes.transactions.lastQuery).toMatchObject({ page: 1 });
+    });
+
+    it('confirms the update in Spanish', async () => {
+      TestBed.inject(LanguageService).setLanguage('es-CO');
+      const { harness, element } = await open('/transactions/1/edit');
+
+      expect(title(element)).toBe('Editar movimiento');
+      expect(submitButton(element).textContent?.trim()).toBe('Guardar cambios');
+
+      submit(element);
+      await settle(harness);
+
+      expect(query(element, 'transaction-notice')?.textContent).toContain('Movimiento actualizado');
+    });
+
+    it('fills a card purchase in a listed number of installments without interest', async () => {
+      store(transaction(33, 'expense', 300000, { fromAccountId: 20, categoryId: 1, installments: 6, annualInterestRate: 0 }));
+      const { element } = await open('/transactions/33/edit');
+
+      expect(query(element, 'installments-6')?.getAttribute('aria-checked')).toBe('true');
+      expect(query<HTMLInputElement>(element, 'installments-custom')!.value).toBe('');
+      expect(query(element, 'without-interest')?.getAttribute('aria-pressed')).toBe('true');
+      expect(query(element, 'transaction-interest-rate')).toBeNull();
+      // Guardar no habla de cuotas: siempre son cambios.
+      expect(submitButton(element).textContent?.trim()).toBe('Save changes');
+    });
+
+    it('fills another number of installments and its rate, and sends them back', async () => {
+      store(transaction(34, 'expense', 300000, { fromAccountId: 20, categoryId: 1, installments: 18, annualInterestRate: 24.5 }));
+      const { harness, element } = await open('/transactions/34/edit');
+
+      expect(query<HTMLInputElement>(element, 'installments-custom')!.value).toBe('18');
+      expect(query(element, 'installments-12')?.getAttribute('aria-checked')).toBe('false');
+      expect(query(element, 'with-interest')?.getAttribute('aria-pressed')).toBe('true');
+      expect(query<HTMLInputElement>(element, 'transaction-interest-rate')!.value).toBe('24.5');
+      expect(submitButton(element).textContent?.trim()).toBe('Save changes');
+
+      submit(element);
+      await settle(harness);
+
+      expect(fakes.transactions.lastUpdate).toMatchObject({ id: 34, draft: { installments: 18, annualInterestRate: 24.5 } });
+    });
+
+    it('explains when the transaction does not exist', async () => {
+      const { element } = await open('/transactions/999/edit');
+
+      expect(fieldText(element, 'edit-not-found')).toBe('We could not find that transaction.');
+      expect(element.querySelector('form')).toBeNull();
+    });
+
+    it('shows a load error and retries', async () => {
+      // Falla solo la primera consulta del movimiento; el listado comparte el falso y no debe fallar.
+      const get = fakes.transactions.get.bind(fakes.transactions);
+      let failures = 1;
+      fakes.transactions.get = (id: number) =>
+        failures-- > 0 ? throwError(() => new TransactionError('The service is down.')) : get(id);
+      const { harness, element } = await open('/transactions/1/edit');
+
+      expect(fieldText(element, 'edit-error')).toBe('The service is down.');
+      expect(element.querySelector('form')).toBeNull();
+
+      query(element, 'edit-error')!.parentElement!.querySelector('button')!.click();
+      await settle(harness);
+
+      expect(query(element, 'edit-error')).toBeNull();
+      expect(query<HTMLInputElement>(element, 'transaction-description')!.value).toBe('Mercado semanal');
+    });
+
+    it('does not offer the form for a transaction that cannot change', async () => {
+      store(transaction(35, 'expense', 1000, { fromAccountId: 2, categoryId: 1, canModify: false }));
+      const { element } = await open('/transactions/35/edit');
+
+      expect(fieldText(element, 'edit-locked')).toContain('Can’t be edited or deleted');
+      expect(element.querySelector('form')).toBeNull();
+      expect(query(element, 'panel-delete')).toBeNull();
+    });
+
+    it('only opens numeric ids', async () => {
+      await RouterTestingHarness.create('/transactions/abc/edit?month=2026-10');
+
+      expect(TestBed.inject(Router).url).toBe('/transactions?month=2026-10');
+    });
+
+    it('deletes from the panel after confirming and closes it', async () => {
+      const { harness, element } = await open('/transactions/1/edit?month=2026-11');
+
+      click(element, 'panel-delete');
+      await settle(harness);
+
+      expect(query(element, 'panel-delete')).toBeNull();
+      expect(fieldText(element, 'delete-confirmation')).toContain('Delete “Mercado semanal”?');
+
+      click(element, 'cancel-delete');
+      await settle(harness);
+
+      expect(query(element, 'delete-confirmation')).toBeNull();
+      expect(fakes.transactions.removed).toEqual([]);
+
+      click(element, 'panel-delete');
+      await settle(harness);
+      click(element, 'confirm-delete');
+      await settle(harness);
+
+      expect(fakes.transactions.removed).toEqual([1]);
+      expect(TestBed.inject(Router).url).toBe('/transactions?month=2026-11');
+      expect(query(element, 'transaction-notice')?.textContent).toContain('Transaction deleted');
+    });
+
+    it('has no delete button when recording a new transaction', async () => {
+      const { element } = await open('/transactions/new/expense');
+
+      expect(query(element, 'panel-delete')).toBeNull();
+    });
+
+    it('names a deactivated account and blocks saving until an active one is chosen', async () => {
+      store(transaction(36, 'expense', 1000, { fromAccountId: 10, categoryId: 1 }));
+      const { harness, element } = await open('/transactions/36/edit');
+
+      expect(fieldText(element, 'inactive-choices')).toContain('This transaction uses Davivienda');
+      expect(submitButton(element).disabled).toBe(true);
+
+      choose(element, 'transaction-account', 'Nequi', harness);
+      await settle(harness);
+
+      expect(query(element, 'inactive-choices')).toBeNull();
+      expect(submitButton(element).disabled).toBe(false);
+    });
+
+    it('names a deactivated category and blocks saving until an active one is chosen', async () => {
+      store(transaction(37, 'expense', 1000, { fromAccountId: 2, categoryId: 5 }));
+      const { harness, element } = await open('/transactions/37/edit');
+
+      expect(fieldText(element, 'inactive-choices')).toContain('Arriendo viejo');
+      expect(submitButton(element).disabled).toBe(true);
+
+      choose(element, 'transaction-category', 'Transporte', harness);
+      await settle(harness);
+
+      expect(query(element, 'inactive-choices')).toBeNull();
+      expect(submitButton(element).disabled).toBe(false);
+    });
+
+    it('names every deactivated choice together', async () => {
+      store(transaction(38, 'expense', 1000, { fromAccountId: 10, categoryId: 5 }));
+      const { element } = await open('/transactions/38/edit');
+
+      expect(fieldText(element, 'inactive-choices')).toContain('Davivienda, Arriendo viejo');
+    });
+
+    it('names a deactivated account of a transfer', async () => {
+      store(transaction(39, 'transfer', 1000, { fromAccountId: 2, toAccountId: 10, categoryId: 4 }));
+      const { element } = await open('/transactions/39/edit');
+
+      expect(fieldText(element, 'inactive-choices')).toContain('Davivienda');
+      expect(submitButton(element).disabled).toBe(true);
+    });
+
+    it('shows the backend error when the update fails', async () => {
+      const { harness, element } = await open('/transactions/1/edit');
+      fakes.transactions.failWith = new TransactionError('The account is deactivated.', TransactionErrorCode.AccountInactive);
+
+      submit(element);
+      await settle(harness);
+
+      expect(query(element, 'account-error')?.textContent).toContain('That account is deactivated.');
+      expect(TestBed.inject(Router).url).toBe('/transactions/1/edit');
+    });
   });
 });

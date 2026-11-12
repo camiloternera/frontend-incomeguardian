@@ -40,9 +40,15 @@
       "expense": "Gasto registrado: {{amount}}",
       "transfer": "Transferencia registrada: {{amount}}",
       "transferConverted": "Transferencia registrada: llegaron {{amount}}",
-      "dismiss": "Cerrar"
+      "dismiss": "Cerrar",
+      "updated": "Movimiento actualizado",
+      "removed": "Movimiento eliminado"
     },
-    "installments": "{{count}} cuotas"
+    "installments": "{{count}} cuotas",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "moreActions": "Acciones de {{name}}",
+    "locked": "No se puede editar ni eliminar: su mes está cerrado o la cuenta es de solo lectura. Reabre el mes para modificarlo."
   },
   "form": {
     "title": {
@@ -195,6 +201,12 @@
       "debtAfter": "Deuda de {{name}} queda en",
       "notSpending": "Es una transferencia: no cuenta como gasto en tu presupuesto ni en el resumen.",
       "submit": "Registrar pago"
+    },
+    "edit": {
+      "title": "Editar movimiento",
+      "subtitle": "Los cambios actualizan los saldos, los topes y el Resumen.",
+      "submit": "Guardar cambios",
+      "inactive": "Este movimiento usa {{names}}, que ya está desactivada. Elige una activa para guardar los cambios, o elimínalo."
     }
   },
   "errors": {
@@ -214,7 +226,7 @@
     "TRANSACTION_ACCOUNT_CURRENCY_UNSUPPORTED": "Esa cuenta está en una moneda que no admite movimientos. Elige una en pesos o dólares.",
     "EXCHANGE_RATE_UNAVAILABLE": "La TRM no está disponible en este momento.",
     "EXCHANGE_RATE_DATE_INVALID": "No hay TRM para esa fecha. Elige hoy o una fecha anterior.",
-    "PERIOD_CLOSED": "El mes de esa fecha está cerrado. Reábrelo para registrar movimientos.",
+    "PERIOD_CLOSED": "El mes de esa fecha está cerrado. Reábrelo para registrar o modificar movimientos.",
     "TRANSACTION_INSTALLMENTS_NOT_ALLOWED": "Las cuotas solo aplican a gastos con tarjeta de crédito.",
     "TRANSACTION_INSTALLMENTS_OUT_OF_RANGE": "El número de cuotas debe estar entre 1 y 48.",
     "TRANSACTION_INTEREST_RATE_OUT_OF_RANGE": "La tasa debe estar entre 0 y 200 % EA."
@@ -249,5 +261,12 @@
     "budgetTitle": "Presupuesto de {{category}}",
     "budgetBody": "Cada cuota cuenta en el presupuesto de su mes de corte. Las cuotas que caen después del mes de la compra subieron el tope de su mes.",
     "viewBudget": "Ver presupuesto"
+  },
+  "delete": {
+    "question": "¿Eliminar «{{name}}»?",
+    "warning": "No se puede deshacer: sale del historial, los saldos, los topes y el Resumen. Si te equivocaste, tendrás que registrarlo de nuevo.",
+    "cancel": "Cancelar",
+    "confirm": "Eliminar",
+    "deleting": "Eliminando…"
   }
 }
