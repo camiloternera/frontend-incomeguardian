@@ -206,7 +206,7 @@
       "title": "Editar movimiento",
       "subtitle": "Los cambios actualizan los saldos, los topes y el Resumen.",
       "submit": "Guardar cambios",
-      "inactive": "Este movimiento usa {{names}}, que ya está desactivada. Elige una activa para guardar los cambios, o elimínalo."
+      "inactiveOption": "{{name}} (inactiva)"
     }
   },
   "errors": {

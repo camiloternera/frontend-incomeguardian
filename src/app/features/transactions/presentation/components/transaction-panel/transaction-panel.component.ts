@@ -75,6 +75,7 @@ import {
   categoryAppliesTo,
   dayOf,
   isCrossCurrency,
+  isTransactionCurrency,
   isTransactionType,
   isUsableAccount,
   parseMonth,
@@ -224,9 +225,8 @@ export class TransactionPanelComponent {
   protected readonly accountsStatus = signal<OptionsStatus>('loading');
   private readonly accounts = signal<TransactionAccountOption[]>([]);
   protected readonly categoriesStatus = signal<OptionsStatus>('loading');
+  /** Categorías activas del tipo y, al editar, la original aunque ya esté desactivada. */
   protected readonly categories = signal<TransactionCategoryOption[]>([]);
-  /** Todas las categorías del tipo, también las desactivadas, para nombrar la de un movimiento que se edita. */
-  private readonly allCategories = signal<TransactionCategoryOption[]>([]);
   /** Último resultado de la consulta de la TRM; `rateState` lo cruza con la fecha vigente. */
   private readonly rateResult = signal<RateState>({ status: 'idle' });
 
@@ -272,10 +272,26 @@ export class TransactionPanelComponent {
 
   /** Solo se pueden elegir cuentas activas en una moneda soportada; las demás no se ofrecen. */
   private readonly usableAccounts = computed(() => this.accounts().filter(isUsableAccount));
+
+  /**
+   * Al editar, la cuenta original de cada rol. El backend deja conservarla aunque ya esté
+   * desactivada, pero no elegir otra desactivada ni pasarla al otro rol de la transferencia.
+   */
+  private readonly originalAccounts = computed(() => {
+    const item = this.editing();
+
+    return {
+      account: item?.type === 'income' ? item.toAccountId : item?.type === 'expense' ? item.fromAccountId : null,
+      from: item?.type === 'transfer' ? item.fromAccountId : null,
+      to: item?.type === 'transfer' ? item.toAccountId : null,
+    };
+  });
+
   protected readonly accountOptions = computed<SelectOption<number>[]>(() =>
-    this.usableAccounts().map(toAccountOption),
+    this.choicesWith(this.originalAccounts().account).map((account) => this.toAccountOption(account)),
   );
-  protected readonly hasUsableAccounts = computed(() => this.usableAccounts().length > 0);
+  /** Al editar siempre hay al menos la cuenta original, aunque esté desactivada. */
+  protected readonly hasUsableAccounts = computed(() => this.usableAccounts().length > 0 || this.editing() !== null);
 
   /** Cuenta que define la moneda del monto: la del ingreso o gasto, o el origen de la transferencia. */
   protected readonly account = computed(() => {
@@ -291,15 +307,15 @@ export class TransactionPanelComponent {
   protected readonly sourceOptions = computed<SelectOption<number>[]>(() => {
     const cardId = this.cardPayment()?.cardId;
 
-    return this.usableAccounts()
+    return this.choicesWith(this.originalAccounts().from)
       .filter((account) => account.id !== cardId)
-      .map(toAccountOption);
+      .map((account) => this.toAccountOption(account));
   });
   /** Cuentas a las que puede llegar la transferencia: todas las utilizables menos el origen. */
   protected readonly destinationOptions = computed<SelectOption<number>[]>(() =>
-    this.usableAccounts()
+    this.choicesWith(this.originalAccounts().to)
       .filter((account) => account.id !== this.formValue().fromAccountId)
-      .map(toAccountOption),
+      .map((account) => this.toAccountOption(account)),
   );
 
   /** Saldo actual de la cuenta elegida, ya formateado; `null` si no se conoce. */
@@ -312,17 +328,18 @@ export class TransactionPanelComponent {
     () => this.categoriesStatus() === 'ready' && this.categories().length === 0,
   );
 
-  /** Opciones del selector de categoría: solo las activas del tipo, sin opción vacía. */
+  /** Opciones del selector de categoría: las activas del tipo (y la original al editar), sin opción vacía. */
   protected readonly categoryOptions = computed<SelectOption<number>[]>(() => {
     // Las categorías de sistema se nombran por su código, en el idioma activo, cuando el scope ya cargó.
     const ready = this.translations() !== null;
 
-    return this.categories().map((category) => ({
-      value: category.id,
-      label: category.code && ready
+    return this.categories().map((category) => {
+      const name = category.code && ready
         ? this.transloco.translate(`transactions.systemCategories.${category.code}`)
-        : category.name,
-    }));
+        : category.name;
+
+      return { value: category.id, label: category.isActive ? name : this.inactiveLabel(name) };
+    });
   });
 
   /** Mensaje del fallo de la TRM, si lo hay. */
@@ -447,29 +464,6 @@ export class TransactionPanelComponent {
   protected readonly dateLocked = computed(() => this.lockedNote()?.locked() ?? false);
 
   /**
-   * Al editar, la cuenta o la categoría elegida que ya está desactivada. El backend no deja guardar
-   * un movimiento con ellas, así que se nombran y hay que elegir otras activas antes de guardar.
-   */
-  protected readonly inactiveChoices = computed(() => {
-    if (!this.editing()) {
-      return [];
-    }
-
-    const value = this.formValue();
-    const accountIds = this.type() === 'transfer' ? [value.fromAccountId, value.toAccountId] : [value.accountId];
-    const accounts = accountIds
-      .map((id) => this.findAccount(id))
-      .filter((account): account is TransactionAccountOption => account !== null && !isUsableAccount(account))
-      .map((account) => account.name);
-    const category =
-      value.categoryId !== null && !this.categories().some((item) => item.id === value.categoryId)
-        ? (this.allCategories().find((item) => item.id === value.categoryId)?.name ?? null)
-        : null;
-
-    return category ? [...accounts, category] : accounts;
-  });
-
-  /**
    * Sin TRM no se puede calcular ni crear una transferencia entre monedas, y no se guarda un
    * movimiento con fecha en un mes cerrado.
    */
@@ -477,7 +471,6 @@ export class TransactionPanelComponent {
     () =>
       !this.isSubmitting() &&
       !this.dateLocked() &&
-      this.inactiveChoices().length === 0 &&
       (!this.crossCurrency() || this.rateState().status === 'ready') &&
       (!this.isCardExpense() || this.interestRate() !== undefined),
   );
@@ -937,9 +930,14 @@ export class TransactionPanelComponent {
     this.categoriesRequest = this.listCategories.execute(type).subscribe({
       next: (categories) => {
         // El backend ya filtra por tipo; se comprueba aquí también para no ofrecer una categoría
-        // que luego rechace con TRANSACTION_CATEGORY_TYPE_MISMATCH. Las desactivadas no se ofrecen.
-        this.allCategories.set(categories);
-        this.categories.set(categories.filter((category) => category.isActive && categoryAppliesTo(category, type)));
+        // que luego rechace con TRANSACTION_CATEGORY_TYPE_MISMATCH. Las desactivadas no se ofrecen,
+        // salvo la original del movimiento que se edita: el backend deja conservarla.
+        const original = this.editing()?.categoryId ?? null;
+        this.categories.set(
+          categories.filter(
+            (category) => (category.isActive || category.id === original) && categoryAppliesTo(category, type),
+          ),
+        );
         this.categoriesStatus.set('ready');
         this.preselectCardPaymentCategory();
       },
@@ -1235,6 +1233,27 @@ export class TransactionPanelComponent {
     }
   }
 
+  /** Cuentas utilizables más la original del rol, si se edita y ya está desactivada; en orden por nombre. */
+  private choicesWith(originalId: number | null): TransactionAccountOption[] {
+    return this.accounts().filter(
+      (account) => isUsableAccount(account) || (account.id === originalId && isTransactionCurrency(account.currency)),
+    );
+  }
+
+  /** Opción del selector de cuentas: el nombre con su moneda, para distinguir COP de USD. */
+  private toAccountOption(account: TransactionAccountOption): SelectOption<number> {
+    const label = `${account.name} · ${account.currency}`;
+
+    return { value: account.id, label: account.isActive ? label : this.inactiveLabel(label) };
+  }
+
+  /** Nombre de una cuenta o categoría desactivada que se conserva al editar. */
+  private inactiveLabel(name: string): string {
+    return this.translations() === null
+      ? name
+      : this.transloco.translate('transactions.form.edit.inactiveOption', { name });
+  }
+
   private findAccount(id: number | null): TransactionAccountOption | null {
     return id === null ? null : (this.accounts().find((account) => account.id === id) ?? null);
   }
@@ -1250,11 +1269,6 @@ export class TransactionPanelComponent {
   private messageOf(error: unknown): string {
     return error instanceof TransactionError ? error.message : this.transloco.translate(GENERIC_ERROR_KEY);
   }
-}
-
-/** Opción del selector de cuentas: el nombre con su moneda, para distinguir COP de USD. */
-function toAccountOption(account: TransactionAccountOption): SelectOption<number> {
-  return { value: account.id, label: `${account.name} · ${account.currency}` };
 }
 
 /** Activa o quita el requisito de un control sin tocar su valor. */

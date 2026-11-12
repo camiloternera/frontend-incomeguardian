@@ -206,7 +206,7 @@
       "title": "Edit transaction",
       "subtitle": "Changes update your balances, budgets and Summary.",
       "submit": "Save changes",
-      "inactive": "This transaction uses {{names}}, which is now deactivated. Choose an active one to save your changes, or delete it."
+      "inactiveOption": "{{name}} (inactive)"
     }
   },
   "errors": {

@@ -1039,7 +1039,6 @@ describe('TransactionPanelComponent', () => {
       expect(fieldText(element, 'transaction-category')).toContain('Mercado');
       expect(query<HTMLInputElement>(element, 'transaction-description')!.value).toBe('Mercado semanal');
       expect(dateValue(element)).toBe('2026-11-02');
-      expect(query(element, 'inactive-choices')).toBeNull();
       expect(submitButton(element).disabled).toBe(false);
     });
 
@@ -1222,58 +1221,160 @@ describe('TransactionPanelComponent', () => {
       expect(query(element, 'panel-delete')).toBeNull();
     });
 
-    it('names a deactivated account and blocks saving until an active one is chosen', async () => {
+    it('keeps a deactivated account of an expense, marked as inactive, and saves with it', async () => {
       store(transaction(36, 'expense', 1000, { fromAccountId: 10, categoryId: 1 }));
       const { harness, element } = await open('/transactions/36/edit');
 
-      expect(fieldText(element, 'inactive-choices')).toContain('This transaction uses Davivienda');
-      expect(submitButton(element).disabled).toBe(true);
-
-      choose(element, 'transaction-account', 'Nequi', harness);
-      await settle(harness);
-
-      expect(query(element, 'inactive-choices')).toBeNull();
+      expect(fieldText(element, 'transaction-account')).toContain('Davivienda · COP (inactive)');
+      expect(optionLabels(element, 'transaction-account', harness)).toContain('Davivienda · COP (inactive)');
       expect(submitButton(element).disabled).toBe(false);
-    });
-
-    it('names a deactivated category and blocks saving until an active one is chosen', async () => {
-      store(transaction(37, 'expense', 1000, { fromAccountId: 2, categoryId: 5 }));
-      const { harness, element } = await open('/transactions/37/edit');
-
-      expect(fieldText(element, 'inactive-choices')).toContain('Arriendo viejo');
-      expect(submitButton(element).disabled).toBe(true);
-
-      choose(element, 'transaction-category', 'Transporte', harness);
-      await settle(harness);
-
-      expect(query(element, 'inactive-choices')).toBeNull();
-      expect(submitButton(element).disabled).toBe(false);
-    });
-
-    it('names every deactivated choice together', async () => {
-      store(transaction(38, 'expense', 1000, { fromAccountId: 10, categoryId: 5 }));
-      const { element } = await open('/transactions/38/edit');
-
-      expect(fieldText(element, 'inactive-choices')).toContain('Davivienda, Arriendo viejo');
-    });
-
-    it('names a deactivated account of a transfer', async () => {
-      store(transaction(39, 'transfer', 1000, { fromAccountId: 2, toAccountId: 10, categoryId: 4 }));
-      const { element } = await open('/transactions/39/edit');
-
-      expect(fieldText(element, 'inactive-choices')).toContain('Davivienda');
-      expect(submitButton(element).disabled).toBe(true);
-    });
-
-    it('shows the backend error when the update fails', async () => {
-      const { harness, element } = await open('/transactions/1/edit');
-      fakes.transactions.failWith = new TransactionError('The account is deactivated.', TransactionErrorCode.AccountInactive);
 
       submit(element);
       await settle(harness);
 
-      expect(query(element, 'account-error')?.textContent).toContain('That account is deactivated.');
-      expect(TestBed.inject(Router).url).toBe('/transactions/1/edit');
+      expect(fakes.transactions.lastUpdate).toMatchObject({ id: 36, draft: { fromAccountId: 10, categoryId: 1 } });
+    });
+
+    it('keeps a deactivated account of an income', async () => {
+      store(transaction(40, 'income', 1000, { toAccountId: 10, categoryId: 2 }));
+      const { harness, element } = await open('/transactions/40/edit');
+
+      expect(optionLabels(element, 'transaction-account', harness)).toContain('Davivienda · COP (inactive)');
+
+      submit(element);
+      await settle(harness);
+
+      expect(fakes.transactions.lastUpdate).toMatchObject({ id: 40, draft: { toAccountId: 10 } });
+    });
+
+    it('does not offer other deactivated accounts', async () => {
+      fakes.accounts.accounts.push({
+        id: 11,
+        name: 'AV Villas',
+        currency: 'COP',
+        currentBalance: 0,
+        isActive: false,
+        isCreditCard: false,
+        availableCredit: null,
+        nextStatementDate: null,
+      });
+      store(transaction(36, 'expense', 1000, { fromAccountId: 10, categoryId: 1 }));
+      const { harness, element } = await open('/transactions/36/edit');
+
+      const labels = optionLabels(element, 'transaction-account', harness);
+      expect(labels).toContain('Davivienda · COP (inactive)');
+      expect(labels.some((label) => label.includes('AV Villas'))).toBe(false);
+    });
+
+    it('does not offer a deactivated account when the transaction uses active ones', async () => {
+      const { harness, element } = await open('/transactions/1/edit');
+
+      expect(optionLabels(element, 'transaction-account', harness).some((label) => label.includes('Davivienda'))).toBe(false);
+      expect(optionLabels(element, 'transaction-category', harness)).not.toContain('Arriendo viejo (inactive)');
+    });
+
+    it('keeps a deactivated destination only as the destination of the transfer', async () => {
+      store(transaction(39, 'transfer', 1000, { fromAccountId: 2, toAccountId: 10, categoryId: 4 }));
+      const { harness, element } = await open('/transactions/39/edit');
+
+      expect(optionLabels(element, 'transaction-to', harness)).toContain('Davivienda · COP (inactive)');
+      expect(optionLabels(element, 'transaction-from', harness).some((label) => label.includes('Davivienda'))).toBe(false);
+      expect(submitButton(element).disabled).toBe(false);
+
+      submit(element);
+      await settle(harness);
+
+      expect(fakes.transactions.lastUpdate).toMatchObject({ id: 39, draft: { fromAccountId: 2, toAccountId: 10 } });
+    });
+
+    it('keeps a deactivated source only as the source of the transfer', async () => {
+      store(transaction(41, 'transfer', 1000, { fromAccountId: 10, toAccountId: 3, categoryId: 4 }));
+      const { harness, element } = await open('/transactions/41/edit');
+
+      expect(optionLabels(element, 'transaction-from', harness)).toContain('Davivienda · COP (inactive)');
+      expect(optionLabels(element, 'transaction-to', harness).some((label) => label.includes('Davivienda'))).toBe(false);
+
+      submit(element);
+      await settle(harness);
+
+      expect(fakes.transactions.lastUpdate).toMatchObject({ id: 41, draft: { fromAccountId: 10, toAccountId: 3 } });
+    });
+
+    it('keeps a deactivated category of the same type, marked as inactive, and saves with it', async () => {
+      store(transaction(37, 'expense', 1000, { fromAccountId: 2, categoryId: 5 }));
+      const { harness, element } = await open('/transactions/37/edit');
+
+      expect(fieldText(element, 'transaction-category')).toContain('Arriendo viejo (inactive)');
+      expect(optionLabels(element, 'transaction-category', harness)).toContain('Arriendo viejo (inactive)');
+      expect(submitButton(element).disabled).toBe(false);
+
+      submit(element);
+      await settle(harness);
+
+      expect(fakes.transactions.lastUpdate).toMatchObject({ id: 37, draft: { categoryId: 5 } });
+    });
+
+    it('can still switch a kept deactivated choice to an active one', async () => {
+      store(transaction(38, 'expense', 1000, { fromAccountId: 10, categoryId: 5 }));
+      const { harness, element } = await open('/transactions/38/edit');
+
+      choose(element, 'transaction-account', 'Nequi', harness);
+      choose(element, 'transaction-category', 'Transporte', harness);
+      await settle(harness);
+      submit(element);
+      await settle(harness);
+
+      expect(fakes.transactions.lastUpdate).toMatchObject({ id: 38, draft: { fromAccountId: 3, categoryId: 3 } });
+    });
+
+    it('marks the kept deactivated choices in Spanish', async () => {
+      TestBed.inject(LanguageService).setLanguage('es-CO');
+      store(transaction(38, 'expense', 1000, { fromAccountId: 10, categoryId: 5 }));
+      const { element } = await open('/transactions/38/edit');
+
+      expect(fieldText(element, 'transaction-account')).toContain('Davivienda · COP (inactiva)');
+      expect(fieldText(element, 'transaction-category')).toContain('Arriendo viejo (inactiva)');
+    });
+
+    it('opens the form even if no account is active anymore', async () => {
+      fakes.accounts.accounts = fakes.accounts.accounts.map((account) => ({ ...account, isActive: false }));
+      store(transaction(36, 'expense', 1000, { fromAccountId: 10, categoryId: 1 }));
+      const { harness, element } = await open('/transactions/36/edit');
+
+      expect(query(element, 'accounts-error')).toBeNull();
+      expect(element.querySelector('form')).toBeTruthy();
+      expect(optionLabels(element, 'transaction-account', harness)).toEqual(['Davivienda · COP (inactive)']);
+    });
+
+    it('offers no deactivated account or category when recording a new transaction', async () => {
+      const { harness, element } = await open('/transactions/new/expense');
+
+      expect(optionLabels(element, 'transaction-account', harness).some((label) => label.includes('Davivienda'))).toBe(false);
+      expect(optionLabels(element, 'transaction-category', harness).some((label) => label.includes('Arriendo viejo'))).toBe(false);
+    });
+
+    it('offers no deactivated account in either side of a new transfer', async () => {
+      const { harness, element } = await open('/transactions/new/transfer');
+
+      expect(optionLabels(element, 'transaction-from', harness).some((label) => label.includes('Davivienda'))).toBe(false);
+      choose(element, 'transaction-from', 'Bancolombia', harness);
+      await settle(harness);
+      expect(optionLabels(element, 'transaction-to', harness).some((label) => label.includes('Davivienda'))).toBe(false);
+    });
+
+    it.each([
+      [TransactionErrorCode.AccountInactive, 'account-error', 'That account is deactivated.'],
+      [TransactionErrorCode.CategoryNotFound, 'category-error', 'That category is no longer available.'],
+    ])('shows %s from the backend under its field', async (code, testId, message) => {
+      store(transaction(38, 'expense', 1000, { fromAccountId: 10, categoryId: 5 }));
+      const { harness, element } = await open('/transactions/38/edit');
+      fakes.transactions.failWith = new TransactionError('Backend message.', code);
+
+      submit(element);
+      await settle(harness);
+
+      expect(query(element, testId)?.textContent).toContain(message);
+      expect(TestBed.inject(Router).url).toBe('/transactions/38/edit');
     });
   });
 });

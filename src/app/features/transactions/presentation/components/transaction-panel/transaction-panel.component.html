@@ -811,16 +811,6 @@
             </dl>
           }
 
-          @if (inactiveChoices().length) {
-            <p
-              data-testid="inactive-choices"
-              class="m-0 flex gap-3 rounded-lg border border-ig-border bg-ig-surface-raised px-4 py-3 text-[14px] leading-normal"
-              role="status"
-            >
-              <svg lucideCircleAlert [size]="16" class="mt-0.5 shrink-0 text-ig-muted" aria-hidden="true"></svg>
-              {{ t('transactions.form.edit.inactive', { names: inactiveChoices().join(', ') }) }}
-            </p>
-          }
 
           @if (formError()) {
             <p
