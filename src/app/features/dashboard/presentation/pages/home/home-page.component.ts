@@ -303,23 +303,37 @@ export class HomePageComponent {
       return this.transloco.translate('dashboard.home.recent.cardPayment');
     }
 
+    if (movement.isCardAdvance) {
+      return this.transloco.translate('dashboard.home.recent.advance');
+    }
+
+    if (movement.isAdvanceFee) {
+      return this.transloco.translate('dashboard.home.recent.advanceFee');
+    }
+
     return movement.categoryName ?? this.transloco.translate(`dashboard.home.recent.${movement.kind}`);
   }
 
-  /** Línea secundaria: «Origen → Destino» en una transferencia; «Categoría · Cuenta» en los demás. */
+  /**
+   * Línea secundaria: «Origen → Destino» en una transferencia (con sus cuotas si es un avance);
+   * «Categoría · Cuenta» en los demás.
+   */
   protected movementMeta(movement: RecentMovement): string {
-    if (movement.kind === 'transfer') {
-      return this.transloco.translate('dashboard.home.recent.route', {
-        from: movement.fromAccountName ?? '',
-        to: movement.toAccountName ?? '',
-      });
-    }
-
-    const account = movement.kind === 'income' ? movement.toAccountName : movement.fromAccountName;
     const installments =
       movement.installments > 1
         ? this.transloco.translate('dashboard.home.recent.installments', { count: movement.installments })
         : null;
+
+    if (movement.kind === 'transfer') {
+      const route = this.transloco.translate('dashboard.home.recent.route', {
+        from: movement.fromAccountName ?? '',
+        to: movement.toAccountName ?? '',
+      });
+
+      return [route, installments].filter(Boolean).join(' · ');
+    }
+
+    const account = movement.kind === 'income' ? movement.toAccountName : movement.fromAccountName;
 
     return [movement.categoryName, account, installments].filter(Boolean).join(' · ');
   }

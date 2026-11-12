@@ -939,6 +939,53 @@ describe('HomePageComponent', () => {
       expect(text(element, 'recent-destination')).toBe('Llegan $ 1.600.000');
     });
 
+    it('names an advance and its fee without description, and counts the installments of the advance', async () => {
+      const { element } = await renderWith([
+        recentMovement(TODAY, {
+          id: 1,
+          kind: 'transfer',
+          amount: 600_000,
+          categoryName: 'Avance de tarjeta',
+          isCardAdvance: true,
+          installments: 6,
+          fromAccountName: 'Visa',
+          toAccountName: 'Bancolombia',
+        }),
+        recentMovement(TODAY, { id: 2, amount: 15_000, categoryName: 'Comisiones bancarias', isAdvanceFee: true, fromAccountName: 'Visa' }),
+        recentMovement(TODAY, { id: 3, kind: 'transfer', categoryName: null, isCardAdvance: true, fromAccountName: 'Visa', toAccountName: 'Nequi' }),
+      ]);
+
+      expect(rows(element)[0]).toBe('Card advance | Visa → Bancolombia · 6 installments | Transfer COP600,000');
+      expect(rows(element)[1]).toBe('Advance fee | Comisiones bancarias · Visa | Expense− COP15,000');
+      // Un avance de una sola cuota no la menciona.
+      expect(rows(element)[2]).toMatch(/^Card advance \| Visa → Nequi \|/);
+      expect(rows(element)[2]).not.toContain('installments');
+    });
+
+    it('prefers the description of an advance and of its fee', async () => {
+      const { element } = await renderWith([
+        recentMovement(TODAY, { id: 1, kind: 'transfer', description: 'Avance viaje', isCardAdvance: true, fromAccountName: 'Visa', toAccountName: 'Nequi' }),
+        recentMovement(TODAY, { id: 2, description: 'Comisión Visa', isAdvanceFee: true }),
+      ]);
+
+      expect(rows(element)[0]).toMatch(/^Avance viaje \|/);
+      expect(rows(element)[1]).toMatch(/^Comisión Visa \|/);
+    });
+
+    it('names an advance and its fee in Spanish', async () => {
+      const recent = new FakeRecentMovementsRepository(TODAY);
+      recent.movements = [
+        recentMovement(TODAY, { id: 1, kind: 'transfer', isCardAdvance: true, installments: 3, fromAccountName: 'Visa', toAccountName: 'Nequi' }),
+        recentMovement(TODAY, { id: 2, isAdvanceFee: true, categoryName: null }),
+      ];
+      await setup({ recent });
+      TestBed.inject(LanguageService).setLanguage('es-CO');
+      const { element } = render();
+
+      expect(rows(element)[0]).toMatch(/^Avance de tarjeta \| Visa → Nequi · 3 cuotas \|/);
+      expect(rows(element)[1]).toMatch(/^Comisión del avance \|/);
+    });
+
     it('says it is loading while the movements arrive', async () => {
       const pending = new Subject<RecentMovement[]>();
       await setup({ recent: { recent: () => pending } as unknown as RecentMovementsRepository });
