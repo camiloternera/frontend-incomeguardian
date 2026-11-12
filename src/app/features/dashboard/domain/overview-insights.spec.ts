@@ -37,6 +37,8 @@ function movement(id: number, day: string): RecentMovement {
     currency: 'COP',
     categoryName: 'Comida',
     isCardPayment: false,
+    isCardAdvance: false,
+    isAdvanceFee: false,
     installments: 1,
     fromAccountName: 'Nequi',
     toAccountName: null,
