@@ -24,6 +24,7 @@ import { TransactionError, TransactionErrorCode } from '../../../domain/transact
 import { formatMoney } from '../../money-format';
 import { injectTransactionsTranslations } from '../../transactions-translations';
 import { TransactionDeleteConfirmationComponent } from '../delete-confirmation/delete-confirmation.component';
+import { transactionName } from '../../transaction-name';
 
 /** Estado del detalle: cargando, listo, error al cargar o movimiento inexistente. */
 type DetailStatus = 'loading' | 'ready' | 'error' | 'notFound';
@@ -223,7 +224,7 @@ export class TransactionDetailComponent {
 
   /** Nombre del movimiento en la confirmación: su descripción o su tipo. */
   protected label(transaction: Transaction): string {
-    return transaction.description || this.transloco.translate(`transactions.types.${transaction.type}`);
+    return transactionName(transaction, (key) => this.transloco.translate(key));
   }
 
   /** Tras eliminarlo, vuelve al listado conservando sus filtros. */
