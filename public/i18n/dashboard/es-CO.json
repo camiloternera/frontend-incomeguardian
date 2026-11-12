@@ -83,7 +83,9 @@
       "error": "No pudimos cargar los movimientos recientes.",
       "retry": "Reintentar",
       "received": "Llegan {{amount}}",
-      "installments": "{{count}} cuotas"
+      "installments": "{{count}} cuotas",
+      "advance": "Avance de tarjeta",
+      "advanceFee": "Comisión del avance"
     }
   },
   "errors": {

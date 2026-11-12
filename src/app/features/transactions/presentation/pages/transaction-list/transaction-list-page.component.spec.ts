@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
+import { By } from '@angular/platform-browser';
 import { translocoTesting } from '@core/i18n/i18n.testing';
 import { LanguageService } from '@core/i18n/language.service';
 import { periodYear } from '@features/periods/testing';
@@ -14,6 +15,8 @@ import {
 } from '../../../domain/transaction';
 import { TransactionError, TransactionErrorCode } from '../../../domain/transaction-error';
 import { TransactionFakes, fakeTransactionsRoutes, transaction } from '../../transaction-repository.fake';
+import { TransactionWorkspace } from '../../transaction-workspace';
+import { TransactionListPageComponent } from './transaction-list-page.component';
 
 /** Hoy en hora de Colombia: el mes en curso depende del reloj real. */
 const TODAY = dayOf(new Date().toISOString());
@@ -475,4 +478,188 @@ describe('TransactionListPageComponent', () => {
       expect(query(element, 'list-delete-error')).toBeNull();
     });
   });
+
+  describe('card advances', () => {
+    const MONTH = `?month=${formatMonthKey(CURRENT)}`;
+
+    /** Avance de Bancolombia a Nequi (las cuentas del falso), con comisión y su gasto hijo. */
+    function addAdvance(changes: Parameters<typeof transaction>[3] = {}): void {
+      fakes.transactions.transactions.push(
+        transaction(60, 'transfer', 600000, {
+          date: `${TODAY}T18:00:00Z`,
+          fromAccountId: 2,
+          toAccountId: 3,
+          fromCurrency: 'COP',
+          toCurrency: 'COP',
+          isCardAdvance: true,
+          advanceFee: 15000,
+          feeTransactionId: 61,
+          ...changes,
+        }),
+      );
+    }
+
+    function addFee(changes: Parameters<typeof transaction>[3] = {}): void {
+      fakes.transactions.transactions.push(
+        transaction(61, 'expense', 15000, {
+          date: `${TODAY}T18:00:00Z`,
+          fromAccountId: 2,
+          fromCurrency: 'COP',
+          categoryId: 9,
+          parentTransactionId: 60,
+          canModify: false,
+          ...changes,
+        }),
+      );
+    }
+
+    function inRow(element: HTMLElement, id: number, testId: string): HTMLElement | null {
+      return query(element, `transaction-${id}`)!.querySelector<HTMLElement>(`[data-testid="${testId}"]`);
+    }
+
+    async function openMenu(harness: RouterTestingHarness, element: HTMLElement, id: number): Promise<void> {
+      query(element, `menu-${id}`)!.click();
+      await settle(harness);
+    }
+
+    it('marks a one-installment advance, names it and links it to the detail', async () => {
+      addAdvance();
+      const { element } = await open(`/transactions${MONTH}`);
+
+      expect(inRow(element, 60, 'row-advance')?.textContent?.trim()).toBe('Advance');
+      expect(inRow(element, 60, 'row-installments')).toBeNull();
+      const link = query(element, 'transaction-60')!.querySelector<HTMLAnchorElement>('a[data-testid="row-description"]')!;
+      expect(link.textContent?.trim()).toBe('Advance');
+      expect(link.getAttribute('href')).toBe(`/transactions/60${MONTH}`);
+      expect(inRow(element, 60, 'row-advance-fee')?.textContent?.replace(/\s+/g, ' ').trim()).toMatch(/^Fee .*15,000$/);
+    });
+
+    it('keeps the description and the installments of an advance', async () => {
+      addAdvance({ description: 'Avance viaje', installments: 6 });
+      const { element } = await open();
+
+      expect(inRow(element, 60, 'row-description')?.textContent?.trim()).toBe('Avance viaje');
+      expect(inRow(element, 60, 'row-advance')).toBeTruthy();
+      expect(inRow(element, 60, 'row-installments')?.textContent?.trim()).toBe('6 installments');
+    });
+
+    it('shows no fee for an advance without one nor for other rows', async () => {
+      addAdvance({ advanceFee: null, feeTransactionId: null });
+      const { element } = await open();
+
+      expect(inRow(element, 60, 'row-advance')).toBeTruthy();
+      expect(element.querySelector('[data-testid="row-advance-fee"]')).toBeNull();
+      expect(inRow(element, 1, 'row-advance')).toBeNull();
+    });
+
+    it('names the fee of an advance without description', async () => {
+      addFee();
+      const { element } = await open();
+
+      expect(inRow(element, 61, 'row-description')?.textContent?.trim()).toBe('Advance fee');
+    });
+
+    it('sends the fee to its advance instead of offering edit or delete', async () => {
+      addAdvance();
+      addFee();
+      const { harness, element } = await open(`/transactions${MONTH}`);
+
+      await openMenu(harness, element, 61);
+
+      expect(text(element, 'managed-61')).toBe('This fee is part of a cash advance: change or delete it from the advance.');
+      expect(query(element, 'open-advance-61')?.getAttribute('href')).toBe(`/transactions/60${MONTH}`);
+      expect(text(element, 'open-advance-61')).toBe('Open advance');
+      expect(query(element, 'locked-61')).toBeNull();
+      expect(query(element, 'edit-61')).toBeNull();
+      expect(query(element, 'delete-61')).toBeNull();
+    });
+
+    it('keeps the locked note for a locked row that is not a fee', async () => {
+      fakes.transactions.transactions = fakes.transactions.transactions.map((item) =>
+        item.id === 1 ? { ...item, canModify: false } : item,
+      );
+      const { harness, element } = await open();
+
+      await openMenu(harness, element, 1);
+
+      expect(query(element, 'locked-1')).toBeTruthy();
+      expect(query(element, 'managed-1')).toBeNull();
+    });
+
+    it('speaks of advances in Spanish', async () => {
+      TestBed.inject(LanguageService).setLanguage('es-CO');
+      addAdvance();
+      addFee();
+      const { element } = await open();
+
+      expect(inRow(element, 60, 'row-advance')?.textContent?.trim()).toBe('Avance');
+      expect(inRow(element, 60, 'row-description')?.textContent?.trim()).toBe('Avance');
+      expect(inRow(element, 60, 'row-advance-fee')?.textContent?.replace(/\s+/g, ' ').trim()).toMatch(/^Comisión .*15\.000$/);
+      expect(inRow(element, 61, 'row-description')?.textContent?.trim()).toBe('Comisión del avance');
+    });
+
+    it('warns that deleting an advance also deletes its fee', async () => {
+      addAdvance();
+      const { harness, element } = await open();
+
+      await openMenu(harness, element, 60);
+      query(element, 'delete-60')!.click();
+      await settle(harness);
+
+      expect(text(element, 'delete-confirmation')).toContain('Delete “Advance”?');
+      expect(text(element, 'delete-advance-fee')).toBe('Its bank fee is deleted too.');
+    });
+
+    it('does not mention a fee when the transaction has none', async () => {
+      const { harness, element } = await open();
+
+      await openMenu(harness, element, 1);
+      query(element, 'delete-1')!.click();
+      await settle(harness);
+
+      expect(query(element, 'delete-confirmation')).toBeTruthy();
+      expect(query(element, 'delete-advance-fee')).toBeNull();
+    });
+
+    it('blocks and reloads when the backend says the transaction belongs to an advance', async () => {
+      const { harness, element } = await open();
+      await openMenu(harness, element, 1);
+      query(element, 'delete-1')!.click();
+      await settle(harness);
+      const summaries = fakes.transactions.summaryRanges.length;
+      fakes.transactions.failWith = new TransactionError('Belongs to an advance.', TransactionErrorCode.ManagedByParent);
+
+      query(element, 'confirm-delete')!.click();
+      await settle(harness);
+
+      expect(text(element, 'list-delete-error')).toContain('Belongs to an advance.');
+      expect(query(element, 'delete-confirmation')).toBeNull();
+      expect(fakes.transactions.summaryRanges.length).toBe(summaries + 1);
+    });
+
+    it.each(['saved', 'updated', 'removed'] as const)(
+      'asks for the categories again after %s, so a new one names its rows',
+      async (change) => {
+        addFee({ parentTransactionId: null, canModify: true, description: 'Cuota de manejo' });
+        const { harness, element } = await open();
+
+        expect(inRow(element, 61, 'row-meta')?.textContent).not.toContain('Bank fees');
+
+        // El primer avance con comisión crea la categoría de sistema en el backend.
+        fakes.categories.categories.push({ id: 9, name: 'Comisiones', type: 'expense', isActive: true, code: 'BANK_FEES' });
+        const workspace = harness.fixture.debugElement
+          .query(By.directive(TransactionListPageComponent))
+          .injector.get(TransactionWorkspace);
+        if (change === 'saved') {
+          workspace.saved(fakes.transactions.transactions[0]);
+        } else {
+          workspace[change]();
+        }
+        await settle(harness);
+
+        expect(inRow(element, 61, 'row-meta')?.textContent).toContain('Bank fees');
+      },
+    );
+  });
+
 });

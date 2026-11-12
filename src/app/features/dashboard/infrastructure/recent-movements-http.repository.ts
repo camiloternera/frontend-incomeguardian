@@ -34,6 +34,8 @@ function toMovements(dtos: RecentMovementDto[]): RecentMovement[] {
         currency: dto.currency,
         categoryName: dto.categoryName ?? null,
         isCardPayment: dto.isCardPayment ?? false,
+        isCardAdvance: dto.isCardAdvance ?? false,
+        isAdvanceFee: dto.isAdvanceFee ?? false,
         installments: dto.installmentCount ?? 1,
         fromAccountName: dto.fromAccountName ?? null,
         toAccountName: dto.toAccountName ?? null,

@@ -29,6 +29,12 @@ export const TransactionErrorCode = {
   InstallmentsNotAllowed: 'TRANSACTION_INSTALLMENTS_NOT_ALLOWED',
   InstallmentsOutOfRange: 'TRANSACTION_INSTALLMENTS_OUT_OF_RANGE',
   InterestRateOutOfRange: 'TRANSACTION_INTEREST_RATE_OUT_OF_RANGE',
+  /** Comisión en una transferencia que no es avance (por ejemplo, de tarjeta a tarjeta). */
+  AdvanceFeeNotAllowed: 'TRANSACTION_ADVANCE_FEE_NOT_ALLOWED',
+  /** Comisión de un avance en cero o negativa. */
+  AdvanceFeeInvalid: 'TRANSACTION_ADVANCE_FEE_INVALID',
+  /** La comisión de un avance se edita o elimina desde su avance. */
+  ManagedByParent: 'TRANSACTION_MANAGED_BY_PARENT',
 } as const;
 
 export type TransactionErrorCode = (typeof TransactionErrorCode)[keyof typeof TransactionErrorCode];
@@ -63,6 +69,11 @@ export const INSTALLMENT_ERROR_CODES: readonly TransactionErrorCode[] = [
   TransactionErrorCode.InstallmentsNotAllowed,
   TransactionErrorCode.InstallmentsOutOfRange,
   TransactionErrorCode.InterestRateOutOfRange,
+];
+
+export const ADVANCE_FEE_ERROR_CODES: readonly TransactionErrorCode[] = [
+  TransactionErrorCode.AdvanceFeeNotAllowed,
+  TransactionErrorCode.AdvanceFeeInvalid,
 ];
 
 /** Fallos de la TRM: la transferencia entre monedas no se puede calcular ni crear. */

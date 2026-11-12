@@ -815,6 +815,413 @@ describe('TransactionPanelComponent', () => {
     });
   });
 
+  describe('a card advance', () => {
+    /** Espera el debounce del plan de cuotas (300 ms) y la respuesta del falso. */
+    async function waitForPlan(harness: RouterTestingHarness): Promise<void> {
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      await settle(harness);
+    }
+
+    beforeEach(() => {
+      fakes.accounts.accounts.push(
+        {
+          id: 20,
+          name: 'Visa',
+          currency: 'COP',
+          currentBalance: -300000,
+          isActive: true,
+          isCreditCard: true,
+          availableCredit: 1700000,
+          nextStatementDate: '2026-11-15',
+        },
+        {
+          id: 21,
+          name: 'Mastercard',
+          currency: 'COP',
+          currentBalance: 0,
+          isActive: true,
+          isCreditCard: true,
+          availableCredit: 500000,
+          nextStatementDate: '2026-11-20',
+        },
+      );
+      fakes.categories.categories.push({ id: 6, name: 'Avance', type: 'transfer', isActive: true, code: 'CARD_ADVANCE' });
+    });
+
+    function fieldText(element: HTMLElement, testId: string): string {
+      return query(element, testId)!.textContent!.replace(/\s+/g, ' ').trim();
+    }
+
+    /** Transferencia nueva por ese monto entre esas dos cuentas. */
+    async function openTransfer(from: string, to: string, amount = '600000') {
+      const opened = await open('/transactions/new/transfer');
+      const { harness, element } = opened;
+      type(element, 'transaction-amount', amount);
+      choose(element, 'transaction-from', from, harness);
+      await settle(harness);
+      choose(element, 'transaction-to', to, harness);
+      await settle(harness);
+
+      return opened;
+    }
+
+    /** Avance de la Visa a Bancolombia. */
+    function openAdvance(amount = '600000') {
+      return openTransfer('Visa', 'Bancolombia', amount);
+    }
+
+    it('turns a transfer from a card to a regular account into an advance', async () => {
+      const { element } = await openAdvance();
+
+      expect(fieldText(element, 'installments')).toContain('Cash advance');
+      expect(fieldText(element, 'installments')).toContain('You take money out of the card and pay it on its statements');
+      expect(query(element, 'installments-1')?.getAttribute('aria-checked')).toBe('true');
+      expect(query(element, 'installments-6')).toBeTruthy();
+      expect(query<HTMLInputElement>(element, 'transaction-advance-fee')!.value).toBe('');
+      expect(element.textContent).toContain('Bank fee');
+      expect(submitButton(element).textContent?.trim()).toBe('Save advance');
+    });
+
+    it('is not an advance between two cards', async () => {
+      const cards = await openTransfer('Visa', 'Mastercard');
+
+      expect(query(cards.element, 'installments')).toBeNull();
+      expect(query(cards.element, 'transaction-advance-fee')).toBeNull();
+      expect(query(cards.element, 'credit-after')).toBeNull();
+      expect(submitButton(cards.element).textContent).not.toContain('advance');
+    });
+
+    it('is not an advance between regular accounts', async () => {
+      const banks = await openTransfer('Bancolombia', 'Nequi');
+
+      expect(query(banks.element, 'installments')).toBeNull();
+      expect(query(banks.element, 'transaction-advance-fee')).toBeNull();
+    });
+
+    it('proposes the card advance category', async () => {
+      const { element } = await openAdvance();
+
+      expect(fieldText(element, 'transaction-category')).toContain('Card advance');
+    });
+
+    it('drops the proposed category when the transfer stops being an advance', async () => {
+      const { harness, element } = await openAdvance();
+
+      choose(element, 'transaction-to', 'Mastercard', harness);
+      await settle(harness);
+
+      expect(fieldText(element, 'transaction-category')).not.toContain('Card advance');
+
+      choose(element, 'transaction-to', 'Bancolombia', harness);
+      await settle(harness);
+
+      expect(fieldText(element, 'transaction-category')).toContain('Card advance');
+    });
+
+    it('keeps a category chosen by the person', async () => {
+      const { harness, element } = await open('/transactions/new/transfer');
+      choose(element, 'transaction-category', 'Ahorro', harness);
+      choose(element, 'transaction-from', 'Visa', harness);
+      await settle(harness);
+      choose(element, 'transaction-to', 'Bancolombia', harness);
+      await settle(harness);
+
+      expect(fieldText(element, 'transaction-category')).toContain('Ahorro');
+
+      choose(element, 'transaction-to', 'Mastercard', harness);
+      await settle(harness);
+
+      expect(fieldText(element, 'transaction-category')).toContain('Ahorro');
+    });
+
+    it('asks for the plan without a category', async () => {
+      const { harness, element } = await openAdvance();
+      click(element, 'installments-3');
+      await waitForPlan(harness);
+
+      expect(fakes.transactions.lastPreview).toEqual({
+        fromAccountId: 20,
+        amount: 600000,
+        date: expect.stringMatching(/Z$/),
+        installments: 3,
+        annualInterestRate: null,
+        categoryId: null,
+      });
+      expect(query(element, 'installments-plan')?.querySelectorAll('li')).toHaveLength(3);
+    });
+
+    it('validates the fee as an amount and leaves it optional', async () => {
+      const { harness, element } = await openAdvance();
+
+      type(element, 'transaction-advance-fee', '-5');
+      await settle(harness);
+
+      expect(fieldText(element, 'advance-fee-error')).toBe('The fee must be greater than zero with up to 2 decimals.');
+      expect(query(element, 'transaction-advance-fee')?.getAttribute('aria-invalid')).toBe('true');
+
+      submit(element);
+      await settle(harness);
+      expect(fakes.transactions.lastDraft).toBeNull();
+
+      type(element, 'transaction-advance-fee', '');
+      await settle(harness);
+
+      expect(query(element, 'advance-fee-error')).toBeNull();
+    });
+
+    it('adds the fee to the total of the plan', async () => {
+      const { harness, element } = await openAdvance();
+      click(element, 'installments-3');
+      await waitForPlan(harness);
+
+      expect(query(element, 'advance-total')).toBeNull();
+
+      type(element, 'transaction-advance-fee', '15000');
+      await settle(harness);
+
+      expect(query(element, 'advance-fee-amount')?.textContent).toContain('15,000');
+      expect(query(element, 'advance-total-amount')?.textContent).toContain('615,000');
+      expect(query(element, 'advance-total')?.textContent).toContain(
+        'The fee and the interest count as spending in Bank fees; the advance does not.',
+      );
+    });
+
+    it('takes the amount and the fee from the available credit', async () => {
+      const { harness, element } = await openAdvance();
+      type(element, 'transaction-advance-fee', '15000');
+      await settle(harness);
+
+      const credit = fieldText(element, 'credit-after');
+      expect(credit).toContain('Available credit on Visa');
+      expect(credit).toContain('1,700,000');
+      expect(credit).toContain('After this advance');
+      expect(credit).toContain('1,085,000');
+    });
+
+    it('warns when the advance and its fee go over the limit', async () => {
+      const { harness, element } = await openAdvance('1690000');
+      type(element, 'transaction-advance-fee', '20000');
+      await settle(harness);
+
+      expect(fieldText(element, 'credit-after')).toContain('This advance takes you over the limit. You can still save it.');
+    });
+
+    it('names the installments in the submit button', async () => {
+      const { harness, element } = await openAdvance();
+      click(element, 'installments-6');
+      await settle(harness);
+
+      expect(submitButton(element).textContent?.trim()).toBe('Save advance in 6 installments');
+    });
+
+    it('sends the installments, the rate and the fee when saving', async () => {
+      const { harness, element } = await openAdvance();
+      click(element, 'installments-6');
+      await settle(harness);
+      click(element, 'with-interest');
+      await settle(harness);
+      type(element, 'transaction-interest-rate', '24,5');
+      type(element, 'transaction-advance-fee', '15000');
+      await settle(harness);
+
+      submit(element);
+      await settle(harness);
+
+      expect(fakes.transactions.lastDraft).toMatchObject({
+        type: 'transfer',
+        amount: 600000,
+        fromAccountId: 20,
+        toAccountId: 2,
+        categoryId: 6,
+        installments: 6,
+        annualInterestRate: 24.5,
+        advanceFee: 15000,
+      });
+    });
+
+    it('sends a one-installment advance without fee', async () => {
+      const { harness, element } = await openAdvance();
+
+      submit(element);
+      await settle(harness);
+
+      expect(fakes.transactions.lastDraft).toMatchObject({ installments: 1, annualInterestRate: null, advanceFee: null });
+    });
+
+    it('drops the installments and the fee when the transfer stops being an advance', async () => {
+      const { harness, element } = await openAdvance();
+      click(element, 'installments-6');
+      await settle(harness);
+      type(element, 'transaction-advance-fee', '15000');
+      await settle(harness);
+
+      choose(element, 'transaction-to', 'Mastercard', harness);
+      await settle(harness);
+      // La categoría propuesta se soltó con el avance: se elige otra.
+      choose(element, 'transaction-category', 'Ahorro', harness);
+      await settle(harness);
+      submit(element);
+      await settle(harness);
+
+      expect(fakes.transactions.lastDraft).toMatchObject({
+        type: 'transfer',
+        fromAccountId: 20,
+        toAccountId: 21,
+        installments: 1,
+        annualInterestRate: null,
+        advanceFee: null,
+      });
+    });
+
+    it('sends a transfer between regular accounts with one installment and no fee', async () => {
+      const { harness, element } = await openTransfer('Bancolombia', 'Nequi');
+      choose(element, 'transaction-category', 'Ahorro', harness);
+      await settle(harness);
+
+      submit(element);
+      await settle(harness);
+
+      expect(fakes.transactions.lastDraft).toMatchObject({ installments: 1, annualInterestRate: null, advanceFee: null });
+    });
+
+    it('speaks of the advance in Spanish', async () => {
+      TestBed.inject(LanguageService).setLanguage('es-CO');
+      const { harness, element } = await openAdvance();
+
+      expect(fieldText(element, 'installments')).toContain('Avance');
+      expect(fieldText(element, 'installments')).toContain('Comisión del banco');
+      expect(fieldText(element, 'transaction-category')).toContain('Avance de tarjeta');
+      expect(submitButton(element).textContent?.trim()).toBe('Guardar avance');
+
+      click(element, 'installments-6');
+      await settle(harness);
+
+      expect(submitButton(element).textContent?.trim()).toBe('Guardar avance a 6 cuotas');
+    });
+
+    it.each([
+      [TransactionErrorCode.AdvanceFeeInvalid, 'The fee must be greater than zero with up to 2 decimals.'],
+      [TransactionErrorCode.AdvanceFeeNotAllowed, 'A fee only applies to cash advances: from a credit card to a regular account.'],
+    ])('shows %s from the backend under the fee', async (code, message) => {
+      const { harness, element } = await openAdvance();
+      type(element, 'transaction-advance-fee', '15000');
+      await settle(harness);
+      fakes.transactions.failWith = new TransactionError('Backend message.', code);
+
+      submit(element);
+      await settle(harness);
+
+      expect(fieldText(element, 'advance-fee-error')).toBe(message);
+
+      type(element, 'transaction-advance-fee', '16000');
+      await settle(harness);
+
+      expect(query(element, 'advance-fee-error')).toBeNull();
+    });
+
+    it('does not put a fee error under a field that is not there', async () => {
+      const { harness, element } = await openTransfer('Bancolombia', 'Nequi');
+      choose(element, 'transaction-category', 'Ahorro', harness);
+      await settle(harness);
+      fakes.transactions.failWith = new TransactionError('Backend message.', TransactionErrorCode.AdvanceFeeNotAllowed);
+
+      submit(element);
+      await settle(harness);
+
+      expect(query(element, 'advance-fee-error')).toBeNull();
+      expect(TestBed.inject(Router).url).toBe('/transactions/new/transfer');
+    });
+
+    describe('editing', () => {
+      /** Reemplaza o agrega un movimiento en el falso. */
+      function store(item: Transaction): void {
+        fakes.transactions.transactions = [item, ...fakes.transactions.transactions.filter((other) => other.id !== item.id)];
+      }
+
+      const advance = (changes: Partial<Transaction> = {}) =>
+        transaction(50, 'transfer', 600000, {
+          fromAccountId: 20,
+          toAccountId: 2,
+          categoryId: 4,
+          isCardAdvance: true,
+          installments: 6,
+          annualInterestRate: 24.5,
+          advanceFee: 15000,
+          feeTransactionId: 51,
+          ...changes,
+        });
+
+      it('fills the installments, the rate and the fee, and keeps its category', async () => {
+        store(advance());
+        const { element } = await open('/transactions/50/edit');
+
+        expect(query(element, 'installments-6')?.getAttribute('aria-checked')).toBe('true');
+        expect(query(element, 'with-interest')?.getAttribute('aria-pressed')).toBe('true');
+        expect(query<HTMLInputElement>(element, 'transaction-interest-rate')!.value).toBe('24.5');
+        expect(query<HTMLInputElement>(element, 'transaction-advance-fee')!.value).toBe('15000');
+        // Al editar no se propone la categoría de avances.
+        expect(fieldText(element, 'transaction-category')).toContain('Ahorro');
+        expect(submitButton(element).textContent?.trim()).toBe('Save changes');
+      });
+
+      it('saves the advance with its installments and fee', async () => {
+        store(advance());
+        const { harness, element } = await open('/transactions/50/edit');
+
+        type(element, 'transaction-advance-fee', '18000');
+        await settle(harness);
+        submit(element);
+        await settle(harness);
+
+        expect(fakes.transactions.lastUpdate).toMatchObject({
+          id: 50,
+          draft: { type: 'transfer', fromAccountId: 20, toAccountId: 2, categoryId: 4, installments: 6, annualInterestRate: 24.5, advanceFee: 18000 },
+        });
+      });
+
+      it('removes the fee when it is cleared', async () => {
+        store(advance());
+        const { harness, element } = await open('/transactions/50/edit');
+
+        type(element, 'transaction-advance-fee', '');
+        await settle(harness);
+        submit(element);
+        await settle(harness);
+
+        expect(fakes.transactions.lastUpdate?.draft).toMatchObject({ advanceFee: null });
+      });
+
+      it('fills an advance without fee', async () => {
+        store(advance({ advanceFee: null, feeTransactionId: null, installments: 1, annualInterestRate: null }));
+        const { element } = await open('/transactions/50/edit');
+
+        expect(query<HTMLInputElement>(element, 'transaction-advance-fee')!.value).toBe('');
+        expect(query(element, 'installments-1')?.getAttribute('aria-checked')).toBe('true');
+      });
+
+      it('sends the fee of an advance to be changed from the advance', async () => {
+        store(transaction(51, 'expense', 15000, { fromAccountId: 20, categoryId: 1, canModify: false, parentTransactionId: 50 }));
+        const { element } = await open('/transactions/51/edit?month=2026-11');
+
+        expect(fieldText(element, 'edit-managed')).toContain(
+          'This fee is part of a cash advance: change or delete it from the advance.',
+        );
+        expect(query(element, 'edit-open-advance')?.getAttribute('href')).toBe('/transactions/50/edit?month=2026-11');
+        expect(fieldText(element, 'edit-open-advance')).toBe('Open advance');
+        expect(query(element, 'edit-locked')).toBeNull();
+        expect(element.querySelector('form')).toBeNull();
+      });
+
+      it('keeps the locked note for a locked transaction without a parent', async () => {
+        store(transaction(52, 'expense', 15000, { fromAccountId: 2, categoryId: 1, canModify: false }));
+        const { element } = await open('/transactions/52/edit');
+
+        expect(query(element, 'edit-locked')).toBeTruthy();
+        expect(query(element, 'edit-managed')).toBeNull();
+      });
+    });
+  });
+
   describe('paying a card from its statement', () => {
     const PAY_URL = '/transactions/new/transfer?payCard=20&statement=2026-10&due=150000';
 
@@ -1039,7 +1446,6 @@ describe('TransactionPanelComponent', () => {
       expect(fieldText(element, 'transaction-category')).toContain('Mercado');
       expect(query<HTMLInputElement>(element, 'transaction-description')!.value).toBe('Mercado semanal');
       expect(dateValue(element)).toBe('2026-11-02');
-      expect(query(element, 'inactive-choices')).toBeNull();
       expect(submitButton(element).disabled).toBe(false);
     });
 
@@ -1222,58 +1628,160 @@ describe('TransactionPanelComponent', () => {
       expect(query(element, 'panel-delete')).toBeNull();
     });
 
-    it('names a deactivated account and blocks saving until an active one is chosen', async () => {
+    it('keeps a deactivated account of an expense, marked as inactive, and saves with it', async () => {
       store(transaction(36, 'expense', 1000, { fromAccountId: 10, categoryId: 1 }));
       const { harness, element } = await open('/transactions/36/edit');
 
-      expect(fieldText(element, 'inactive-choices')).toContain('This transaction uses Davivienda');
-      expect(submitButton(element).disabled).toBe(true);
-
-      choose(element, 'transaction-account', 'Nequi', harness);
-      await settle(harness);
-
-      expect(query(element, 'inactive-choices')).toBeNull();
+      expect(fieldText(element, 'transaction-account')).toContain('Davivienda · COP (inactive)');
+      expect(optionLabels(element, 'transaction-account', harness)).toContain('Davivienda · COP (inactive)');
       expect(submitButton(element).disabled).toBe(false);
-    });
-
-    it('names a deactivated category and blocks saving until an active one is chosen', async () => {
-      store(transaction(37, 'expense', 1000, { fromAccountId: 2, categoryId: 5 }));
-      const { harness, element } = await open('/transactions/37/edit');
-
-      expect(fieldText(element, 'inactive-choices')).toContain('Arriendo viejo');
-      expect(submitButton(element).disabled).toBe(true);
-
-      choose(element, 'transaction-category', 'Transporte', harness);
-      await settle(harness);
-
-      expect(query(element, 'inactive-choices')).toBeNull();
-      expect(submitButton(element).disabled).toBe(false);
-    });
-
-    it('names every deactivated choice together', async () => {
-      store(transaction(38, 'expense', 1000, { fromAccountId: 10, categoryId: 5 }));
-      const { element } = await open('/transactions/38/edit');
-
-      expect(fieldText(element, 'inactive-choices')).toContain('Davivienda, Arriendo viejo');
-    });
-
-    it('names a deactivated account of a transfer', async () => {
-      store(transaction(39, 'transfer', 1000, { fromAccountId: 2, toAccountId: 10, categoryId: 4 }));
-      const { element } = await open('/transactions/39/edit');
-
-      expect(fieldText(element, 'inactive-choices')).toContain('Davivienda');
-      expect(submitButton(element).disabled).toBe(true);
-    });
-
-    it('shows the backend error when the update fails', async () => {
-      const { harness, element } = await open('/transactions/1/edit');
-      fakes.transactions.failWith = new TransactionError('The account is deactivated.', TransactionErrorCode.AccountInactive);
 
       submit(element);
       await settle(harness);
 
-      expect(query(element, 'account-error')?.textContent).toContain('That account is deactivated.');
-      expect(TestBed.inject(Router).url).toBe('/transactions/1/edit');
+      expect(fakes.transactions.lastUpdate).toMatchObject({ id: 36, draft: { fromAccountId: 10, categoryId: 1 } });
+    });
+
+    it('keeps a deactivated account of an income', async () => {
+      store(transaction(40, 'income', 1000, { toAccountId: 10, categoryId: 2 }));
+      const { harness, element } = await open('/transactions/40/edit');
+
+      expect(optionLabels(element, 'transaction-account', harness)).toContain('Davivienda · COP (inactive)');
+
+      submit(element);
+      await settle(harness);
+
+      expect(fakes.transactions.lastUpdate).toMatchObject({ id: 40, draft: { toAccountId: 10 } });
+    });
+
+    it('does not offer other deactivated accounts', async () => {
+      fakes.accounts.accounts.push({
+        id: 11,
+        name: 'AV Villas',
+        currency: 'COP',
+        currentBalance: 0,
+        isActive: false,
+        isCreditCard: false,
+        availableCredit: null,
+        nextStatementDate: null,
+      });
+      store(transaction(36, 'expense', 1000, { fromAccountId: 10, categoryId: 1 }));
+      const { harness, element } = await open('/transactions/36/edit');
+
+      const labels = optionLabels(element, 'transaction-account', harness);
+      expect(labels).toContain('Davivienda · COP (inactive)');
+      expect(labels.some((label) => label.includes('AV Villas'))).toBe(false);
+    });
+
+    it('does not offer a deactivated account when the transaction uses active ones', async () => {
+      const { harness, element } = await open('/transactions/1/edit');
+
+      expect(optionLabels(element, 'transaction-account', harness).some((label) => label.includes('Davivienda'))).toBe(false);
+      expect(optionLabels(element, 'transaction-category', harness)).not.toContain('Arriendo viejo (inactive)');
+    });
+
+    it('keeps a deactivated destination only as the destination of the transfer', async () => {
+      store(transaction(39, 'transfer', 1000, { fromAccountId: 2, toAccountId: 10, categoryId: 4 }));
+      const { harness, element } = await open('/transactions/39/edit');
+
+      expect(optionLabels(element, 'transaction-to', harness)).toContain('Davivienda · COP (inactive)');
+      expect(optionLabels(element, 'transaction-from', harness).some((label) => label.includes('Davivienda'))).toBe(false);
+      expect(submitButton(element).disabled).toBe(false);
+
+      submit(element);
+      await settle(harness);
+
+      expect(fakes.transactions.lastUpdate).toMatchObject({ id: 39, draft: { fromAccountId: 2, toAccountId: 10 } });
+    });
+
+    it('keeps a deactivated source only as the source of the transfer', async () => {
+      store(transaction(41, 'transfer', 1000, { fromAccountId: 10, toAccountId: 3, categoryId: 4 }));
+      const { harness, element } = await open('/transactions/41/edit');
+
+      expect(optionLabels(element, 'transaction-from', harness)).toContain('Davivienda · COP (inactive)');
+      expect(optionLabels(element, 'transaction-to', harness).some((label) => label.includes('Davivienda'))).toBe(false);
+
+      submit(element);
+      await settle(harness);
+
+      expect(fakes.transactions.lastUpdate).toMatchObject({ id: 41, draft: { fromAccountId: 10, toAccountId: 3 } });
+    });
+
+    it('keeps a deactivated category of the same type, marked as inactive, and saves with it', async () => {
+      store(transaction(37, 'expense', 1000, { fromAccountId: 2, categoryId: 5 }));
+      const { harness, element } = await open('/transactions/37/edit');
+
+      expect(fieldText(element, 'transaction-category')).toContain('Arriendo viejo (inactive)');
+      expect(optionLabels(element, 'transaction-category', harness)).toContain('Arriendo viejo (inactive)');
+      expect(submitButton(element).disabled).toBe(false);
+
+      submit(element);
+      await settle(harness);
+
+      expect(fakes.transactions.lastUpdate).toMatchObject({ id: 37, draft: { categoryId: 5 } });
+    });
+
+    it('can still switch a kept deactivated choice to an active one', async () => {
+      store(transaction(38, 'expense', 1000, { fromAccountId: 10, categoryId: 5 }));
+      const { harness, element } = await open('/transactions/38/edit');
+
+      choose(element, 'transaction-account', 'Nequi', harness);
+      choose(element, 'transaction-category', 'Transporte', harness);
+      await settle(harness);
+      submit(element);
+      await settle(harness);
+
+      expect(fakes.transactions.lastUpdate).toMatchObject({ id: 38, draft: { fromAccountId: 3, categoryId: 3 } });
+    });
+
+    it('marks the kept deactivated choices in Spanish', async () => {
+      TestBed.inject(LanguageService).setLanguage('es-CO');
+      store(transaction(38, 'expense', 1000, { fromAccountId: 10, categoryId: 5 }));
+      const { element } = await open('/transactions/38/edit');
+
+      expect(fieldText(element, 'transaction-account')).toContain('Davivienda · COP (inactiva)');
+      expect(fieldText(element, 'transaction-category')).toContain('Arriendo viejo (inactiva)');
+    });
+
+    it('opens the form even if no account is active anymore', async () => {
+      fakes.accounts.accounts = fakes.accounts.accounts.map((account) => ({ ...account, isActive: false }));
+      store(transaction(36, 'expense', 1000, { fromAccountId: 10, categoryId: 1 }));
+      const { harness, element } = await open('/transactions/36/edit');
+
+      expect(query(element, 'accounts-error')).toBeNull();
+      expect(element.querySelector('form')).toBeTruthy();
+      expect(optionLabels(element, 'transaction-account', harness)).toEqual(['Davivienda · COP (inactive)']);
+    });
+
+    it('offers no deactivated account or category when recording a new transaction', async () => {
+      const { harness, element } = await open('/transactions/new/expense');
+
+      expect(optionLabels(element, 'transaction-account', harness).some((label) => label.includes('Davivienda'))).toBe(false);
+      expect(optionLabels(element, 'transaction-category', harness).some((label) => label.includes('Arriendo viejo'))).toBe(false);
+    });
+
+    it('offers no deactivated account in either side of a new transfer', async () => {
+      const { harness, element } = await open('/transactions/new/transfer');
+
+      expect(optionLabels(element, 'transaction-from', harness).some((label) => label.includes('Davivienda'))).toBe(false);
+      choose(element, 'transaction-from', 'Bancolombia', harness);
+      await settle(harness);
+      expect(optionLabels(element, 'transaction-to', harness).some((label) => label.includes('Davivienda'))).toBe(false);
+    });
+
+    it.each([
+      [TransactionErrorCode.AccountInactive, 'account-error', 'That account is deactivated.'],
+      [TransactionErrorCode.CategoryNotFound, 'category-error', 'That category is no longer available.'],
+    ])('shows %s from the backend under its field', async (code, testId, message) => {
+      store(transaction(38, 'expense', 1000, { fromAccountId: 10, categoryId: 5 }));
+      const { harness, element } = await open('/transactions/38/edit');
+      fakes.transactions.failWith = new TransactionError('Backend message.', code);
+
+      submit(element);
+      await settle(harness);
+
+      expect(query(element, testId)?.textContent).toContain(message);
+      expect(TestBed.inject(Router).url).toBe('/transactions/38/edit');
     });
   });
 });

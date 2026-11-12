@@ -8,7 +8,7 @@ import { GENERIC_ERROR_KEY, apiErrorCode, resolveApiError } from '@core/http/api
 import { Account, AccountDraft, isAccountKind, isCurrency } from '../domain/account';
 import { AccountError, isAccountErrorCode } from '../domain/account-error';
 import { AccountRepository } from '../domain/account.repository';
-import { CardStatement, isStatementStatus } from '../domain/card-statement';
+import { CardStatement, isStatementStatus, toStatementItemKind } from '../domain/card-statement';
 import { CardMonth } from '../domain/credit-card-calendar';
 import { ACCOUNT_ERROR_KEYS, ACCOUNT_ERROR_PARAMS } from './account-error-messages';
 import { AccountDto, AccountRequestDto, StatementDto, StatementMonthDto } from './account.dto';
@@ -111,6 +111,7 @@ function toStatement(dto: StatementDto): CardStatement {
     openingDebt: dto.openingDebt ?? 0,
     items: (dto.items ?? []).map((item) => ({
       transactionId: item.transactionId,
+      kind: toStatementItemKind(item.kind),
       description: item.description ?? null,
       categoryName: item.categoryName ?? null,
       purchaseDate: toDay(item.purchaseDate),

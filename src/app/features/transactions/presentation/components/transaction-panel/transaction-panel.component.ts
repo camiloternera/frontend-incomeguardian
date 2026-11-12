@@ -52,6 +52,7 @@ import {
   UpdateTransactionUseCase,
 } from '../../../application/transaction-use-cases';
 import {
+  CARD_ADVANCE_CATEGORY_CODE,
   CARD_PAYMENT_CATEGORY_CODE,
   ExchangeRate,
   INSTALLMENTS_MAX,
@@ -74,7 +75,9 @@ import {
   TransactionType,
   categoryAppliesTo,
   dayOf,
+  isCardAdvanceRoute,
   isCrossCurrency,
+  isTransactionCurrency,
   isTransactionType,
   isUsableAccount,
   parseMonth,
@@ -83,6 +86,7 @@ import {
 } from '../../../domain/transaction';
 import {
   ACCOUNT_ERROR_CODES,
+  ADVANCE_FEE_ERROR_CODES,
   AMOUNT_ERROR_CODES,
   CATEGORY_ERROR_CODES,
   DESCRIPTION_ERROR_CODES,
@@ -96,6 +100,7 @@ import { TransactionWorkspace } from '../../transaction-workspace';
 import { injectTransactionsTranslations } from '../../transactions-translations';
 import { TransactionDeleteConfirmationComponent } from '../delete-confirmation/delete-confirmation.component';
 import { amountValidator, parseAmount } from '../../validators/amount.validator';
+import { transactionName } from '../../transaction-name';
 
 /** Estado de una lista de opciones que se carga aparte del formulario. */
 type OptionsStatus = 'loading' | 'ready' | 'error';
@@ -224,9 +229,8 @@ export class TransactionPanelComponent {
   protected readonly accountsStatus = signal<OptionsStatus>('loading');
   private readonly accounts = signal<TransactionAccountOption[]>([]);
   protected readonly categoriesStatus = signal<OptionsStatus>('loading');
+  /** Categorías activas del tipo y, al editar, la original aunque ya esté desactivada. */
   protected readonly categories = signal<TransactionCategoryOption[]>([]);
-  /** Todas las categorías del tipo, también las desactivadas, para nombrar la de un movimiento que se edita. */
-  private readonly allCategories = signal<TransactionCategoryOption[]>([]);
   /** Último resultado de la consulta de la TRM; `rateState` lo cruza con la fecha vigente. */
   private readonly rateResult = signal<RateState>({ status: 'idle' });
 
@@ -236,6 +240,7 @@ export class TransactionPanelComponent {
   protected readonly categoryServerError = signal<TransactionErrorCode | null>(null);
   protected readonly descriptionServerError = signal<TransactionErrorCode | null>(null);
   protected readonly installmentsServerError = signal<TransactionErrorCode | null>(null);
+  protected readonly advanceFeeServerError = signal<TransactionErrorCode | null>(null);
   /** Mes cerrado de una cuota (distinto del de la fecha) que impidió guardar la compra. */
   protected readonly closedInstallmentMonth = signal<TransactionMonth | null>(null);
 
@@ -264,6 +269,8 @@ export class TransactionPanelComponent {
     withInterest: this.formBuilder.control(false),
     /** Tasa efectiva anual (%) cuando hay interés. */
     interestRate: ['', interestRateValidator],
+    /** Comisión del banco por un avance; opcional. Deshabilitada (sin validar) fuera de un avance. */
+    advanceFee: this.formBuilder.control({ value: '', disabled: true }, optionalAmountValidator),
   });
 
   protected readonly formValue = toSignal(this.form.valueChanges.pipe(map(() => this.form.getRawValue())), {
@@ -272,10 +279,26 @@ export class TransactionPanelComponent {
 
   /** Solo se pueden elegir cuentas activas en una moneda soportada; las demás no se ofrecen. */
   private readonly usableAccounts = computed(() => this.accounts().filter(isUsableAccount));
+
+  /**
+   * Al editar, la cuenta original de cada rol. El backend deja conservarla aunque ya esté
+   * desactivada, pero no elegir otra desactivada ni pasarla al otro rol de la transferencia.
+   */
+  private readonly originalAccounts = computed(() => {
+    const item = this.editing();
+
+    return {
+      account: item?.type === 'income' ? item.toAccountId : item?.type === 'expense' ? item.fromAccountId : null,
+      from: item?.type === 'transfer' ? item.fromAccountId : null,
+      to: item?.type === 'transfer' ? item.toAccountId : null,
+    };
+  });
+
   protected readonly accountOptions = computed<SelectOption<number>[]>(() =>
-    this.usableAccounts().map(toAccountOption),
+    this.choicesWith(this.originalAccounts().account).map((account) => this.toAccountOption(account)),
   );
-  protected readonly hasUsableAccounts = computed(() => this.usableAccounts().length > 0);
+  /** Al editar siempre hay al menos la cuenta original, aunque esté desactivada. */
+  protected readonly hasUsableAccounts = computed(() => this.usableAccounts().length > 0 || this.editing() !== null);
 
   /** Cuenta que define la moneda del monto: la del ingreso o gasto, o el origen de la transferencia. */
   protected readonly account = computed(() => {
@@ -291,15 +314,15 @@ export class TransactionPanelComponent {
   protected readonly sourceOptions = computed<SelectOption<number>[]>(() => {
     const cardId = this.cardPayment()?.cardId;
 
-    return this.usableAccounts()
+    return this.choicesWith(this.originalAccounts().from)
       .filter((account) => account.id !== cardId)
-      .map(toAccountOption);
+      .map((account) => this.toAccountOption(account));
   });
   /** Cuentas a las que puede llegar la transferencia: todas las utilizables menos el origen. */
   protected readonly destinationOptions = computed<SelectOption<number>[]>(() =>
-    this.usableAccounts()
+    this.choicesWith(this.originalAccounts().to)
       .filter((account) => account.id !== this.formValue().fromAccountId)
-      .map(toAccountOption),
+      .map((account) => this.toAccountOption(account)),
   );
 
   /** Saldo actual de la cuenta elegida, ya formateado; `null` si no se conoce. */
@@ -312,17 +335,18 @@ export class TransactionPanelComponent {
     () => this.categoriesStatus() === 'ready' && this.categories().length === 0,
   );
 
-  /** Opciones del selector de categoría: solo las activas del tipo, sin opción vacía. */
+  /** Opciones del selector de categoría: las activas del tipo (y la original al editar), sin opción vacía. */
   protected readonly categoryOptions = computed<SelectOption<number>[]>(() => {
     // Las categorías de sistema se nombran por su código, en el idioma activo, cuando el scope ya cargó.
     const ready = this.translations() !== null;
 
-    return this.categories().map((category) => ({
-      value: category.id,
-      label: category.code && ready
+    return this.categories().map((category) => {
+      const name = category.code && ready
         ? this.transloco.translate(`transactions.systemCategories.${category.code}`)
-        : category.name,
-    }));
+        : category.name;
+
+      return { value: category.id, label: category.isActive ? name : this.inactiveLabel(name) };
+    });
   });
 
   /** Mensaje del fallo de la TRM, si lo hay. */
@@ -447,29 +471,6 @@ export class TransactionPanelComponent {
   protected readonly dateLocked = computed(() => this.lockedNote()?.locked() ?? false);
 
   /**
-   * Al editar, la cuenta o la categoría elegida que ya está desactivada. El backend no deja guardar
-   * un movimiento con ellas, así que se nombran y hay que elegir otras activas antes de guardar.
-   */
-  protected readonly inactiveChoices = computed(() => {
-    if (!this.editing()) {
-      return [];
-    }
-
-    const value = this.formValue();
-    const accountIds = this.type() === 'transfer' ? [value.fromAccountId, value.toAccountId] : [value.accountId];
-    const accounts = accountIds
-      .map((id) => this.findAccount(id))
-      .filter((account): account is TransactionAccountOption => account !== null && !isUsableAccount(account))
-      .map((account) => account.name);
-    const category =
-      value.categoryId !== null && !this.categories().some((item) => item.id === value.categoryId)
-        ? (this.allCategories().find((item) => item.id === value.categoryId)?.name ?? null)
-        : null;
-
-    return category ? [...accounts, category] : accounts;
-  });
-
-  /**
    * Sin TRM no se puede calcular ni crear una transferencia entre monedas, y no se guarda un
    * movimiento con fecha en un mes cerrado.
    */
@@ -477,13 +478,46 @@ export class TransactionPanelComponent {
     () =>
       !this.isSubmitting() &&
       !this.dateLocked() &&
-      this.inactiveChoices().length === 0 &&
       (!this.crossCurrency() || this.rateState().status === 'ready') &&
-      (!this.isCardExpense() || this.interestRate() !== undefined),
+      (!this.installable() || this.interestRate() !== undefined),
   );
 
   /** Un gasto con tarjeta: puede ser a cuotas y muestra el cupo que queda. */
   protected readonly isCardExpense = computed(() => this.type() === 'expense' && this.account()?.isCreditCard === true);
+
+  /**
+   * Un avance: transferencia de una tarjeta a una cuenta normal. Puede ser a cuotas y llevar la
+   * comisión del banco. Un pago de tarjeta nunca lo es: su destino es la tarjeta.
+   */
+  protected readonly isCardAdvance = computed(
+    () => this.type() === 'transfer' && !this.cardPayment() && isCardAdvanceRoute(this.account(), this.destination()),
+  );
+
+  /** Movimiento que sale de una tarjeta y se cobra en cuotas: una compra o un avance. */
+  protected readonly installable = computed(() => this.isCardExpense() || this.isCardAdvance());
+
+  /** Comisión del avance escrita y válida; null sin comisión, fuera de un avance o si no es válida. */
+  private readonly advanceFee = computed(() => {
+    const text = this.formValue().advanceFee.trim();
+
+    if (!this.isCardAdvance() || !text || amountValidator(this.form.controls.advanceFee) !== null) {
+      return null;
+    }
+
+    return parseAmount(text);
+  });
+
+  /** Comisión y total a pagar del avance con ella; la comisión no entra en el plan de cuotas. */
+  protected readonly advanceTotal = computed(() => {
+    const fee = this.advanceFee();
+    const state = this.installmentPreview();
+
+    if (fee === null || state.status !== 'ready') {
+      return null;
+    }
+
+    return { fee: this.money(fee), total: this.money(state.preview.totalAmount + fee) };
+  });
 
   /** Tasa escrita, si aplica y es válida; null sin interés. `undefined` si falta o no es válida. */
   private readonly interestRate = computed<number | null | undefined>(() => {
@@ -505,7 +539,7 @@ export class TransactionPanelComponent {
     const value = this.formValue();
     const rate = this.interestRate();
 
-    if (!this.isCardExpense() || !account || amount === null || !value.date || value.date > todayInputDate()) {
+    if (!this.installable() || !account || amount === null || !value.date || value.date > todayInputDate()) {
       return null;
     }
 
@@ -519,7 +553,8 @@ export class TransactionPanelComponent {
       date: toUtcIso(value.date),
       installments: value.installments,
       annualInterestRate: rate,
-      categoryId: value.categoryId,
+      // Un avance se simula sin categoría: la de transferencia no aplica a las cuotas.
+      categoryId: this.isCardAdvance() ? null : value.categoryId,
     };
   });
 
@@ -532,16 +567,19 @@ export class TransactionPanelComponent {
     return this.categoryOptions().find((option) => option.value === id)?.label ?? null;
   });
 
-  /** Cupo disponible de la tarjeta antes y después de la compra (la compra baja todo el capital). */
+  /**
+   * Cupo disponible de la tarjeta antes y después de la compra o el avance: baja todo el capital y,
+   * en un avance, también la comisión.
+   */
   protected readonly creditAfterPurchase = computed(() => {
     const account = this.account();
     const amount = this.amount();
 
-    if (!this.isCardExpense() || !account || account.availableCredit === null) {
+    if (!this.installable() || !account || account.availableCredit === null) {
       return null;
     }
 
-    const after = amount === null ? null : account.availableCredit - amount;
+    const after = amount === null ? null : account.availableCredit - amount - (this.advanceFee() ?? 0);
 
     return {
       name: account.name,
@@ -656,6 +694,8 @@ export class TransactionPanelComponent {
   });
 
   private categoriesRequest: Subscription | null = null;
+  /** Categoría de avance que propuso el panel, para soltarla si la transferencia deja de ser avance. */
+  private advanceCategoryId: number | null = null;
 
   constructor() {
     const controls = this.form.controls;
@@ -675,6 +715,23 @@ export class TransactionPanelComponent {
 
     controls.installments.valueChanges.subscribe(() => this.installmentsServerError.set(null));
     controls.interestRate.valueChanges.subscribe(() => this.installmentsServerError.set(null));
+    controls.advanceFee.valueChanges.subscribe(() => this.advanceFeeServerError.set(null));
+    // La comisión solo se valida (y se envía) en un avance; fuera de él conserva lo escrito.
+    // Al volverse avance se propone la categoría de sistema de avances; si deja de serlo, se suelta.
+    effect(() => {
+      const advance = this.isCardAdvance();
+      const categories = this.categories();
+
+      untracked(() => {
+        if (advance) {
+          controls.advanceFee.enable({ emitEvent: false });
+        } else {
+          controls.advanceFee.disable({ emitEvent: false });
+        }
+
+        this.preselectCardAdvanceCategory(advance, categories);
+      });
+    });
     controls.date.valueChanges.subscribe(() => this.closedInstallmentMonth.set(null));
     controls.accountId.valueChanges.subscribe(() => this.closedInstallmentMonth.set(null));
     controls.installments.valueChanges.subscribe(() => this.closedInstallmentMonth.set(null));
@@ -844,6 +901,18 @@ export class TransactionPanelComponent {
       : null;
   }
 
+  protected advanceFeeError(): FieldMessage | null {
+    const server = this.advanceFeeServerError();
+
+    if (server) {
+      return this.codeMessage(server);
+    }
+
+    const control = this.form.controls.advanceFee;
+
+    return control.touched && control.invalid ? { key: 'transactions.errors.TRANSACTION_ADVANCE_FEE_INVALID' } : null;
+  }
+
   protected interestRateError(): FieldMessage | null {
     const control = this.form.controls.interestRate;
     const value = this.formValue();
@@ -937,9 +1006,14 @@ export class TransactionPanelComponent {
     this.categoriesRequest = this.listCategories.execute(type).subscribe({
       next: (categories) => {
         // El backend ya filtra por tipo; se comprueba aquí también para no ofrecer una categoría
-        // que luego rechace con TRANSACTION_CATEGORY_TYPE_MISMATCH. Las desactivadas no se ofrecen.
-        this.allCategories.set(categories);
-        this.categories.set(categories.filter((category) => category.isActive && categoryAppliesTo(category, type)));
+        // que luego rechace con TRANSACTION_CATEGORY_TYPE_MISMATCH. Las desactivadas no se ofrecen,
+        // salvo la original del movimiento que se edita: el backend deja conservarla.
+        const original = this.editing()?.categoryId ?? null;
+        this.categories.set(
+          categories.filter(
+            (category) => (category.isActive || category.id === original) && categoryAppliesTo(category, type),
+          ),
+        );
         this.categoriesStatus.set('ready');
         this.preselectCardPaymentCategory();
       },
@@ -971,7 +1045,7 @@ export class TransactionPanelComponent {
   protected submit(): void {
     this.formError.set('');
 
-    if (this.form.invalid || (this.isCardExpense() && this.interestRate() === undefined)) {
+    if (this.form.invalid || (this.installable() && this.interestRate() === undefined)) {
       this.form.markAllAsTouched();
       return;
     }
@@ -1042,13 +1116,13 @@ export class TransactionPanelComponent {
 
   /** Nombre del movimiento que se edita: su descripción o su tipo. */
   protected editLabel(transaction: Transaction): string {
-    return transaction.description || this.transloco.translate(`transactions.types.${transaction.type}`);
+    return transactionName(transaction, (key) => this.transloco.translate(key));
   }
 
   /** Llena el formulario con un movimiento guardado, sin marcarlo como modificado. */
   private fill(transaction: Transaction): void {
     const controls = this.form.controls;
-    const installments = transaction.type === 'expense' ? transaction.installments : 1;
+    const installments = transaction.type === 'expense' || transaction.isCardAdvance ? transaction.installments : 1;
     const rate = transaction.annualInterestRate;
 
     this.form.patchValue({
@@ -1064,6 +1138,7 @@ export class TransactionPanelComponent {
       customInstallments: (INSTALLMENT_CHOICES as readonly number[]).includes(installments) ? '' : String(installments),
       withInterest: installments > 1 && rate !== null && rate > 0,
       interestRate: installments > 1 && rate !== null && rate > 0 ? String(rate) : '',
+      advanceFee: transaction.advanceFee === null ? '' : String(Math.round(transaction.advanceFee * 100) / 100),
     });
     // `open` deja la categoría vacía y la vuelve a cargar: se fija después y se recuerda.
     controls.categoryId.setValue(transaction.categoryId);
@@ -1095,14 +1170,22 @@ export class TransactionPanelComponent {
           annualInterestRate: installments > 1 ? (this.interestRate() ?? null) : null,
         };
       }
-      case 'transfer':
+      case 'transfer': {
+        // Solo un avance lleva cuotas, tasa y comisión; al dejar de serlo se envían vacías.
+        const advance = this.isCardAdvance();
+        const installments = advance ? value.installments : 1;
+
         return {
           ...base,
           type: 'transfer',
           categoryId: value.categoryId,
           fromAccountId: value.fromAccountId!,
           toAccountId: value.toAccountId!,
+          installments,
+          annualInterestRate: installments > 1 ? (this.interestRate() ?? null) : null,
+          advanceFee: advance ? this.advanceFee() : null,
         };
+      }
     }
   }
 
@@ -1120,6 +1203,7 @@ export class TransactionPanelComponent {
     this.categoryServerError.set(null);
     this.descriptionServerError.set(null);
     this.installmentsServerError.set(null);
+    this.advanceFeeServerError.set(null);
     this.closedInstallmentMonth.set(null);
     controls.categoryId.setValue(null);
 
@@ -1187,6 +1271,34 @@ export class TransactionPanelComponent {
     }
   }
 
+  /**
+   * En un avance nuevo, elige la categoría de sistema de avances si existe y no hay otra elegida. Si
+   * la transferencia deja de ser avance y la categoría sigue siendo la propuesta, se vacía.
+   */
+  private preselectCardAdvanceCategory(advance: boolean, categories: readonly TransactionCategoryOption[]): void {
+    const control = this.form.controls.categoryId;
+
+    if (this.editing()) {
+      return;
+    }
+
+    if (!advance) {
+      if (this.advanceCategoryId !== null && control.value === this.advanceCategoryId) {
+        control.setValue(null);
+      }
+
+      this.advanceCategoryId = null;
+      return;
+    }
+
+    const category = categories.find((item) => item.code === CARD_ADVANCE_CATEGORY_CODE);
+
+    if (category && control.value === null) {
+      control.setValue(category.id);
+      this.advanceCategoryId = category.id;
+    }
+  }
+
   private fetchRate(date: string): Observable<RateState> {
     return this.getExchangeRate.execute(date).pipe(
       map((rate): RateState => ({ status: 'ready', date, rate })),
@@ -1212,6 +1324,8 @@ export class TransactionPanelComponent {
       }
     } else if (code && INSTALLMENT_ERROR_CODES.includes(code)) {
       this.installmentsServerError.set(code);
+    } else if (code && ADVANCE_FEE_ERROR_CODES.includes(code) && this.isCardAdvance()) {
+      this.advanceFeeServerError.set(code);
     } else if (code && AMOUNT_ERROR_CODES.includes(code)) {
       this.amountServerError.set(code);
     } else if (code && ACCOUNT_ERROR_CODES.includes(code)) {
@@ -1235,6 +1349,27 @@ export class TransactionPanelComponent {
     }
   }
 
+  /** Cuentas utilizables más la original del rol, si se edita y ya está desactivada; en orden por nombre. */
+  private choicesWith(originalId: number | null): TransactionAccountOption[] {
+    return this.accounts().filter(
+      (account) => isUsableAccount(account) || (account.id === originalId && isTransactionCurrency(account.currency)),
+    );
+  }
+
+  /** Opción del selector de cuentas: el nombre con su moneda, para distinguir COP de USD. */
+  private toAccountOption(account: TransactionAccountOption): SelectOption<number> {
+    const label = `${account.name} · ${account.currency}`;
+
+    return { value: account.id, label: account.isActive ? label : this.inactiveLabel(label) };
+  }
+
+  /** Nombre de una cuenta o categoría desactivada que se conserva al editar. */
+  private inactiveLabel(name: string): string {
+    return this.translations() === null
+      ? name
+      : this.transloco.translate('transactions.form.edit.inactiveOption', { name });
+  }
+
   private findAccount(id: number | null): TransactionAccountOption | null {
     return id === null ? null : (this.accounts().find((account) => account.id === id) ?? null);
   }
@@ -1250,11 +1385,6 @@ export class TransactionPanelComponent {
   private messageOf(error: unknown): string {
     return error instanceof TransactionError ? error.message : this.transloco.translate(GENERIC_ERROR_KEY);
   }
-}
-
-/** Opción del selector de cuentas: el nombre con su moneda, para distinguir COP de USD. */
-function toAccountOption(account: TransactionAccountOption): SelectOption<number> {
-  return { value: account.id, label: `${account.name} · ${account.currency}` };
 }
 
 /** Activa o quita el requisito de un control sin tocar su valor. */
@@ -1278,6 +1408,11 @@ function customInstallmentsValidator(control: AbstractControl<string>): Validati
   return !text || (Number.isInteger(value) && value >= INSTALLMENTS_MIN && value <= INSTALLMENTS_MAX)
     ? null
     : { installmentsOutOfRange: true };
+}
+
+/** Comisión opcional: vacía, o un monto con las mismas reglas que el del movimiento. */
+function optionalAmountValidator(control: AbstractControl<string>): ValidationErrors | null {
+  return control.value.trim() ? amountValidator(control) : null;
 }
 
 /** Tasa EA: vacía (la exige la vista solo con interés), o un número entre 0 y 200 con hasta 2 decimales. */
