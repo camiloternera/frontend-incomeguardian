@@ -13,9 +13,21 @@ export function isStatementStatus(value: unknown): value is StatementStatus {
   return typeof value === 'string' && (STATEMENT_STATUSES as readonly string[]).includes(value);
 }
 
-/** Una cuota de una compra que cobra el extracto. Las compras de una sola cuota también aparecen. */
+/** Qué cobra una línea del extracto: la cuota de una compra, la de un avance o la comisión de un avance. */
+export const STATEMENT_ITEM_KINDS = ['purchase', 'advance', 'fee'] as const;
+export type StatementItemKind = (typeof STATEMENT_ITEM_KINDS)[number];
+
+/** Clase de la línea; lo que no se reconoce se trata como compra. */
+export function toStatementItemKind(value: unknown): StatementItemKind {
+  return typeof value === 'string' && (STATEMENT_ITEM_KINDS as readonly string[]).includes(value)
+    ? (value as StatementItemKind)
+    : 'purchase';
+}
+
+/** Una cuota que cobra el extracto: de una compra, de un avance o su comisión. Las de una sola cuota también aparecen. */
 export interface StatementItem {
   transactionId: number;
+  kind: StatementItemKind;
   description: string | null;
   categoryName: string | null;
   /** Día de la compra, `YYYY-MM-DD`. */
