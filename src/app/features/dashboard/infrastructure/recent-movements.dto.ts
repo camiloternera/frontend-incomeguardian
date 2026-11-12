@@ -9,6 +9,9 @@ export interface RecentMovementDto {
   currency: string;
   categoryName: string | null;
   isCardPayment: boolean | null;
+  /** Opcionales mientras el backend desplegado no los envíe. */
+  isCardAdvance?: boolean | null;
+  isAdvanceFee?: boolean | null;
   /** 1 si no es una compra a cuotas. */
   installmentCount: number | null;
   fromAccountName: string | null;
