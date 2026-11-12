@@ -12,7 +12,7 @@ import {
   monthRange,
   shiftMonth,
 } from '../../../domain/transaction';
-import { TransactionError } from '../../../domain/transaction-error';
+import { TransactionError, TransactionErrorCode } from '../../../domain/transaction-error';
 import { TransactionFakes, fakeTransactionsRoutes, transaction } from '../../transaction-repository.fake';
 
 /** Hoy en hora de Colombia: el mes en curso depende del reloj real. */
@@ -259,6 +259,220 @@ describe('TransactionListPageComponent', () => {
       const { element } = await open();
 
       expect(query(element, 'transaction-50')?.querySelector('[data-testid="row-meta"]')?.textContent).toContain('Card payment');
+    });
+  });
+
+  describe('editing and deleting from the row', () => {
+    function menuOf(element: HTMLElement, id: number): HTMLButtonElement {
+      return query(element, `menu-${id}`) as HTMLButtonElement;
+    }
+
+    async function openMenu(harness: RouterTestingHarness, element: HTMLElement, id: number): Promise<void> {
+      menuOf(element, id).click();
+      await settle(harness);
+    }
+
+    async function askDelete(harness: RouterTestingHarness, element: HTMLElement, id: number): Promise<void> {
+      await openMenu(harness, element, id);
+      query(element, `delete-${id}`)!.click();
+      await settle(harness);
+    }
+
+    it('gives every row a closed actions menu named after the transaction', async () => {
+      const { element } = await open();
+      const menu = menuOf(element, 1);
+
+      expect(menu.id).toBe('transaction-menu-button-1');
+      expect(menu.getAttribute('aria-label')).toBe('Actions for Mercado semanal');
+      expect(menu.getAttribute('aria-expanded')).toBe('false');
+      expect(query(element, 'edit-1')).toBeNull();
+      // Sin descripción, la transferencia se nombra por su tipo.
+      expect(menuOf(element, 3).getAttribute('aria-label')).toBe('Actions for Transfer');
+    });
+
+    it('offers edit and delete when the transaction can change', async () => {
+      const { harness, element } = await open(`/transactions?month=${formatMonthKey(CURRENT)}`);
+
+      await openMenu(harness, element, 1);
+
+      expect(menuOf(element, 1).getAttribute('aria-expanded')).toBe('true');
+      expect(menuOf(element, 1).getAttribute('aria-controls')).toBe('transaction-menu-1');
+      expect(query(element, 'edit-1')?.getAttribute('href')).toBe(`/transactions/1/edit?month=${formatMonthKey(CURRENT)}`);
+      expect(text(element, 'delete-1')).toBe('Delete');
+      expect(query(element, 'locked-1')).toBeNull();
+    });
+
+    it('opens one menu at a time and closes it on a second click', async () => {
+      const { harness, element } = await open();
+
+      await openMenu(harness, element, 1);
+      await openMenu(harness, element, 2);
+
+      expect(query(element, 'edit-1')).toBeNull();
+      expect(query(element, 'edit-2')).toBeTruthy();
+
+      await openMenu(harness, element, 2);
+
+      expect(query(element, 'edit-2')).toBeNull();
+    });
+
+    it('explains why a locked transaction cannot change', async () => {
+      fakes.transactions.transactions = fakes.transactions.transactions.map((item) =>
+        item.id === 1 ? { ...item, canModify: false } : item,
+      );
+      const { harness, element } = await open();
+
+      await openMenu(harness, element, 1);
+
+      expect(text(element, 'locked-1')).toContain('Can’t be edited or deleted');
+      expect(query(element, 'edit-1')).toBeNull();
+      expect(query(element, 'delete-1')).toBeNull();
+    });
+
+    it('closes the menu with Escape and gives the focus back to its button', async () => {
+      const { harness, element } = await open();
+      await openMenu(harness, element, 1);
+
+      query(element, 'edit-1')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await settle(harness);
+
+      expect(query(element, 'edit-1')).toBeNull();
+      expect(document.activeElement).toBe(menuOf(element, 1));
+    });
+
+    it('closes the menu on a click outside', async () => {
+      const { harness, element } = await open();
+      await openMenu(harness, element, 1);
+
+      document.body.click();
+      await settle(harness);
+
+      expect(query(element, 'edit-1')).toBeNull();
+    });
+
+    it('keeps the menu open on a click inside it', async () => {
+      const { harness, element } = await open();
+      await openMenu(harness, element, 1);
+
+      query(element, 'edit-1')!.parentElement!.click();
+      await settle(harness);
+
+      expect(query(element, 'edit-1')).toBeTruthy();
+    });
+
+    it('asks to confirm the deletion inside the row', async () => {
+      const { harness, element } = await open();
+
+      await askDelete(harness, element, 1);
+
+      const confirmation = query(element, 'transaction-1')!.querySelector('[data-testid="delete-confirmation"]');
+      expect(confirmation).toBeTruthy();
+      expect(confirmation?.textContent).toContain('Delete “Mercado semanal”?');
+      expect(confirmation?.textContent).toContain('This can’t be undone');
+      expect(query(element, 'edit-1')).toBeNull();
+      expect(fakes.transactions.removed).toEqual([]);
+    });
+
+    it('cancels the deletion and gives the focus back to the menu button', async () => {
+      const { harness, element } = await open();
+      await askDelete(harness, element, 1);
+
+      query(element, 'cancel-delete')!.click();
+      await settle(harness);
+
+      expect(query(element, 'delete-confirmation')).toBeNull();
+      expect(document.activeElement).toBe(menuOf(element, 1));
+      expect(fakes.transactions.removed).toEqual([]);
+    });
+
+    it('deletes, confirms it and reloads from the first page', async () => {
+      for (let id = 10; id < 16; id++) {
+        fakes.transactions.transactions.push(transaction(id, 'expense', 1000, { fromAccountId: 3, date: `${TODAY}T17:00:00Z` }));
+      }
+      const { harness, element } = await open();
+      query(element, 'pagination-next')!.click();
+      await settle(harness);
+      const summaries = fakes.transactions.summaryRanges.length;
+
+      await askDelete(harness, element, 15);
+      query(element, 'confirm-delete')!.click();
+      await settle(harness);
+
+      expect(fakes.transactions.removed).toEqual([15]);
+      expect(text(element, 'transaction-notice')).toContain('Transaction deleted');
+      expect(fakes.transactions.lastQuery).toEqual({ page: 1, pageSize: 5, ...monthRange(CURRENT) });
+      expect(fakes.transactions.summaryRanges.length).toBe(summaries + 1);
+      expect(query(element, 'delete-confirmation')).toBeNull();
+      expect(query(element, 'transaction-15')).toBeNull();
+    });
+
+    it('confirms the deletion in Spanish', async () => {
+      TestBed.inject(LanguageService).setLanguage('es-CO');
+      const { harness, element } = await open();
+      await askDelete(harness, element, 1);
+
+      expect(text(element, 'delete-confirmation')).toContain('¿Eliminar «Mercado semanal»?');
+
+      query(element, 'confirm-delete')!.click();
+      await settle(harness);
+
+      expect(text(element, 'transaction-notice')).toContain('Movimiento eliminado');
+    });
+
+    it.each([
+      [TransactionErrorCode.PeriodClosed, 'The month of that date is closed.'],
+      [TransactionErrorCode.NotFound, 'It no longer exists.'],
+    ])('shows why %s blocked the deletion and reloads the list', async (code, message) => {
+      const { harness, element } = await open();
+      await askDelete(harness, element, 1);
+      const summaries = fakes.transactions.summaryRanges.length;
+      fakes.transactions.failWith = new TransactionError(message, code);
+
+      query(element, 'confirm-delete')!.click();
+      await settle(harness);
+
+      // El aviso sobrevive a la recarga, que retira la confirmación de la fila.
+      expect(text(element, 'list-delete-error')).toContain(message);
+      expect(query(element, 'list-delete-error')?.getAttribute('role')).toBe('alert');
+      expect(query(element, 'delete-confirmation')).toBeNull();
+      expect(fakes.transactions.summaryRanges.length).toBe(summaries + 1);
+      expect(query(element, 'transaction-notice')).toBeNull();
+
+      query(element, 'list-delete-error')!.querySelector('button')!.click();
+      await settle(harness);
+
+      expect(query(element, 'list-delete-error')).toBeNull();
+    });
+
+    it('keeps the confirmation with a retry for any other failure', async () => {
+      const { harness, element } = await open();
+      await askDelete(harness, element, 1);
+      fakes.transactions.failWith = new TransactionError('The service is down.');
+
+      query(element, 'confirm-delete')!.click();
+      await settle(harness);
+
+      expect(text(element, 'delete-error')).toBe('The service is down.');
+      expect(query(element, 'confirm-delete')).toBeTruthy();
+      expect(query(element, 'list-delete-error')).toBeNull();
+
+      query(element, 'confirm-delete')!.click();
+      await settle(harness);
+
+      expect(fakes.transactions.removed).toEqual([1, 1]);
+      expect(text(element, 'transaction-notice')).toContain('Transaction deleted');
+    });
+
+    it('clears an old delete error when asking to delete again', async () => {
+      const { harness, element } = await open();
+      await askDelete(harness, element, 1);
+      fakes.transactions.failWith = new TransactionError('Closed.', TransactionErrorCode.PeriodClosed);
+      query(element, 'confirm-delete')!.click();
+      await settle(harness);
+
+      await askDelete(harness, element, 2);
+
+      expect(query(element, 'list-delete-error')).toBeNull();
     });
   });
 });

@@ -52,6 +52,23 @@
           </div>
         }
 
+        @if (deleteError()) {
+          <div
+            data-testid="list-delete-error"
+            class="flex items-center justify-between gap-4 rounded-lg border border-ig-border bg-ig-surface py-1 pl-4 pr-1"
+            role="alert"
+          >
+            <p class="m-0 text-[14px]">{{ deleteError() }}</p>
+            <button
+              class="min-h-11 shrink-0 rounded-lg border border-transparent bg-transparent px-3 text-[13px] font-bold text-ig-muted hover:text-ig-text focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+              type="button"
+              (click)="deleteError.set('')"
+            >
+              {{ t('transactions.list.notice.dismiss') }}
+            </button>
+          </div>
+        }
+
         <!-- Mes: stepper y resumen -->
         <section
           aria-labelledby="transaction-month"
@@ -138,12 +155,12 @@
                     </span>
                   </div>
                   <ul
-                    class="m-0 list-none p-0 sm:overflow-hidden sm:rounded-lg sm:border sm:border-ig-border sm:bg-ig-surface"
+                    class="m-0 list-none p-0 sm:rounded-lg sm:border sm:border-ig-border sm:bg-ig-surface"
                   >
                     @for (row of group.rows; track row.transaction.id) {
                       @let item = row.transaction;
                       <li
-                        class="flex items-center gap-3 border-b border-ig-border py-3 sm:gap-4 sm:py-3.5 sm:pl-4 sm:pr-5 sm:last:border-b-0"
+                        class="relative flex flex-wrap items-center gap-3 border-b border-ig-border py-3 sm:gap-4 sm:py-3.5 sm:pl-4 sm:pr-3 sm:last:border-b-0"
                         [attr.data-testid]="'transaction-' + item.id"
                       >
                         <span
@@ -229,6 +246,68 @@
                             </span>
                           }
                         </span>
+                        <button
+                          [id]="'transaction-menu-button-' + item.id"
+                          [attr.data-testid]="'menu-' + item.id"
+                          class="-mr-2 inline-grid size-11 shrink-0 place-items-center rounded-lg border border-transparent bg-transparent text-ig-muted hover:bg-ig-surface-raised hover:text-ig-text focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 sm:mr-0"
+                          type="button"
+                          [attr.aria-label]="t('transactions.list.moreActions', { name: deleteLabel(item) })"
+                          [attr.aria-expanded]="openMenuId() === item.id"
+                          [attr.aria-controls]="'transaction-menu-' + item.id"
+                          (click)="toggleMenu(item.id, $event)"
+                          (keydown.escape)="closeMenu(item.id)"
+                        >
+                          @if (item.canModify) {
+                            <svg lucideEllipsis [size]="18" aria-hidden="true"></svg>
+                          } @else {
+                            <svg lucideLock [size]="16" aria-hidden="true"></svg>
+                          }
+                        </button>
+
+                        @if (openMenuId() === item.id) {
+                          <div
+                            [id]="'transaction-menu-' + item.id"
+                            class="absolute right-2 top-[calc(100%-8px)] z-10 flex w-[240px] max-w-[calc(100vw-32px)] flex-col rounded-lg border border-ig-border bg-ig-surface p-1 shadow-[0_8px_24px_rgb(0_0_0/0.16)]"
+                            (keydown.escape)="closeMenu(item.id)"
+                            (click)="$event.stopPropagation()"
+                          >
+                            @if (item.canModify) {
+                              <a
+                                [attr.data-testid]="'edit-' + item.id"
+                                class="flex min-h-11 items-center gap-3 rounded-md px-3 text-[14px] text-ig-text no-underline hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:-outline-offset-2"
+                                [routerLink]="[item.id, 'edit']"
+                                queryParamsHandling="preserve"
+                              >
+                                <svg lucidePencil [size]="16" aria-hidden="true"></svg>
+                                {{ t('transactions.list.edit') }}
+                              </a>
+                              <button
+                                [attr.data-testid]="'delete-' + item.id"
+                                class="flex min-h-11 items-center gap-3 rounded-md border-0 bg-transparent px-3 text-left text-[14px] text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:-outline-offset-2"
+                                type="button"
+                                (click)="askDelete(item.id)"
+                              >
+                                <svg lucideTrash2 [size]="16" aria-hidden="true"></svg>
+                                {{ t('transactions.list.delete') }}
+                              </button>
+                            } @else {
+                              <p [attr.data-testid]="'locked-' + item.id" class="m-0 flex gap-3 px-3 py-2 text-[13px] leading-normal text-ig-muted">
+                                <svg lucideLock [size]="16" class="mt-0.5 shrink-0" aria-hidden="true"></svg>
+                                {{ t('transactions.list.locked') }}
+                              </p>
+                            }
+                          </div>
+                        }
+
+                        @if (pendingDeleteId() === item.id) {
+                          <app-transaction-delete-confirmation
+                            class="basis-full"
+                            [transaction]="item"
+                            [label]="deleteLabel(item)"
+                            (cancelled)="cancelDelete(item.id)"
+                            (blockedBy)="deleteError.set($event)"
+                          />
+                        }
                       </li>
                     }
                   </ul>

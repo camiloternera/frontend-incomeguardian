@@ -1,5 +1,5 @@
 import { CurrencyPipe, formatDate } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, HostListener, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
@@ -9,7 +9,11 @@ import {
   LucideArrowUpRight,
   LucideChevronLeft,
   LucideChevronRight,
+  LucideEllipsis,
+  LucideLock,
+  LucidePencil,
   LucidePlus,
+  LucideTrash2,
 } from '@lucide/angular';
 import { Subscription, catchError, of } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
@@ -47,6 +51,7 @@ import { moneyDigits } from '@shared/money/money-format';
 import { formatMoney } from '../../money-format';
 import { injectTransactionsTranslations } from '../../transactions-translations';
 import { TransactionWorkspace } from '../../transaction-workspace';
+import { TransactionDeleteConfirmationComponent } from '../../components/delete-confirmation/delete-confirmation.component';
 
 /** Texto ya resuelto para la fila de un movimiento. */
 interface TransactionRow {
@@ -102,10 +107,15 @@ function capitalized(text: string, locale: string): string {
     RouterOutlet,
     TranslocoDirective,
     PaginationComponent,
+    TransactionDeleteConfirmationComponent,
     ClosedMonthBadgeComponent,
     LucideArrowDownLeft,
     LucideArrowRightLeft,
     LucideArrowUpRight,
+    LucideEllipsis,
+    LucideLock,
+    LucidePencil,
+    LucideTrash2,
     LucideChevronLeft,
     LucideChevronRight,
     LucidePlus,
@@ -123,6 +133,7 @@ export class TransactionListPageComponent {
   private readonly transloco = inject(TranslocoService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   protected readonly pageSize = TRANSACTION_PAGE_SIZE;
   protected readonly theme = inject(ThemeService).theme;
@@ -130,6 +141,12 @@ export class TransactionListPageComponent {
   protected readonly moneyDigits = moneyDigits;
 
   protected readonly notice = this.workspace.notice;
+  /** Fila cuyo menú de acciones está desplegado. */
+  protected readonly openMenuId = signal<number | null>(null);
+  /** Movimiento cuya eliminación espera confirmación en su propia fila. */
+  protected readonly pendingDeleteId = signal<number | null>(null);
+  /** Por qué no se pudo eliminar un movimiento; sobrevive a la recarga del listado. */
+  protected readonly deleteError = signal('');
   /** Página cargada; `null` mientras se pide. */
   protected readonly result = signal<TransactionPage | null>(null);
   protected readonly loadError = signal('');
@@ -234,12 +251,18 @@ export class TransactionListPageComponent {
 
   /** Mensaje de confirmación del último movimiento registrado. */
   protected readonly noticeMessage = computed(() => {
-    const transaction = this.notice();
+    const notice = this.notice();
     this.lang();
 
-    if (!transaction) {
+    if (!notice) {
       return null;
     }
+
+    if (notice.kind !== 'created') {
+      return { key: `transactions.list.notice.${notice.kind}`, params: {} };
+    }
+
+    const transaction = notice.transaction;
 
     const row = this.toRow(transaction);
     const converted = row.destination !== null;
@@ -273,7 +296,11 @@ export class TransactionListPageComponent {
     });
 
     // Un movimiento nuevo cambia el resumen y aparece arriba: se vuelve a la primera página.
-    this.workspace.saved$.pipe(takeUntilDestroyed()).subscribe(() => this.reload());
+    // Registrar, editar o eliminar cambia el resumen y el orden: se vuelve a la primera página.
+    this.workspace.changed$.pipe(takeUntilDestroyed()).subscribe(() => {
+      this.pendingDeleteId.set(null);
+      this.reload();
+    });
   }
 
   protected previousMonth(): void {
@@ -291,7 +318,42 @@ export class TransactionListPageComponent {
   }
 
   protected goToPage(page: number): void {
+    this.closeActions();
     this.load(page);
+  }
+
+  protected toggleMenu(id: number, event: Event): void {
+    // Evita que el clic llegue al documento y cierre el menú en el mismo instante.
+    event.stopPropagation();
+    this.openMenuId.update((current) => (current === id ? null : id));
+  }
+
+  /** Cierra el menú con Escape y devuelve el foco al botón que lo abrió. */
+  protected closeMenu(id: number): void {
+    this.openMenuId.set(null);
+    this.host.nativeElement.querySelector<HTMLButtonElement>(`#transaction-menu-button-${id}`)?.focus();
+  }
+
+  /** Un clic fuera de un menú abierto lo cierra. */
+  @HostListener('document:click')
+  protected closeMenus(): void {
+    this.openMenuId.set(null);
+  }
+
+  protected askDelete(id: number): void {
+    this.openMenuId.set(null);
+    this.deleteError.set('');
+    this.pendingDeleteId.set(id);
+  }
+
+  protected cancelDelete(id: number): void {
+    this.pendingDeleteId.set(null);
+    this.host.nativeElement.querySelector<HTMLButtonElement>(`#transaction-menu-button-${id}`)?.focus();
+  }
+
+  /** Nombre del movimiento en la confirmación: su descripción o su tipo. */
+  protected deleteLabel(transaction: Transaction): string {
+    return transaction.description || this.transloco.translate(`transactions.types.${transaction.type}`);
   }
 
   protected retry(): void {
@@ -310,7 +372,13 @@ export class TransactionListPageComponent {
       : this.transloco.translate('transactions.list.day.countOther', { count });
   }
 
+  private closeActions(): void {
+    this.openMenuId.set(null);
+    this.pendingDeleteId.set(null);
+  }
+
   private reload(): void {
+    this.closeActions();
     this.load(1);
     this.loadTotals();
   }
