@@ -1,4 +1,4 @@
-import { CurrencyPipe, DatePipe, getCurrencySymbol } from '@angular/common';
+import { DatePipe, getCurrencySymbol } from '@angular/common';
 import {
   Component,
   DestroyRef,
@@ -66,6 +66,8 @@ import {
   toOffsetIso,
   toOpeningParts,
 } from '../../validators/opening-date';
+import { MoneyPipe } from '@shared/money/money.pipe';
+import { MoneyInputDirective } from '@shared/money/money-input.directive';
 
 /** Estado del panel: listo para editar, cargando, sin cuenta o con una cuenta desactivada. */
 type PanelStatus = 'ready' | 'loading' | 'notFound' | 'readOnly';
@@ -86,7 +88,8 @@ const LIST_URL = '/accounts';
 @Component({
   selector: 'app-account-panel',
   imports: [
-    CurrencyPipe,
+    MoneyInputDirective,
+    MoneyPipe,
     DatePipe,
     DatePickerComponent,
     ReactiveFormsModule,
@@ -159,7 +162,7 @@ export class AccountPanelComponent {
       kind: this.formBuilder.control<AccountKind>('standard'),
       currency: this.formBuilder.control<Currency>('COP', Validators.required),
       /** En una tarjeta es la deuda, escrita en positivo; se envía en negativo. */
-      initialBalance: ['0', balanceValidator],
+      initialBalance: ['', balanceValidator],
       /** Cupo opcional de la tarjeta; vacío si no se registra. */
       creditLimit: ['', (control: AbstractControl<string>) => (control.value.trim() ? balanceValidator(control) : null)],
       statementDay: this.formBuilder.control<number | null>(null),
@@ -296,9 +299,7 @@ export class AccountPanelComponent {
       return { key: 'accounts.form.balanceTooLarge', params: this.balanceParams };
     }
 
-    return control.hasError('balanceInvalid')
-      ? { key: 'accounts.form.balanceInvalid', params: this.balanceParams }
-      : { key: 'accounts.form.balanceRequired' };
+    return { key: 'accounts.form.balanceInvalid', params: this.balanceParams };
   }
 
   protected kindError(): FieldMessage | null {
@@ -465,7 +466,7 @@ export class AccountPanelComponent {
       name: '',
       kind: 'standard',
       currency: 'COP',
-      initialBalance: '0',
+      initialBalance: '',
       creditLimit: '',
       statementDay: null,
       paymentDay: null,

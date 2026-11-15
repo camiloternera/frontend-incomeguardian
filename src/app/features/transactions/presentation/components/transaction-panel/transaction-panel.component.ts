@@ -75,6 +75,7 @@ import {
   TransactionType,
   categoryAppliesTo,
   dayOf,
+  exceedsAvailable,
   isCardAdvanceRoute,
   isCrossCurrency,
   isTransactionCurrency,
@@ -101,6 +102,7 @@ import { injectTransactionsTranslations } from '../../transactions-translations'
 import { TransactionDeleteConfirmationComponent } from '../delete-confirmation/delete-confirmation.component';
 import { amountValidator, parseAmount } from '../../validators/amount.validator';
 import { transactionName } from '../../transaction-name';
+import { MoneyInputDirective } from '@shared/money/money-input.directive';
 
 /** Estado de una lista de opciones que se carga aparte del formulario. */
 type OptionsStatus = 'loading' | 'ready' | 'error';
@@ -159,6 +161,7 @@ const TYPE_ORDER: readonly TransactionType[] = ['expense', 'income', 'transfer']
 @Component({
   selector: 'app-transaction-panel',
   imports: [
+    MoneyInputDirective,
     DatePipe,
     ReactiveFormsModule,
     RouterLink,
@@ -479,6 +482,7 @@ export class TransactionPanelComponent {
     () =>
       !this.isSubmitting() &&
       !this.dateLocked() &&
+      !this.insufficientFunds() &&
       (!this.crossCurrency() || this.rateState().status === 'ready') &&
       (!this.installable() || this.interestRate() !== undefined),
   );
@@ -586,8 +590,38 @@ export class TransactionPanelComponent {
       name: account.name,
       before: formatMoney(account.availableCredit, account.currency, this.locale()),
       after: after === null ? null : formatMoney(after, account.currency, this.locale()),
-      over: after !== null && after < 0,
     };
+  });
+
+  /**
+   * Si el gasto o la transferencia supera el saldo de la cuenta origen (o el cupo, en una tarjeta):
+   * el disponible ya formateado y si es cupo; null si alcanza. Al editar desde la misma cuenta, lo
+   * que ya descontó el movimiento original vuelve a estar disponible.
+   */
+  protected readonly insufficientFunds = computed(() => {
+    const account = this.account();
+    const amount = this.amount();
+
+    if (this.type() === 'income' || !account || amount === null) {
+      return null;
+    }
+
+    const original = this.editing();
+    const sameAccount = original !== null && original.type !== 'income' && original.fromAccountId === account.id;
+    const refund = sameAccount ? original.amount + (original.isCardAdvance ? (original.advanceFee ?? 0) : 0) : 0;
+    const spend = amount + (this.advanceFee() ?? 0);
+
+    // Como el backend: al editar desde la misma cuenta no se bloquea si lo que sale no aumenta,
+    // aunque la cuenta ya esté sobregirada.
+    if (sameAccount && spend <= refund) {
+      return null;
+    }
+
+    const exceeded = exceedsAvailable(account, spend, refund);
+
+    return exceeded
+      ? { available: formatMoney(Math.max(0, exceeded.available), account.currency, this.locale()), credit: account.isCreditCard }
+      : null;
   });
 
   /** Filtros del listado que el panel conserva al cerrarse. */
@@ -820,7 +854,7 @@ export class TransactionPanelComponent {
     const control = this.form.controls.amount;
 
     if (!this.showsError(control)) {
-      return null;
+      return control.valid ? this.fundsMessage() : null;
     }
 
     if (control.hasError('amountTooLarge')) {
@@ -834,6 +868,15 @@ export class TransactionPanelComponent {
     return control.hasError('amountNotPositive')
       ? { key: 'transactions.form.amountPositive' }
       : { key: 'transactions.form.amountRequired' };
+  }
+
+  /** Error del monto cuando supera el saldo o el cupo; se muestra apenas se escribe. */
+  private fundsMessage(): FieldMessage | null {
+    const funds = this.insufficientFunds();
+
+    return funds
+      ? { key: `transactions.form.${funds.credit ? 'overCreditLimit' : 'insufficientFunds'}`, params: { available: funds.available } }
+      : null;
   }
 
   /** Error de la cuenta de un ingreso o gasto. */
@@ -1331,6 +1374,12 @@ export class TransactionPanelComponent {
       this.advanceFeeServerError.set(code);
     } else if (code && AMOUNT_ERROR_CODES.includes(code)) {
       this.amountServerError.set(code);
+
+      // El saldo que se mostraba pudo quedar viejo (otro dispositivo gastó): se recargan las cuentas
+      // para que, al cambiar el monto, la validación local use lo disponible real.
+      if (code === TransactionErrorCode.InsufficientFunds) {
+        this.loadAccounts();
+      }
     } else if (code && ACCOUNT_ERROR_CODES.includes(code)) {
       this.accountServerError.set(code);
       // La cuenta pudo cambiar (desactivada o borrada): se recargan las opciones.

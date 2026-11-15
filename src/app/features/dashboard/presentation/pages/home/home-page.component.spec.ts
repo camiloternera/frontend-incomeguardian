@@ -824,7 +824,7 @@ describe('HomePageComponent', () => {
         }),
       ]);
 
-      expect(rows(element)).toEqual(['Pago Estudio Norte | Freelance · Bancolombia | Income+ COP3,200,000']);
+      expect(rows(element)).toEqual(['Pago Estudio Norte | Freelance · Bancolombia | Income+ COP 3,200,000']);
     });
 
     it('signs an expense and shows the account it left', async () => {
@@ -832,7 +832,7 @@ describe('HomePageComponent', () => {
         recentMovement(TODAY, { description: 'Mercado', amount: 186_400, categoryName: 'Comida', fromAccountName: 'Nequi', toAccountName: 'Otra' }),
       ]);
 
-      expect(rows(element)).toEqual(['Mercado | Comida · Nequi | Expense− COP186,400']);
+      expect(rows(element)).toEqual(['Mercado | Comida · Nequi | Expense− COP 186,400']);
     });
 
     it('counts the installments of a purchase only when there are several', async () => {
@@ -873,7 +873,7 @@ describe('HomePageComponent', () => {
         recentMovement(TODAY, { kind: 'transfer', amount: 500_000, categoryName: null, fromAccountName: 'Bancolombia', toAccountName: 'Nequi' }),
       ]);
 
-      expect(rows(element)).toEqual(['Transfer | Bancolombia → Nequi | Transfer COP500,000']);
+      expect(rows(element)).toEqual(['Transfer | Bancolombia → Nequi | Transfer COP 500,000']);
       expect(element.querySelector('[data-testid="recent-destination"]')).toBeNull();
     });
 
@@ -892,7 +892,7 @@ describe('HomePageComponent', () => {
 
       // Símbolo «wide» de la moneda: en en-US el dólar es «$» y el peso «COP».
       expect(rows(element)[0]).toMatch(/\| Transfer \$400\.50 \|/);
-      expect(text(element, 'recent-destination')).toBe('COP1,600,000 received');
+      expect(text(element, 'recent-destination')).toBe('COP 1,600,000 received');
     });
 
     it('masks the movement amounts with the others', async () => {
@@ -955,8 +955,8 @@ describe('HomePageComponent', () => {
         recentMovement(TODAY, { id: 3, kind: 'transfer', categoryName: null, isCardAdvance: true, fromAccountName: 'Visa', toAccountName: 'Nequi' }),
       ]);
 
-      expect(rows(element)[0]).toBe('Card advance | Visa → Bancolombia · 6 installments | Transfer COP600,000');
-      expect(rows(element)[1]).toBe('Advance fee | Comisiones bancarias · Visa | Expense− COP15,000');
+      expect(rows(element)[0]).toBe('Card advance | Visa → Bancolombia · 6 installments | Transfer COP 600,000');
+      expect(rows(element)[1]).toBe('Advance fee | Comisiones bancarias · Visa | Expense− COP 15,000');
       // Un avance de una sola cuota no la menciona.
       expect(rows(element)[2]).toMatch(/^Card advance \| Visa → Nequi \|/);
       expect(rows(element)[2]).not.toContain('installments');

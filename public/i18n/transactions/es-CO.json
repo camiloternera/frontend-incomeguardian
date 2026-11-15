@@ -80,6 +80,8 @@
     "amountInvalid": "Escribe un número con hasta {{decimals}} decimales.",
     "amountTooLarge": "El monto puede tener hasta {{digits}} cifras enteras.",
     "amountPositive": "El monto debe ser mayor que cero.",
+    "insufficientFunds": "El monto supera el saldo de la cuenta. Tienes {{available}} disponible.",
+    "overCreditLimit": "El monto supera el cupo de la tarjeta. Tienes {{available}} de cupo disponible.",
     "accountLabel": {
       "income": "Entra a",
       "expense": "Sale de"
@@ -189,7 +191,6 @@
       "closedMonth": "Una cuota cae en {{month}}, que está cerrado. Reábrelo o cambia la fecha o las cuotas para guardar la compra.",
       "available": "Cupo disponible de {{name}}",
       "availableAfter": "Después de esta compra",
-      "overLimit": "Con esta compra pasas el cupo. Puedes guardarla igual.",
       "submit": "Guardar gasto a {{count}} cuotas"
     },
     "pay": {
@@ -223,13 +224,13 @@
       "feeExpense": "La comisión y los intereses cuentan como gasto en Comisiones bancarias; el avance no.",
       "closedMonth": "Una cuota cae en {{month}}, que está cerrado. Reábrelo o cambia la fecha o las cuotas para guardar el avance.",
       "availableAfter": "Después de este avance",
-      "overLimit": "Con este avance pasas el cupo. Puedes guardarlo igual.",
       "submit": "Guardar avance",
       "submitInstallments": "Guardar avance a {{count}} cuotas"
     }
   },
   "errors": {
     "TRANSACTION_AMOUNT_INVALID": "El monto debe ser mayor que cero y tener hasta 2 decimales.",
+    "TRANSACTION_INSUFFICIENT_FUNDS": "El monto supera el saldo disponible de la cuenta o el cupo de la tarjeta.",
     "TRANSACTION_TYPE_INVALID": "Ese tipo de movimiento no existe.",
     "TRANSACTION_ACCOUNT_REQUIRED": "Elige la cuenta del movimiento.",
     "TRANSACTION_ACCOUNTS_MUST_DIFFER": "La cuenta de destino debe ser distinta de la de origen.",

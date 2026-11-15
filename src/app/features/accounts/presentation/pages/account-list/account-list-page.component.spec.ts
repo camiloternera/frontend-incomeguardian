@@ -310,10 +310,10 @@ describe('AccountListPageComponent', () => {
       expect(meta).toContain('Due 5 Dec');
       expect(visa.querySelector('[data-testid="row-card-debt"]')?.textContent).toContain('You owe');
       // La deuda se muestra en positivo.
-      expect(visa.querySelector('[data-testid="row-balance"]')?.textContent?.trim()).toBe('COP500,000');
+      expect(visa.querySelector('[data-testid="row-balance"]')?.textContent?.trim()).toBe('COP\u00A0500,000');
       expect(visa.querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('Credit used: 25%');
       expect(visa.querySelector('[data-testid="row-card-available"]')?.textContent).toContain(
-        'COP1,500,000 available of COP2,000,000',
+        'COP\u00A01,500,000 available of COP\u00A02,000,000',
       );
       expect(visa.querySelector('[data-testid="row-card-over"]')).toBeNull();
     });
@@ -323,7 +323,7 @@ describe('AccountListPageComponent', () => {
       const { element } = await open();
       const visa = row(element, 30);
 
-      expect(visa.querySelector('[data-testid="row-card-over"]')?.textContent).toContain('Over the limit by COP300,000');
+      expect(visa.querySelector('[data-testid="row-card-over"]')?.textContent).toContain('Over the limit by COP\u00A0300,000');
       expect(visa.querySelector('[data-testid="row-card-available"]')).toBeNull();
       expect(visa.querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('Credit used: 100%');
     });
@@ -334,7 +334,7 @@ describe('AccountListPageComponent', () => {
       const visa = row(element, 30);
 
       expect(visa.querySelector('[data-testid="row-card-debt"]')?.textContent).toContain('Credit balance');
-      expect(visa.querySelector('[data-testid="row-balance"]')?.textContent?.trim()).toBe('COP12,000');
+      expect(visa.querySelector('[data-testid="row-balance"]')?.textContent?.trim()).toBe('COP\u00A012,000');
     });
 
     it('says when the card has no credit limit', async () => {

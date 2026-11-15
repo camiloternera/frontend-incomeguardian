@@ -3,6 +3,7 @@ import {
   categoryAppliesTo,
   compareMonths,
   dayOf,
+  exceedsAvailable,
   groupByDay,
   monthRange,
   parseMonth,
@@ -27,6 +28,52 @@ describe('previewDestinationAmount', () => {
 
   it('multiplica por la TRM de USD a COP', () => {
     expect(previewDestinationAmount(100.5, 'USD', 'COP', 4123.45)).toBe(414406.73);
+  });
+});
+
+describe('exceedsAvailable', () => {
+  const bank = { isCreditCard: false, currentBalance: 85_000, availableCredit: null };
+  const card = { isCreditCard: true, currentBalance: -300_000, availableCredit: 1_700_000 };
+
+  it('compara con el saldo en una cuenta normal', () => {
+    expect(exceedsAvailable(bank, 100_000)).toEqual({ available: 85_000 });
+    expect(exceedsAvailable(bank, 50_000)).toBeNull();
+  });
+
+  it('permite gastar exactamente lo disponible', () => {
+    expect(exceedsAvailable(bank, 85_000)).toBeNull();
+    expect(exceedsAvailable(card, 1_700_000)).toBeNull();
+  });
+
+  it('compara con el cupo disponible en una tarjeta, no con su saldo', () => {
+    expect(exceedsAvailable(card, 1_700_001)).toEqual({ available: 1_700_000 });
+    // El saldo negativo (deuda) no cuenta: lo que manda es el cupo.
+    expect(exceedsAvailable(card, 500_000)).toBeNull();
+  });
+
+  it('no valida cuando no se conoce el saldo o el cupo', () => {
+    expect(exceedsAvailable({ ...bank, currentBalance: null }, 1_000_000_000)).toBeNull();
+    expect(exceedsAvailable({ ...card, availableCredit: null }, 1_000_000_000)).toBeNull();
+    // Una tarjeta sin cupo no usa su saldo como respaldo.
+    expect(exceedsAvailable({ ...card, currentBalance: 5_000_000, availableCredit: null }, 1_000_000_000)).toBeNull();
+  });
+
+  it('suma lo que ya descontó el movimiento original al editar', () => {
+    expect(exceedsAvailable(bank, 100_000, 15_000)).toBeNull();
+    expect(exceedsAvailable(bank, 100_001, 15_000)).toEqual({ available: 100_000 });
+    expect(exceedsAvailable(card, 1_750_000, 50_000)).toBeNull();
+  });
+
+  it('informa lo disponible aunque el saldo ya sea negativo', () => {
+    expect(exceedsAvailable({ ...bank, currentBalance: -20_000 }, 1)).toEqual({ available: -20_000 });
+  });
+
+  it('no falla por el redondeo de los decimales', () => {
+    // 0.1 + 0.2 da 0.30000000000000004 en punto flotante.
+    expect(exceedsAvailable({ ...bank, currentBalance: 0.1 }, 0.3, 0.2)).toBeNull();
+    expect(exceedsAvailable({ ...bank, currentBalance: 320.5 }, 320.5)).toBeNull();
+    expect(exceedsAvailable({ ...bank, currentBalance: 320.5 }, 320.51)).toEqual({ available: 320.5 });
+    expect(exceedsAvailable({ ...bank, currentBalance: 10.335 }, 10.3349999)).toBeNull();
   });
 });
 

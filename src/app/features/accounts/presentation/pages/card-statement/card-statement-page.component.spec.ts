@@ -177,7 +177,7 @@ describe('CardStatementPageComponent', () => {
     );
 
     expect(split).toContain('Transfer from Bancolombia');
-    expect(split).toContain('(from a COP300,000 payment)');
+    expect(split).toContain('(from a COP\u00A0300,000 payment)');
     expect(split).toContain('100,000');
     expect(whole).toContain('Transfer from Nequi');
     expect(whole).not.toContain('from a');
@@ -225,7 +225,7 @@ describe('CardStatementPageComponent', () => {
     const { element } = await open('/accounts/9/statement?month=2026-10');
     const pay = byTestId(element, 'statement-pay')!;
 
-    expect(pay.textContent).toContain('Pay COP151,500');
+    expect(pay.textContent).toContain('Pay COP\u00A0151,500');
     const url = new URL(pay.getAttribute('href')!, 'http://localhost');
     expect(url.pathname).toBe('/transactions/new/transfer');
     expect(url.searchParams.get('payCard')).toBe('9');
