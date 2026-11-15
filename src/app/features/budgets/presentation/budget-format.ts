@@ -1,5 +1,5 @@
-import { formatCurrency, formatDate, getCurrencySymbol } from '@angular/common';
-import { moneyDigits } from '@shared/money/money-format';
+import { formatDate, getCurrencySymbol } from '@angular/common';
+import { formatMoney as formatSharedMoney } from '@shared/money/money-format';
 import { BudgetMonth, formatMonthKey } from '../domain/budget';
 
 /** Símbolo de la moneda como lo muestra el `CurrencyPipe` (por ejemplo `US$` en es-CO). */
@@ -9,12 +9,7 @@ export function currencySymbol(currency: string, locale: string): string {
 
 /** Monto con su moneda: sin decimales en COP salvo que los tenga, con dos en USD. */
 export function formatMoney(amount: number, currency: string, locale: string): string {
-  return formatCurrency(amount, locale, currencySymbol(currency, locale), currency, moneyDigits(currency, amount));
-}
-
-/** Monto sin símbolo para el campo editable: «850.000» / «850,000». */
-export function formatAmountInput(amount: number, locale: string): string {
-  return new Intl.NumberFormat(locale, { maximumFractionDigits: 2, useGrouping: true }).format(amount);
+  return formatSharedMoney(amount, currency, locale);
 }
 
 /** Solo la primera letra en mayúscula. */

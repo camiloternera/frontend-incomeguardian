@@ -47,9 +47,10 @@ import {
   CATEGORY_ERROR_CODES,
   CURRENCY_ERROR_CODES,
 } from '../../../domain/budget-error';
-import { capitalized, currencySymbol, formatAmountInput, formatMoney, monthInSentence } from '../../budget-format';
+import { capitalized, currencySymbol, formatMoney, monthInSentence } from '../../budget-format';
 import { BudgetWorkspace, rowKey } from '../../budget-workspace';
 import { BudgetMonthDetailComponent } from '../budget-month-detail/budget-month-detail.component';
+import { MoneyInputDirective } from '@shared/money/money-input.directive';
 
 /** Estado del panel: cargando el resumen, listo, sin esa fila o de solo lectura. */
 type PanelStatus = 'loading' | 'ready' | 'notFound' | 'readOnly';
@@ -100,6 +101,7 @@ function budgetAmountValidator(control: AbstractControl<string>): ValidationErro
 @Component({
   selector: 'app-budget-panel',
   imports: [
+    MoneyInputDirective,
     ReactiveFormsModule,
     RouterLink,
     TranslocoDirective,
@@ -460,7 +462,7 @@ export class BudgetPanelComponent {
     this.form.reset({
       categoryId: row.categoryId,
       currency: isBudgetCurrency(row.currency) ? row.currency : 'COP',
-      amount: row.source === 'none' ? '' : formatAmountInput(row.budgetAmount, this.locale()),
+      amount: row.source === 'none' ? '' : String(row.budgetAmount),
       scope: row.source === 'month' ? 'month' : 'recurring',
     });
   }

@@ -1,4 +1,4 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { Component, ElementRef, HostListener, computed, inject, signal } from '@angular/core';
 import { RouterLink, RouterOutlet } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
@@ -30,6 +30,7 @@ import {
 import { AccountError } from '../../../domain/account-error';
 import { AccountWorkspace } from '../../account-workspace';
 import { moneyDigits as balanceDigits } from '@shared/money/money-format';
+import { MoneyPipe } from '@shared/money/money.pipe';
 
 /** Pestañas del listado: las cuentas en uso o las que ya se desactivaron. */
 export type AccountTab = 'active' | 'inactive';
@@ -42,7 +43,7 @@ export const ACCOUNT_PAGE_SIZE = 5;
 @Component({
   selector: 'app-account-list-page',
   imports: [
-    CurrencyPipe,
+    MoneyPipe,
     DatePipe,
     RouterLink,
     RouterOutlet,

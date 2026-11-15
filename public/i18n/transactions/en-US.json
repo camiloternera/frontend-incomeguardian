@@ -80,6 +80,8 @@
     "amountInvalid": "Enter a number with up to {{decimals}} decimals.",
     "amountTooLarge": "The amount can have up to {{digits}} whole digits.",
     "amountPositive": "The amount must be greater than zero.",
+    "insufficientFunds": "The amount is more than the account balance. You have {{available}} available.",
+    "overCreditLimit": "The amount is more than the card limit. You have {{available}} of credit available.",
     "accountLabel": {
       "income": "Goes into",
       "expense": "Comes out of"
@@ -189,7 +191,6 @@
       "closedMonth": "An installment falls in {{month}}, which is closed. Reopen it, or change the date or the installments to save the purchase.",
       "available": "Available credit on {{name}}",
       "availableAfter": "After this purchase",
-      "overLimit": "This purchase takes you over the limit. You can still save it.",
       "submit": "Save expense in {{count}} installments"
     },
     "pay": {
@@ -223,13 +224,13 @@
       "feeExpense": "The fee and the interest count as spending in Bank fees; the advance does not.",
       "closedMonth": "An installment falls in {{month}}, which is closed. Reopen it or change the date or installments to save the advance.",
       "availableAfter": "After this advance",
-      "overLimit": "This advance takes you over the limit. You can still save it.",
       "submit": "Save advance",
       "submitInstallments": "Save advance in {{count}} installments"
     }
   },
   "errors": {
     "TRANSACTION_AMOUNT_INVALID": "The amount must be greater than zero with up to 2 decimals.",
+    "TRANSACTION_INSUFFICIENT_FUNDS": "The amount is more than the account balance or the card’s available credit.",
     "TRANSACTION_TYPE_INVALID": "That transaction type does not exist.",
     "TRANSACTION_ACCOUNT_REQUIRED": "Pick the account for the transaction.",
     "TRANSACTION_ACCOUNTS_MUST_DIFFER": "The destination account must differ from the source.",

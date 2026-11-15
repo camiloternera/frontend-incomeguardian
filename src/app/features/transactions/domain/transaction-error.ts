@@ -35,6 +35,8 @@ export const TransactionErrorCode = {
   AdvanceFeeInvalid: 'TRANSACTION_ADVANCE_FEE_INVALID',
   /** La comisión de un avance se edita o elimina desde su avance. */
   ManagedByParent: 'TRANSACTION_MANAGED_BY_PARENT',
+  /** El monto (más la comisión, en un avance) supera el saldo de la cuenta origen o el cupo de la tarjeta. */
+  InsufficientFunds: 'TRANSACTION_INSUFFICIENT_FUNDS',
 } as const;
 
 export type TransactionErrorCode = (typeof TransactionErrorCode)[keyof typeof TransactionErrorCode];
@@ -47,7 +49,10 @@ export function isTransactionErrorCode(code: string | undefined): code is Transa
 }
 
 /** Códigos que pertenecen a un campo del formulario, para mostrarlos junto a él. */
-export const AMOUNT_ERROR_CODES: readonly TransactionErrorCode[] = [TransactionErrorCode.AmountInvalid];
+export const AMOUNT_ERROR_CODES: readonly TransactionErrorCode[] = [
+  TransactionErrorCode.AmountInvalid,
+  TransactionErrorCode.InsufficientFunds,
+];
 
 export const ACCOUNT_ERROR_CODES: readonly TransactionErrorCode[] = [
   TransactionErrorCode.AccountRequired,

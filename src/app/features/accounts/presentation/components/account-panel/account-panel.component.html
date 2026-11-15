@@ -96,9 +96,8 @@
               <dd class="m-0 text-right font-bold tabular-nums">
                 {{
                   shownBalance
-                    | currency
+                    | money
                       : current.currency
-                      : 'symbol'
                       : balanceDigits(current.currency, shownBalance)
                       : locale()
                 }}
@@ -260,12 +259,16 @@
               >{{ currencySymbol() }}</span
             >
             <input
-              class="min-h-11 w-full min-w-0 flex-1 border-0 bg-transparent px-2 text-[16px] tabular-nums text-ig-text outline-none lg:text-[14px]"
+              class="min-h-11 w-full min-w-0 flex-1 border-0 bg-transparent px-2 text-[16px] tabular-nums text-ig-text outline-none placeholder:text-ig-muted lg:text-[14px]"
               id="account-balance"
               data-testid="account-balance"
               formControlName="initialBalance"
+              appMoneyInput
+              [maxDecimals]="balanceParams.decimals"
+              [allowNegative]="!isCard()"
               type="text"
               inputmode="decimal"
+              placeholder="0"
               autocomplete="off"
               [attr.aria-invalid]="balanceError() !== null"
               [attr.aria-describedby]="
@@ -309,6 +312,8 @@
                   id="account-credit-limit"
                   data-testid="account-credit-limit"
                   formControlName="creditLimit"
+                  appMoneyInput
+                  [maxDecimals]="balanceParams.decimals"
                   type="text"
                   inputmode="decimal"
                   autocomplete="off"

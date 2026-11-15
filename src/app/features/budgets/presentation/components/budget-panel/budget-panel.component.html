@@ -134,6 +134,7 @@
               inputmode="decimal"
               autocomplete="off"
               formControlName="amount"
+              appMoneyInput
               placeholder="0"
               [attr.aria-invalid]="amountError() !== null"
               [attr.aria-describedby]="amountError() ? 'budget-amount-error' : spentNote() ? 'budget-spent-note' : null"

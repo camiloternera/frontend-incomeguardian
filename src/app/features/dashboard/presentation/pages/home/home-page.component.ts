@@ -1,10 +1,11 @@
-import { formatCurrency, formatDate, formatNumber, formatPercent, getCurrencySymbol } from '@angular/common';
+import { formatCurrency, formatDate, formatNumber, formatPercent } from '@angular/common';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { SelectComponent, SelectOption } from '@shared/ui/select/select.component';
+import { formatMoney } from '@shared/money/money-format';
 import { LucideArrowDownLeft, LucideArrowLeftRight, LucideArrowUpRight, LucideEye, LucideEyeOff, LucidePlus, LucideShield } from '@lucide/angular';
 import { LanguageService } from '@core/i18n/language.service';
 import {
@@ -386,7 +387,7 @@ export class HomePageComponent {
 
     const hasCents = currency !== 'COP' && !Number.isInteger(value);
 
-    return formatCurrency(value, this.locale(), getCurrencySymbol(currency, 'wide', this.locale()), currency, hasCents ? '1.2-2' : '1.0-0');
+    return formatMoney(value, currency, this.locale(), hasCents ? '1.2-2' : '1.0-0');
   }
 
   /** Porcentaje con hasta un decimal en el idioma activo. */
