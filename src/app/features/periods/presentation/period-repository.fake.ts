@@ -28,6 +28,7 @@ export function periodMonth(month: number, status: PeriodMonthStatus, overrides:
     autoCloseOn: null,
     canClose: status === 'pending',
     canReopen: status === 'closed',
+    closesFrom: status === 'pending' ? `2026-${String(month).padStart(2, '0')}` : null,
     ...overrides,
   };
 }

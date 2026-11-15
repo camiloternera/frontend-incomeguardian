@@ -65,6 +65,7 @@ function toMonth(dto: PeriodMonthDto): PeriodMonth {
     autoCloseOn: dto.autoCloseOn,
     canClose: dto.canClose,
     canReopen: dto.canReopen,
+    closesFrom: dto.closesFrom ?? null,
   };
 }
 
@@ -114,7 +115,7 @@ function toYearReview(dto: YearReviewDto): PeriodReview {
 }
 
 function toPending(dto: PendingPeriodDto | null): PendingPeriod | null {
-  return dto ? { ...dto } : null;
+  return dto ? { ...dto, closesFrom: dto.closesFrom ?? null } : null;
 }
 
 function toLog(dto: PeriodLogDto): PeriodLog {

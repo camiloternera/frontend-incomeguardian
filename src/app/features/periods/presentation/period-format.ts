@@ -9,6 +9,13 @@ export function monthName(month: number, locale: string, short = false): string 
   return new Intl.DateTimeFormat(locale, { month: short ? 'short' : 'long', timeZone: 'UTC' }).format(date);
 }
 
+/** Mes y año en el idioma activo: «marzo de 2025» / «March 2025». */
+export function monthYear(year: number, month: number, locale: string): string {
+  const date = new Date(Date.UTC(year, month - 1, 15));
+
+  return new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(date);
+}
+
 /** Solo la primera letra en mayúscula. */
 export function capitalized(text: string, locale: string): string {
   return text.charAt(0).toLocaleUpperCase(locale) + text.slice(1);

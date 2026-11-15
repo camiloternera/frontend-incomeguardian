@@ -6,7 +6,7 @@ import { FakePeriodRepository, provideFakePeriods } from '../../period-repositor
 import { PeriodWorkspace } from '../../period-workspace';
 import { PeriodBannerComponent } from './period-banner.component';
 
-const OCTOBER: PendingPeriod = { year: 2026, month: 10, endedOn: '2026-10-31', autoCloseOn: '2026-11-05', canClose: true };
+const OCTOBER: PendingPeriod = { year: 2026, month: 10, endedOn: '2026-10-31', autoCloseOn: '2026-11-05', canClose: true, closesFrom: '2026-10' };
 
 describe('PeriodBannerComponent', () => {
   let fake: FakePeriodRepository;

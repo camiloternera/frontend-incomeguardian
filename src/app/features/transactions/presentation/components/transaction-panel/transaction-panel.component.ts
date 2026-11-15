@@ -39,7 +39,7 @@ import {
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { LanguageService } from '@core/i18n/language.service';
 import { dayPattern, shortDayPattern } from '@shared/dates/date-patterns';
-import { LockedDateNoteComponent, PeriodOverlaysComponent, ReopenPeriodButtonComponent } from '@features/periods';
+import { EarlyDateNoteComponent, LockedDateNoteComponent, ReopenPeriodButtonComponent } from '@features/periods';
 import { DatePickerComponent } from '@shared/ui/date-picker/date-picker.component';
 import { SelectComponent, SelectOption } from '@shared/ui/select/select.component';
 import {
@@ -172,7 +172,7 @@ const TYPE_ORDER: readonly TransactionType[] = ['expense', 'income', 'transfer']
     DatePickerComponent,
     LockedDateNoteComponent,
     TransactionDeleteConfirmationComponent,
-    PeriodOverlaysComponent,
+    EarlyDateNoteComponent,
     ReopenPeriodButtonComponent,
   ],
   templateUrl: './transaction-panel.component.html',
@@ -193,6 +193,7 @@ export class TransactionPanelComponent {
   private readonly translations = injectTransactionsTranslations();
   private readonly heading = viewChild<ElementRef<HTMLElement>>('heading');
   private readonly lockedNote = viewChild(LockedDateNoteComponent);
+  private readonly earlyNote = viewChild(EarlyDateNoteComponent);
 
   protected readonly listUrl = LIST_URL;
   protected readonly typeOrder = TYPE_ORDER;
@@ -1068,6 +1069,8 @@ export class TransactionPanelComponent {
           this.workspace.saved(transaction);
         }
 
+        // Si la fecha era anterior a la primera cuenta, se abrieron meses: se ofrece cerrarlos.
+        this.earlyNote()?.announce();
         this.close();
       },
       error: (error: unknown) => this.handleSubmitError(error),

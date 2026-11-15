@@ -13,6 +13,7 @@ export {
   LockedDateNoteComponent,
   type LockedDateKind,
 } from './presentation/components/locked-date-note/locked-date-note.component';
+export { EarlyDateNoteComponent } from './presentation/components/early-date-note/early-date-note.component';
 export { ReopenPeriodButtonComponent } from './presentation/components/reopen-period-button/reopen-period-button.component';
 export { injectPeriodChanges } from './presentation/period-changes';
 export { PeriodSettingsComponent } from './presentation/components/period-settings/period-settings.component';

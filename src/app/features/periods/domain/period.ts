@@ -38,6 +38,11 @@ export interface PeriodMonth {
   autoCloseOn: string | null;
   canClose: boolean;
   canReopen: boolean;
+  /**
+   * Primer mes (`yyyy-MM`) que se cierra junto con este: los anteriores abiertos se cierran antes, en
+   * orden. Es el propio mes si no hay anteriores pendientes, y null cuando no se puede cerrar.
+   */
+  closesFrom: string | null;
 }
 
 export interface PeriodYear {
@@ -95,6 +100,8 @@ export interface PendingPeriod {
   endedOn: string;
   autoCloseOn: string | null;
   canClose: boolean;
+  /** Igual que en `PeriodMonth`: primer mes (`yyyy-MM`) que se cierra junto con este. */
+  closesFrom: string | null;
 }
 
 /** Un cierre o una reapertura registrados en el historial. */
@@ -138,6 +145,43 @@ export function yearMonthOf(date: string): { year: number; month: number } | nul
   const match = /^(\d{4})-(\d{2})/.exec(date);
 
   return match ? { year: Number(match[1]), month: Number(match[2]) } : null;
+}
+
+/**
+ * Mes desde el que el cierre de `period` arrastra a los anteriores abiertos, o null si solo se
+ * cierra ese mes (o si no se puede cerrar).
+ */
+export function cascadeStart(period: { year: number; month: number }, closesFrom: string | null): { year: number; month: number } | null {
+  const from = closesFrom ? yearMonthOf(closesFrom) : null;
+
+  return from && (from.year !== period.year || from.month !== period.month) ? from : null;
+}
+
+/** Rango de meses, ambos incluidos. */
+export interface MonthRange {
+  from: { year: number; month: number };
+  to: { year: number; month: number };
+}
+
+/** Cuántos meses hay de `from` a `to`, ambos incluidos. */
+export function monthsBetween(from: { year: number; month: number }, to: { year: number; month: number }): number {
+  return to.year * 12 + to.month - (from.year * 12 + from.month) + 1;
+}
+
+/**
+ * Meses que se abren al registrar un movimiento en `target` cuando cae antes de la primera cuenta
+ * (`firstActivity`, `yyyy-MM`): de `target` al mes anterior a `firstActivity`. Null si no cae antes.
+ */
+export function openedRange(target: { year: number; month: number }, firstActivity: string | null): MonthRange | null {
+  const first = firstActivity ? yearMonthOf(firstActivity) : null;
+
+  if (!first || target.year * 12 + target.month >= first.year * 12 + first.month) {
+    return null;
+  }
+
+  const to = first.month === 1 ? { year: first.year - 1, month: 12 } : { year: first.year, month: first.month - 1 };
+
+  return { from: { year: target.year, month: target.month }, to };
 }
 
 /** Días completos entre dos fechas `yyyy-MM-dd`. */

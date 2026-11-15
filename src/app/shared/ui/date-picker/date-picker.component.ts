@@ -373,6 +373,19 @@ export class DatePickerComponent implements ControlValueAccessor {
       return;
     }
 
+    // Sin destino, el foco puede perderse porque el botón enfocado salió del DOM (al elegir un mes,
+    // la vista cambia a días). Se espera al render, que enfoca el día activo, y solo se cierra si el
+    // foco de verdad quedó fuera del calendario.
+    if (!next) {
+      setTimeout(() => {
+        if (!this.host.nativeElement.contains(document.activeElement)) {
+          this.onTouched();
+          this.close(false);
+        }
+      });
+      return;
+    }
+
     this.onTouched();
     this.close(false);
   }

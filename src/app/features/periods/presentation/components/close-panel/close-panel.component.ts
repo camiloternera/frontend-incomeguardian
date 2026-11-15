@@ -6,9 +6,9 @@ import { Subscription, finalize } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { LanguageService } from '@core/i18n/language.service';
 import { ReviewPeriodUseCase } from '../../../application/period-use-cases';
-import { PeriodRef, PeriodReview, lastDayOf, openMonths } from '../../../domain/period';
+import { PeriodRef, PeriodReview, cascadeStart, lastDayOf, openMonths } from '../../../domain/period';
 import { PeriodError } from '../../../domain/period-error';
-import { capitalized, formatAmount, formatRate, monthName, monthShort } from '../../period-format';
+import { capitalized, formatAmount, formatRate, monthName, monthShort, monthYear } from '../../period-format';
 import { PERIOD_UI } from '../../period-ui';
 import { PeriodWorkspace } from '../../period-workspace';
 
@@ -48,6 +48,8 @@ export class ClosePanelComponent {
   protected readonly submitError = signal('');
   /** Período que se acaba de cerrar; reemplaza la revisión por la confirmación. */
   protected readonly done = signal<PeriodRef | null>(null);
+  /** Desde qué mes se cerró en cascada el último cierre (texto ya formateado), o null. */
+  protected readonly doneFrom = signal<string | null>(null);
 
   protected readonly review = computed(() => {
     const state = this.state();
@@ -60,6 +62,23 @@ export class ClosePanelComponent {
     const year = this.review()?.yearState;
 
     return year ? openMonths(year) : [];
+  });
+
+  /**
+   * Primer mes anterior abierto que el cierre del mes arrastra, ya formateado («marzo de 2025»), o
+   * null si solo se cierra el mes revisado.
+   */
+  protected readonly cascadeFrom = computed(() => {
+    const review = this.review();
+    const state = review?.monthState;
+
+    if (!review || !state) {
+      return null;
+    }
+
+    const from = cascadeStart({ year: review.year, month: state.month }, state.closesFrom);
+
+    return from ? monthYear(from.year, from.month, this.locale()) : null;
   });
 
   private request: Subscription | null = null;
@@ -120,6 +139,8 @@ export class ClosePanelComponent {
       return;
     }
 
+    const cascadeFrom = this.cascadeFrom();
+
     this.isSubmitting.set(true);
     this.submitError.set('');
     this.workspace
@@ -127,6 +148,7 @@ export class ClosePanelComponent {
       .pipe(finalize(() => this.isSubmitting.set(false)))
       .subscribe({
         next: () => {
+          this.doneFrom.set(cascadeFrom);
           this.done.set(period);
           queueMicrotask(() => this.heading()?.nativeElement.focus());
         },
@@ -177,6 +199,7 @@ export class ClosePanelComponent {
 
   private open(period: PeriodRef, dialog: HTMLDialogElement): void {
     this.done.set(null);
+    this.doneFrom.set(null);
     this.submitError.set('');
     this.load(period);
 

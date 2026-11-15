@@ -3,7 +3,7 @@ import { provideRouter } from '@angular/router';
 import { translocoTesting } from '@core/i18n/i18n.testing';
 import { LanguageService } from '@core/i18n/language.service';
 import { PeriodError } from '../../../domain/period-error';
-import { FakePeriodRepository, provideFakePeriods } from '../../period-repository.fake';
+import { FakePeriodRepository, periodMonth, provideFakePeriods } from '../../period-repository.fake';
 import { PeriodWorkspace } from '../../period-workspace';
 import { ClosePanelComponent } from './close-panel.component';
 
@@ -105,6 +105,73 @@ describe('ClosePanelComponent', () => {
     expect(fake.count('review 2026-10')).toBe(2);
   });
 
+  it('does not mention a cascade when only the reviewed month closes', () => {
+    const view = open(2026, 10);
+
+    expect(view.query('close-panel-cascade')).toBeNull();
+  });
+
+  it('warns that the open months before it close first, in order', () => {
+    fake.years[2026].months[9] = periodMonth(10, 'pending', { closesFrom: '2026-08' });
+    const view = open(2026, 10);
+
+    expect(view.query('close-panel-cascade')?.textContent).toContain(
+      'The months still open since August 2026 close first, in order.',
+    );
+  });
+
+  it('warns about a cascade that starts in the previous year', () => {
+    fake.years[2026].months[0] = periodMonth(1, 'pending', { closesFrom: '2025-10' });
+    const view = open(2026, 1);
+
+    expect(view.query('close-panel-cascade')?.textContent).toContain('since October 2025');
+  });
+
+  it('confirms a cascade close without offering to undo it', () => {
+    fake.years[2026].months[9] = periodMonth(10, 'pending', { closesFrom: '2026-08' });
+    const view = open(2026, 10);
+
+    view.click('close-panel-confirm');
+
+    expect(fake.calls).toContain('close 2026-10');
+    expect(view.query('close-panel-done')?.textContent).toContain('October is closed');
+    expect(view.query('close-panel-done')?.textContent).toContain(
+      'The open months since August 2026 were closed too. If you need to fix one, reopen it from the month selector.',
+    );
+    // Deshacer solo reabriría octubre, no los meses cerrados en cascada.
+    expect(view.query('close-panel-undo')).toBeNull();
+    expect(view.query('close-panel-back')).not.toBeNull();
+  });
+
+  it('forgets the cascade of the last close when the panel opens again', () => {
+    fake.years[2026].months[9] = periodMonth(10, 'pending', { closesFrom: '2026-08' });
+    const view = open(2026, 10);
+    view.click('close-panel-confirm');
+    view.click('close-panel-back');
+
+    fake.years[2026].months[10] = periodMonth(11, 'pending');
+    workspace().openClose({ year: 2026, month: 11 });
+    view.fixture.detectChanges();
+    view.click('close-panel-confirm');
+
+    expect(view.query('close-panel-done')?.textContent).toContain('Its numbers won\'t change.');
+    expect(view.query('close-panel-undo')).not.toBeNull();
+  });
+
+  it('writes the cascade in Spanish', () => {
+    TestBed.inject(LanguageService).setLanguage('es-CO');
+    fake.years[2026].months[9] = periodMonth(10, 'pending', { closesFrom: '2026-08' });
+    const view = open(2026, 10);
+
+    expect(view.query('close-panel-cascade')?.textContent).toContain(
+      'Antes se cierran, en orden, los meses que siguen abiertos desde agosto de 2026.',
+    );
+
+    view.click('close-panel-confirm');
+
+    expect(view.query('close-panel-done')?.textContent).toContain('También se cerraron los meses abiertos desde agosto de 2026.');
+  });
+
   it('reviews the whole year and says which months it will close too', () => {
     const view = open(2026, null);
 
@@ -121,11 +188,11 @@ describe('ClosePanelComponent', () => {
 
   it('keeps the review and shows the error when closing fails', () => {
     const view = open(2026, 10);
-    fake.failWith = new PeriodError('Close the previous months first: they close in order.');
+    fake.failWith = new PeriodError('This period was already closed.');
 
     view.click('close-panel-confirm');
 
-    expect(view.query('close-panel-submit-error')?.textContent).toContain('Close the previous months first');
+    expect(view.query('close-panel-submit-error')?.textContent).toContain('This period was already closed.');
     expect(view.query('close-panel-done')).toBeNull();
     expect(view.query('close-panel-confirm')?.disabled).toBe(false);
   });

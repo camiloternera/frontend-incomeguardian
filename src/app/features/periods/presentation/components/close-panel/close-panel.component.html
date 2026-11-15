@@ -42,18 +42,25 @@
             }
           </p>
           <p class="m-0 max-w-[360px] text-[14px] leading-relaxed text-ig-muted">
-            {{ t(closed.month === null ? 'periods.panel.yearDoneBody' : 'periods.panel.monthDoneBody') }}
+            @if (doneFrom(); as from) {
+              {{ t('periods.panel.cascadeDoneBody', { from }) }}
+            } @else {
+              {{ t(closed.month === null ? 'periods.panel.yearDoneBody' : 'periods.panel.monthDoneBody') }}
+            }
           </p>
           @if (submitError()) {
             <p class="m-0 text-[13px] text-ig-text" role="alert">{{ submitError() }}</p>
           }
           <div class="flex flex-wrap justify-center gap-2 pt-2">
-            <button data-testid="close-panel-undo" type="button" [class]="ui.secondary" [disabled]="isUndoing()" (click)="undo()">
-              @if (isUndoing()) {
-                <svg lucideLoaderCircle [size]="16" class="animate-spin" aria-hidden="true"></svg>
-              }
-              {{ t('periods.actions.undo') }}
-            </button>
+            <!-- Deshacer solo reabriría el mes elegido, no los cerrados en cascada: no se ofrece. -->
+            @if (!doneFrom()) {
+              <button data-testid="close-panel-undo" type="button" [class]="ui.secondary" [disabled]="isUndoing()" (click)="undo()">
+                @if (isUndoing()) {
+                  <svg lucideLoaderCircle [size]="16" class="animate-spin" aria-hidden="true"></svg>
+                }
+                {{ t('periods.actions.undo') }}
+              </button>
+            }
             <button data-testid="close-panel-back" type="button" [class]="ui.primary" (click)="dismiss()">
               {{ t('periods.actions.backToSummary') }}
             </button>
@@ -215,6 +222,9 @@
                         {{ t('periods.panel.monthRule', { month: monthLabel(period.month) }) }}
                       }
                     </li>
+                    @if (cascadeFrom(); as from) {
+                      <li data-testid="close-panel-cascade">{{ t('periods.panel.cascadeRule', { from }) }}</li>
+                    }
                     <li>{{ t('periods.panel.lockedRule') }}</li>
                     <li>{{ t('periods.panel.reopenRule') }}</li>
                   </ul>

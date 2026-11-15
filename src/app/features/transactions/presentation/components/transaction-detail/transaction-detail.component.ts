@@ -7,7 +7,7 @@ import { LucideLock, LucidePencil, LucideTrash2, LucideX } from '@lucide/angular
 import { catchError, of } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { LanguageService } from '@core/i18n/language.service';
-import { ClosedMonthBadgeComponent, PeriodOverlaysComponent } from '@features/periods';
+import { ClosedMonthBadgeComponent } from '@features/periods';
 import {
   GetTransactionUseCase,
   ListTransactionAccountOptionsUseCase,
@@ -73,7 +73,6 @@ export function installmentState(item: InstallmentScheduleItem, nextStatementDat
     LucideTrash2,
     LucideX,
     ClosedMonthBadgeComponent,
-    PeriodOverlaysComponent,
     TransactionDeleteConfirmationComponent,
   ],
   templateUrl: './transaction-detail.component.html',
