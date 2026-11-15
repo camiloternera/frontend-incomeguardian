@@ -581,6 +581,7 @@
             [kind]="type()"
             (useToday)="useToday($event)"
           />
+          <app-early-date-note noteId="transaction-date-early" [date]="formValue().date" />
 
           @if (installable()) {
             <section
@@ -945,5 +946,4 @@
     }
   }
 
-  <app-period-overlays />
 </section>

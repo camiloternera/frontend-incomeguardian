@@ -35,7 +35,7 @@
     "pending": "Ended {{days}} days ago · still editable",
     "pendingOne": "Ended yesterday · still editable",
     "autoCloseOn": "Closes on its own on {{date}}.",
-    "previousOpen": "Close the previous months first.",
+    "closesFrom": "Closing it also closes the open months since {{from}}.",
     "reopenedAuto": "Reopened · closes on its own on {{date}}",
     "reopenedManual": "Reopened · close it when you're done",
     "current": "Current month · closes when it ends",
@@ -56,7 +56,7 @@
   },
   "yearHint": {
     "open": "You can close the year once December ends.",
-    "previousOpen": "Close the pending months first.",
+    "nothingToClose": "This year has no months to close.",
     "ready": "The year is over and can be closed.",
     "closed": "Closed on {{date}}."
   },
@@ -96,6 +96,7 @@
     "monthRule": "Transactions dated in {{month}} can't be created, edited or deleted.",
     "yearRule": "Transactions dated in {{year}} can't be created, edited or deleted.",
     "lockedRule": "Its reports and balances are locked.",
+    "cascadeRule": "The months still open since {{from}} close first, in order.",
     "reopenRule": "You can reopen it from the month selector whenever you need.",
     "confirmMonth": "Close {{month}}",
     "confirmYear": "Close {{year}}",
@@ -103,6 +104,7 @@
     "loading": "Loading the review…",
     "monthDoneTitle": "{{month}} is closed",
     "monthDoneBody": "Its numbers won't change. If you need to fix something, reopen it from the month selector.",
+    "cascadeDoneBody": "The open months since {{from}} were closed too. If you need to fix one, reopen it from the month selector.",
     "yearDoneTitle": "{{year}} is closed",
     "yearDoneBody": "All 12 months are read-only. You can reopen the year from the period selector."
   },
@@ -176,12 +178,29 @@
     "PERIOD_INVALID": "That period isn't valid.",
     "PERIOD_ALREADY_CLOSED": "This period was already closed.",
     "PERIOD_NOT_ENDED": "This period hasn't ended yet; you can close it once it does.",
-    "PERIOD_NO_ACTIVITY": "This period is before your first account and doesn't need closing.",
-    "PERIOD_PREVIOUS_OPEN": "Close the previous months first: they close in order.",
+    "PERIOD_NO_ACTIVITY": "This period is before your first account or transaction and doesn't need closing.",
     "PERIOD_NOT_CLOSED": "This period was already open.",
     "PERIOD_RECLOSE_MODE_INVALID": "Choose when it closes again.",
     "PERIOD_REASON_MAX_LENGTH": "The reason allows up to {{reasonMax}} characters.",
     "PERIOD_CLOSE_DAY_INVALID": "Choose one of the available days.",
     "PERIOD_CLOSED": "The month of that date is closed. Reopen it to record transactions."
+  },
+  "earlyDate": {
+    "title": "This date is before your first account",
+    "bodyOne": "Saving opens {{month}} so you can close it. If automatic closing is on, it closes on its own.",
+    "bodyMany": "Saving opens the months from {{from}} to {{to}} so you can close them. If automatic closing is on, they close on their own."
+  },
+  "opened": {
+    "titleOne": "{{month}} is now open",
+    "titleMany": "{{count}} months are now open, from {{from}} to {{to}}",
+    "bodyOne": "The transaction you added left it open. Do you want to close it now?",
+    "bodyMany": "The transaction you added left them open. Do you want to close them now?",
+    "closeOne": "Close the month",
+    "closeMany": "Close the months",
+    "later": "Not now",
+    "autoClosedOne": "{{month}} opened and closed on its own",
+    "autoClosedMany": "The months from {{from}} to {{to}} opened and closed on their own",
+    "autoClosedBody": "Automatic closing is on. If you need to fix the transaction, reopen the month from the selector.",
+    "ok": "Got it"
   }
 }

@@ -9,6 +9,9 @@ import { TransactionError, TransactionErrorCode } from '../../../domain/transact
 import { Transaction } from '../../../domain/transaction';
 import { TransactionFakes, fakeTransactionsRoutes, transaction } from '../../transaction-repository.fake';
 
+/** Estado de un mes del cierre, tal como lo arma `periodYear`. */
+type PeriodMonthStatus = Parameters<typeof periodYear>[1][number];
+
 describe('TransactionPanelComponent', () => {
   let fakes: TransactionFakes;
 
@@ -523,6 +526,124 @@ describe('TransactionPanelComponent', () => {
       expect(fakes.periods.count(`year ${year}`)).toBe(loads + 1);
     });
   });
+  describe('with a date before the first account', () => {
+    /**
+     * Deja el mes `{year, month}` como el último «sin actividad»: la primera cuenta es del mes
+     * siguiente. `status` es el estado con el que el backend lo devuelve tras guardar.
+     */
+    function firstActivityAfter(year: number, month: number, status: PeriodMonthStatus = 'noActivity'): void {
+      const statuses = Array.from({ length: 12 }, (_, index): PeriodMonthStatus =>
+        index + 1 < month ? 'noActivity' : index + 1 === month ? status : 'future',
+      );
+      const next = month === 12 ? `${year + 1}-01` : `${year}-${String(month + 1).padStart(2, '0')}`;
+      fakes.periods.years[year] = periodYear(year, statuses, { firstActivity: next });
+    }
+
+    function todayParts(): { year: number; month: number } {
+      const today = new Date();
+
+      return { year: today.getFullYear(), month: today.getMonth() + 1 };
+    }
+
+    function monthLabel(year: number, month: number): string {
+      return new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(
+        new Date(Date.UTC(year, month - 1, 15)),
+      );
+    }
+
+    async function saveExpense(element: HTMLElement, harness: RouterTestingHarness): Promise<void> {
+      type(element, 'transaction-amount', '1000');
+      choose(element, 'transaction-account', 'Nequi', harness);
+      choose(element, 'transaction-category', 'Mercado', harness);
+      submit(element);
+      await settle(harness);
+    }
+
+    it('does not show the note when the date is after the first account', async () => {
+      const { element } = await open('/transactions/new/expense');
+
+      expect(query(element, 'early-date-note')).toBeNull();
+    });
+
+    it('explains under the date that saving opens the month, without blocking saving', async () => {
+      const { year, month } = todayParts();
+      firstActivityAfter(year, month);
+      const { element } = await open('/transactions/new/expense');
+
+      const note = query(element, 'early-date-note');
+      expect(note?.id).toBe('transaction-date-early');
+      expect(note?.textContent).toContain(`Saving opens ${monthLabel(year, month)} so you can close it.`);
+      expect(query(element, 'locked-date-note')).toBeNull();
+      expect(submitButton(element).disabled).toBe(false);
+    });
+
+    it('offers to close the opened month once the new transaction is saved', async () => {
+      const { year, month } = todayParts();
+      firstActivityAfter(year, month);
+      const { harness, element } = await open('/transactions/new/expense');
+      // Tras guardar, el backend ya devuelve el mes abierto y pendiente de cierre.
+      firstActivityAfter(year, month, 'pending');
+
+      await saveExpense(element, harness);
+
+      expect(TestBed.inject(Router).url).toBe('/transactions');
+      expect(query(element, 'period-opened')?.textContent).toContain(`${monthLabel(year, month)} is now open`);
+
+      click(element, 'period-opened-close');
+      await settle(harness);
+
+      expect(query(element, 'period-opened')).toBeNull();
+      expect(element.querySelector<HTMLDialogElement>('dialog[data-testid="close-panel"]')?.open).toBe(true);
+      expect(fakes.periods.calls).toContain(`review ${year}-${String(month).padStart(2, '0')}`);
+    });
+
+    it('says nothing after saving a transaction that opens no months', async () => {
+      const { harness, element } = await open('/transactions/new/expense');
+
+      await saveExpense(element, harness);
+
+      expect(TestBed.inject(Router).url).toBe('/transactions');
+      expect(query(element, 'period-opened')).toBeNull();
+    });
+
+    it('does not announce anything when saving fails', async () => {
+      const { year, month } = todayParts();
+      firstActivityAfter(year, month);
+      const { harness, element } = await open('/transactions/new/expense');
+      firstActivityAfter(year, month, 'pending');
+      fakes.transactions.failWith = new TransactionError('Something broke.');
+
+      await saveExpense(element, harness);
+
+      expect(query(element, 'form-error')?.textContent).toContain('Something broke.');
+      expect(query(element, 'period-opened')).toBeNull();
+    });
+
+    it('also offers to close the opened month after editing a transaction', async () => {
+      // El movimiento 1 es del 2 de noviembre de 2026; la primera cuenta, de diciembre.
+      firstActivityAfter(2026, 11);
+      const { harness, element } = await open('/transactions/1/edit?month=2026-11');
+
+      expect(query(element, 'early-date-note')?.textContent).toContain('Saving opens November 2026 so you can close it.');
+
+      firstActivityAfter(2026, 11, 'pending');
+      type(element, 'transaction-description', 'Mercado del mes');
+      submit(element);
+      await settle(harness);
+
+      expect(fakes.transactions.lastUpdate?.id).toBe(1);
+      expect(query(element, 'period-opened')?.textContent).toContain('November 2026 is now open');
+    });
+
+    it('holds a single close panel and reopen dialog, from the list page', async () => {
+      const { element } = await open('/transactions/new/expense');
+
+      expect(element.querySelectorAll('dialog[data-testid="close-panel"]').length).toBe(1);
+      expect(element.querySelectorAll('[data-testid="reopen-dialog"]').length).toBe(1);
+      expect(query(element, 'transaction-panel')?.querySelector('app-period-overlays')).toBeNull();
+    });
+  });
+
   describe('a credit card expense', () => {
     /** Espera el debounce del plan de cuotas (300 ms) y la respuesta del falso. */
     async function waitForPlan(harness: RouterTestingHarness): Promise<void> {

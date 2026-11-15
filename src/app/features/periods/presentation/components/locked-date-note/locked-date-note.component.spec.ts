@@ -2,7 +2,7 @@ import { Component, signal, viewChild } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { translocoTesting } from '@core/i18n/i18n.testing';
 import { LanguageService } from '@core/i18n/language.service';
-import { FakePeriodRepository, provideFakePeriods } from '../../period-repository.fake';
+import { FakePeriodRepository, periodMonth, periodYear, provideFakePeriods } from '../../period-repository.fake';
 import { PeriodWorkspace } from '../../period-workspace';
 import { LockedDateKind, LockedDateNoteComponent } from './locked-date-note.component';
 
@@ -126,6 +126,41 @@ describe('LockedDateNoteComponent', () => {
     view.fixture.detectChanges();
 
     expect(view.host.note().locked()).toBe(false);
+  });
+
+  it('asks for the year fresh the first time it sees it, even if the view already had it', () => {
+    fake.years[2025] = periodYear(2025, Array(12).fill('closed'));
+    TestBed.inject(PeriodWorkspace).loadYear(2026);
+    expect(fake.count('year 2026')).toBe(1);
+
+    const view = render('2026-10-20');
+
+    expect(fake.count('year 2026')).toBe(2);
+
+    // Otra fecha del mismo año usa lo que ya hay.
+    view.host.date.set('2026-09-15');
+    view.fixture.detectChanges();
+    expect(fake.count('year 2026')).toBe(2);
+
+    // Un año nuevo también se pide fresco, y volver al primero ya no lo fuerza.
+    view.host.date.set('2025-06-01');
+    view.fixture.detectChanges();
+    view.host.date.set('2026-10-20');
+    view.fixture.detectChanges();
+
+    expect(fake.count('year 2025')).toBe(1);
+    expect(fake.count('year 2026')).toBe(2);
+  });
+
+  it('locks a date that another view closed, thanks to the fresh first load', () => {
+    // La vista tenía octubre abierto en caché; mientras tanto otra lo cerró.
+    TestBed.inject(PeriodWorkspace).loadYear(2026);
+    fake.years[2026].months[9] = periodMonth(10, 'closed');
+
+    const view = render('2026-10-20');
+
+    expect(view.host.note().locked()).toBe(true);
+    expect(view.note()?.textContent).toContain('October 2026 is closed');
   });
 
   it('names the kind of transaction and translates into Spanish', () => {

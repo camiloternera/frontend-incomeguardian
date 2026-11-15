@@ -1,4 +1,5 @@
 import { Injectable, inject, signal, untracked } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TranslocoService } from '@jsverse/transloco';
 import { Observable, Subject, tap } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
@@ -8,8 +9,9 @@ import {
   GetPeriodYearUseCase,
   ReopenPeriodUseCase,
 } from '../application/period-use-cases';
-import { PendingPeriod, PeriodMonth, PeriodRef, PeriodYear, RecloseMode, ReopenRequest } from '../domain/period';
+import { MonthRange, PendingPeriod, PeriodMonth, PeriodRef, PeriodYear, RecloseMode, ReopenRequest } from '../domain/period';
 import { PeriodError } from '../domain/period-error';
+import { PeriodSync } from './period-sync';
 
 /** Estado de la consulta de un año. */
 export type YearEntry =
@@ -68,6 +70,7 @@ export class PeriodWorkspace {
   private readonly reopenPeriod = inject(ReopenPeriodUseCase);
   private readonly transloco = inject(TranslocoService);
   private readonly changes = new Subject<PeriodRef>();
+  private readonly sync = inject(PeriodSync);
   private pendingRequested = false;
 
   /** Años consultados, por número de año. */
@@ -83,9 +86,21 @@ export class PeriodWorkspace {
   readonly reopening = signal<ReopenTarget | null>(null);
   /** Confirmación de la última reapertura. */
   readonly notice = signal<ReopenNotice | null>(null);
+  /** Meses que se abrieron por un movimiento anterior a la primera cuenta; se ofrece cerrarlos. */
+  readonly opened = signal<MonthRange | null>(null);
 
   /** Emite cada vez que un período cambia de estado. */
   readonly changed$: Observable<PeriodRef> = this.changes.asObservable();
+
+  constructor() {
+    this.sync.changed$
+      .pipe(takeUntilDestroyed())
+      .subscribe(({ source, period }) => {
+        if (source !== this) {
+          this.onExternalChange(period);
+        }
+      });
+  }
 
   /** Pide el estado del año si aún no se tiene (o siempre, con `force`). */
   loadYear(year: number, force = false): void {
@@ -172,10 +187,47 @@ export class PeriodWorkspace {
     );
   }
 
-  /** Vuelve a consultar el año y el pendiente tras un cambio, y lo anuncia. */
+  /** Un movimiento abrió meses «sin actividad»: se refrescan los períodos y se ofrece cerrarlos. */
+  announceOpened(range: MonthRange): void {
+    this.refresh({ year: range.to.year, month: range.to.month });
+
+    if (range.from.year !== range.to.year) {
+      this.loadYear(range.from.year, true);
+    }
+
+    this.opened.set(range);
+  }
+
+  /**
+   * Vuelve a consultar los años y el pendiente tras un cambio, y lo anuncia. Se recargan todos los
+   * años ya consultados porque cerrar un período también cierra, en cascada, los anteriores abiertos.
+   */
   refresh(period: PeriodRef): void {
-    this.loadYear(period.year, true);
+    const years = new Set([period.year, ...Object.keys(untracked(this.years)).map(Number)]);
+
+    years.forEach((year) => this.loadYear(year, true));
     this.loadPending(true);
+    this.changes.next(period);
+    // Las demás vistas tienen su propia caché: se les avisa para que no muestren un estado viejo.
+    this.sync.publish({ source: this, period });
+  }
+
+  /**
+   * Otra vista cerró o reabrió un período: se recargan los años ya consultados (y el pendiente, si
+   * se había pedido) sin volver a publicar, para no crear un bucle entre vistas.
+   */
+  private onExternalChange(period: PeriodRef): void {
+    const years = untracked(this.years);
+
+    Object.keys(years)
+      .map(Number)
+      .filter((year) => years[year]?.status !== 'loading')
+      .forEach((year) => this.loadYear(year, true));
+
+    if (this.pendingRequested) {
+      this.loadPending(true);
+    }
+
     this.changes.next(period);
   }
 

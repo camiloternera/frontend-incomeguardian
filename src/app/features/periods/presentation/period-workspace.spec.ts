@@ -3,7 +3,7 @@ import { NEVER } from 'rxjs';
 import { translocoTesting } from '@core/i18n/i18n.testing';
 import { PeriodRef } from '../domain/period';
 import { PeriodError } from '../domain/period-error';
-import { FakePeriodRepository, provideFakePeriods } from './period-repository.fake';
+import { FakePeriodRepository, periodYear, provideFakePeriods } from './period-repository.fake';
 import { PeriodWorkspace } from './period-workspace';
 
 describe('PeriodWorkspace', () => {
@@ -60,7 +60,7 @@ describe('PeriodWorkspace', () => {
   });
 
   it('asks for the pending month once and hides it when the request fails', () => {
-    fake.pendingPeriod = { year: 2026, month: 10, endedOn: '2026-10-31', autoCloseOn: null, canClose: true };
+    fake.pendingPeriod = { year: 2026, month: 10, endedOn: '2026-10-31', autoCloseOn: null, canClose: true, closesFrom: '2026-10' };
     setup();
 
     workspace.loadPending();
@@ -76,7 +76,7 @@ describe('PeriodWorkspace', () => {
   });
 
   it('remembers the snoozed month across sessions', () => {
-    const pending = { year: 2026, month: 10, endedOn: '2026-10-31', autoCloseOn: null, canClose: true };
+    const pending = { year: 2026, month: 10, endedOn: '2026-10-31', autoCloseOn: null, canClose: true, closesFrom: '2026-10' };
     setup();
 
     expect(workspace.isSnoozed(pending)).toBe(false);
@@ -105,6 +105,52 @@ describe('PeriodWorkspace', () => {
     expect(changes).toEqual([{ year: 2026, month: 10 }]);
     const entry = workspace.years()[2026];
     expect(entry.status === 'ready' && entry.data.months[9].status).toBe('closed');
+  });
+
+  it('reloads every year already asked for after closing, because the close cascades', () => {
+    fake.years[2025] = periodYear(2025, Array(12).fill('pending'));
+    setup();
+    workspace.loadYear(2025);
+    workspace.loadYear(2026);
+    fake.calls.length = 0;
+
+    workspace.close({ year: 2026, month: 10 }).subscribe();
+
+    expect(fake.count('year 2025')).toBe(1);
+    expect(fake.count('year 2026')).toBe(1);
+    expect(fake.count('pending')).toBe(1);
+  });
+
+  it('reloads the year of the period even when it was never asked for', () => {
+    setup();
+
+    workspace.refresh({ year: 2024, month: 3 });
+
+    expect(fake.calls).toEqual(['year 2024', 'pending']);
+  });
+
+  it('refreshes the last opened month and remembers the range when a transaction opens months', () => {
+    setup();
+    const changes: PeriodRef[] = [];
+    workspace.changed$.subscribe((period) => changes.push(period));
+    const range = { from: { year: 2026, month: 2 }, to: { year: 2026, month: 4 } };
+
+    workspace.announceOpened(range);
+
+    expect(fake.calls).toEqual(['year 2026', 'pending']);
+    expect(changes).toEqual([{ year: 2026, month: 4 }]);
+    expect(workspace.opened()).toEqual(range);
+  });
+
+  it('also reloads the year of the first opened month when the range crosses years', () => {
+    setup();
+    const range = { from: { year: 2025, month: 11 }, to: { year: 2026, month: 1 } };
+
+    workspace.announceOpened(range);
+
+    expect(fake.count('year 2026')).toBe(1);
+    expect(fake.count('year 2025')).toBe(1);
+    expect(workspace.opened()).toEqual(range);
   });
 
   it('keeps the year on screen while it reloads', () => {

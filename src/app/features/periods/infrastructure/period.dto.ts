@@ -11,6 +11,7 @@ export interface PeriodMonthDto {
   autoCloseOn: string | null;
   canClose: boolean;
   canReopen: boolean;
+  closesFrom: string | null;
 }
 
 export interface PeriodYearDto {
@@ -61,6 +62,7 @@ export interface PendingPeriodDto {
   endedOn: string;
   autoCloseOn: string | null;
   canClose: boolean;
+  closesFrom: string | null;
 }
 
 export interface PeriodLogDto {

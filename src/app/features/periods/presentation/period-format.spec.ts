@@ -8,6 +8,7 @@ import {
   formatRate,
   monthName,
   monthShort,
+  monthYear,
 } from './period-format';
 
 /** Intl usa espacios duros entre símbolo y número; se normalizan para comparar. */
@@ -20,6 +21,13 @@ describe('period format', () => {
     expect(monthName(10, 'es-CO')).toBe('octubre');
     expect(monthName(10, 'en-US')).toBe('October');
     expect(capitalized(monthName(10, 'es-CO'), 'es-CO')).toBe('Octubre');
+  });
+
+  it('names the month with its year in the active language', () => {
+    expect(monthYear(2025, 3, 'es-CO')).toBe('marzo de 2025');
+    expect(monthYear(2025, 3, 'en-US')).toBe('March 2025');
+    expect(monthYear(2026, 12, 'en-US')).toBe('December 2026');
+    expect(monthYear(2026, 1, 'es-CO')).toBe('enero de 2026');
   });
 
   it('abbreviates the month for the grid without the Spanish period', () => {

@@ -77,7 +77,7 @@ describe('PeriodSelectorComponent', () => {
     expect(view.query('period-popover')).toBeNull();
   });
 
-  it('says when a pending month closes on its own, or why it cannot be closed yet', () => {
+  it('says when a pending month closes on its own, and gives no hint when it cannot be closed', () => {
     const year = periodYear(2026, Array(9).fill('closed').concat(['pending', 'current']));
     year.months[9] = periodMonth(10, 'pending', { autoCloseOn: '2026-11-10' });
     fake.years[2026] = year;
@@ -86,12 +86,85 @@ describe('PeriodSelectorComponent', () => {
 
     expect(view.query('period-detail')?.textContent).toContain('Closes on its own on Nov 10, 2026.');
 
-    year.months[9] = periodMonth(10, 'pending', { canClose: false });
+    year.months[9] = periodMonth(10, 'pending', { autoCloseOn: '2026-11-10', canClose: false, closesFrom: null });
     workspace().loadYear(2026, true);
     view.fixture.detectChanges();
 
-    expect(view.query('period-detail')?.textContent).toContain('Close the previous months first.');
+    expect(view.query('period-detail')?.textContent).not.toContain('Closes on its own');
+    expect(view.query('period-detail')?.textContent).not.toContain('Closing it also closes');
     expect(view.query('period-close-month')).toBeNull();
+  });
+
+  it('warns that closing a month also closes the open months before it', () => {
+    const year = periodYear(2026, Array(8).fill('closed').concat(['pending', 'pending', 'current']));
+    year.months[9] = periodMonth(10, 'pending', { autoCloseOn: '2026-11-10', closesFrom: '2026-09' });
+    fake.years[2026] = year;
+    const view = render();
+    view.click('period-selector');
+    view.click('period-month-10');
+
+    expect(view.query('period-detail')?.textContent).toContain('Closing it also closes the open months since September 2026.');
+    // La cascada tiene prioridad sobre la fecha del cierre automático.
+    expect(view.query('period-detail')?.textContent).not.toContain('Closes on its own');
+
+    view.click('period-close-month');
+
+    expect(workspace().closing()).toEqual({ year: 2026, month: 10 });
+  });
+
+  it('warns about a cascade that starts in the previous year', () => {
+    const year = periodYear(2026, Array(10).fill('closed').concat(['current']));
+    year.months[0] = periodMonth(1, 'pending', { closesFrom: '2025-11' });
+    fake.years[2026] = year;
+    const view = render();
+    view.click('period-selector');
+
+    expect(view.query('period-month-1')?.getAttribute('aria-pressed')).toBe('true');
+    expect(view.query('period-detail')?.textContent).toContain('since November 2025.');
+  });
+
+  it('says nothing more of a reopened month that closes only itself', () => {
+    const year = periodYear(2026, Array(10).fill('closed').concat(['current']));
+    year.months[8] = periodMonth(9, 'pending', {
+      reopenedAt: '2026-11-08T15:00:00Z',
+      recloseMode: 'manual',
+      autoCloseOn: '2026-11-10',
+      closesFrom: '2026-09',
+    });
+    fake.years[2026] = year;
+    const view = render();
+    view.click('period-selector');
+    view.click('period-month-9');
+
+    const detail = view.query('period-detail')?.textContent;
+    expect(detail).toContain('Reopened · close it when you\'re done');
+    expect(detail).not.toContain('Closing it also closes');
+    expect(detail).not.toContain('Closes on its own');
+  });
+
+  it('still warns about the cascade on a reopened month with earlier open months', () => {
+    const year = periodYear(2026, Array(7).fill('closed').concat(['pending', 'closed', 'closed', 'current']));
+    year.months[8] = periodMonth(9, 'pending', { reopenedAt: '2026-11-08T15:00:00Z', recloseMode: 'manual', closesFrom: '2026-08' });
+    fake.years[2026] = year;
+    const view = render();
+    view.click('period-selector');
+    view.click('period-month-9');
+
+    expect(view.query('period-detail')?.textContent).toContain('Closing it also closes the open months since August 2026.');
+  });
+
+  it('writes the cascade month in Spanish', () => {
+    TestBed.inject(LanguageService).setLanguage('es-CO');
+    const year = periodYear(2026, Array(8).fill('closed').concat(['pending', 'pending', 'current']));
+    year.months[9] = periodMonth(10, 'pending', { closesFrom: '2026-09' });
+    fake.years[2026] = year;
+    const view = render();
+    view.click('period-selector');
+    view.click('period-month-10');
+
+    expect(view.query('period-detail')?.textContent).toContain(
+      'Al cerrarlo también se cierran los meses abiertos desde septiembre de 2026.',
+    );
   });
 
   it('shows a closed month and offers to reopen it', () => {
@@ -146,6 +219,17 @@ describe('PeriodSelectorComponent', () => {
     expect(workspace().closing()).toEqual({ year: 2025, month: null });
   });
 
+  it('says that a past year that cannot be closed has no months to close', () => {
+    fake.years[2026] = { ...fake.years[2026], firstActivity: '2025-03' };
+    fake.years[2025] = periodYear(2025, Array(12).fill('noActivity'), { canCloseYear: false, firstActivity: '2025-03' });
+    const view = render();
+    view.click('period-selector');
+    view.click('period-previous-year');
+
+    expect(view.query('period-year-row')?.textContent).toContain('This year has no months to close.');
+    expect(view.query('period-close-year')?.disabled).toBe(true);
+  });
+
   it('offers to reopen a closed year', () => {
     fake.years[2026] = { ...fake.years[2026], firstActivity: '2025-03' };
     fake.years[2025] = periodYear(2025, Array(12).fill('closed'), {
@@ -166,7 +250,7 @@ describe('PeriodSelectorComponent', () => {
 
   it('reminds a snoozed pending month next to the button', () => {
     localStorage.setItem('ig.periods.snoozed', '2026-10');
-    fake.pendingPeriod = { year: 2026, month: 10, endedOn: '2026-10-31', autoCloseOn: null, canClose: true };
+    fake.pendingPeriod = { year: 2026, month: 10, endedOn: '2026-10-31', autoCloseOn: null, canClose: true, closesFrom: '2026-10' };
     const view = render();
 
     expect(view.query('period-pending-chip')?.textContent).toContain('October not closed');
