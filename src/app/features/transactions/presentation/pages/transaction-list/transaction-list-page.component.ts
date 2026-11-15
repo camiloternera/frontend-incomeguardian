@@ -19,7 +19,7 @@ import { Subscription, catchError, of, startWith, switchMap } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { LanguageService } from '@core/i18n/language.service';
 import { ThemeService } from '@core/theme/theme.service';
-import { ClosedMonthBadgeComponent } from '@features/periods';
+import { ClosedMonthBadgeComponent, PeriodOverlaysComponent } from '@features/periods';
 import { PaginationComponent } from '@shared/ui/pagination.component';
 import {
   ListTransactionAccountOptionsUseCase,
@@ -110,6 +110,7 @@ function capitalized(text: string, locale: string): string {
     PaginationComponent,
     TransactionDeleteConfirmationComponent,
     ClosedMonthBadgeComponent,
+    PeriodOverlaysComponent,
     LucideArrowDownLeft,
     LucideArrowRightLeft,
     LucideArrowUpRight,

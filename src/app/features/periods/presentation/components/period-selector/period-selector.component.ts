@@ -5,13 +5,14 @@ import { LanguageService } from '@core/i18n/language.service';
 import {
   PeriodMonth,
   PeriodYear,
+  cascadeStart,
   daysBetween,
   defaultMonthOf,
   lastDayOf,
   todayInPeriodZone,
   yearMonthOf,
 } from '../../../domain/period';
-import { capitalized, formatDay, formatInstant, monthName, monthShort } from '../../period-format';
+import { capitalized, formatDay, formatInstant, monthName, monthShort, monthYear } from '../../period-format';
 import { PERIOD_UI } from '../../period-ui';
 import { PeriodWorkspace } from '../../period-workspace';
 
@@ -237,14 +238,20 @@ export class PeriodSelectorComponent {
     }
   }
 
-  /** Línea extra del detalle: cuándo se cierra solo o por qué aún no se puede cerrar. */
+  /** Línea extra del detalle: qué meses anteriores arrastra el cierre o cuándo se cierra solo. */
   protected detailHint(month: PeriodMonth): Copy | null {
-    if (month.status !== 'pending' || month.reopenedAt) {
+    if (month.status !== 'pending' || !month.canClose) {
       return null;
     }
 
-    if (!month.canClose) {
-      return { key: 'periods.detail.previousOpen' };
+    const from = cascadeStart({ year: this.year(), month: month.month }, month.closesFrom);
+
+    if (from) {
+      return { key: 'periods.detail.closesFrom', params: { from: monthYear(from.year, from.month, this.locale()) } };
+    }
+
+    if (month.reopenedAt) {
+      return null;
     }
 
     return month.autoCloseOn
@@ -261,7 +268,7 @@ export class PeriodSelectorComponent {
       return { key: 'periods.yearHint.ready' };
     }
 
-    return year.year >= this.currentYear ? { key: 'periods.yearHint.open' } : { key: 'periods.yearHint.previousOpen' };
+    return year.year >= this.currentYear ? { key: 'periods.yearHint.open' } : { key: 'periods.yearHint.nothingToClose' };
   }
 
   /** Clases de cada botón de mes según su estado y si es el elegido. */

@@ -1,11 +1,14 @@
 import {
   PeriodMonthStatus,
   PeriodYear,
+  cascadeStart,
   daysBetween,
   defaultMonthOf,
   isClosedDate,
   lastDayOf,
+  monthsBetween,
   openMonths,
+  openedRange,
   todayInPeriodZone,
   yearMonthOf,
 } from './period';
@@ -32,6 +35,7 @@ function periodYear(year: number, statuses: readonly PeriodMonthStatus[]): Perio
       autoCloseOn: null,
       canClose: false,
       canReopen: false,
+      closesFrom: null,
     })),
   };
 }
@@ -77,6 +81,45 @@ describe('period rules', () => {
     // Otro año u otro formato no se dan por cerrados con estos datos.
     expect(isClosedDate(year, '2025-01-20')).toBe(false);
     expect(isClosedDate(year, 'not a date')).toBe(false);
+  });
+
+  it('tells from which earlier month a close cascades, or null when it closes only that month', () => {
+    expect(cascadeStart({ year: 2026, month: 10 }, '2026-07')).toEqual({ year: 2026, month: 7 });
+    expect(cascadeStart({ year: 2026, month: 2 }, '2025-11')).toEqual({ year: 2025, month: 11 });
+    expect(cascadeStart({ year: 2026, month: 10 }, '2026-10')).toBeNull();
+    // Sin `closesFrom` el mes no se puede cerrar: no hay cascada.
+    expect(cascadeStart({ year: 2026, month: 10 }, null)).toBeNull();
+  });
+
+  it('counts the months of a range with both ends included, across years', () => {
+    expect(monthsBetween({ year: 2026, month: 3 }, { year: 2026, month: 3 })).toBe(1);
+    expect(monthsBetween({ year: 2026, month: 2 }, { year: 2026, month: 4 })).toBe(3);
+    expect(monthsBetween({ year: 2025, month: 11 }, { year: 2026, month: 2 })).toBe(4);
+  });
+
+  it('opens the months from the target up to the one before the first activity', () => {
+    expect(openedRange({ year: 2026, month: 2 }, '2026-05')).toEqual({
+      from: { year: 2026, month: 2 },
+      to: { year: 2026, month: 4 },
+    });
+    expect(openedRange({ year: 2026, month: 4 }, '2026-05')).toEqual({
+      from: { year: 2026, month: 4 },
+      to: { year: 2026, month: 4 },
+    });
+  });
+
+  it('ends the opened range in December of the year before when the first activity is in January', () => {
+    expect(openedRange({ year: 2025, month: 10 }, '2026-01')).toEqual({
+      from: { year: 2025, month: 10 },
+      to: { year: 2025, month: 12 },
+    });
+  });
+
+  it('opens nothing when the target is not before the first activity, or there is none', () => {
+    expect(openedRange({ year: 2026, month: 5 }, '2026-05')).toBeNull();
+    expect(openedRange({ year: 2026, month: 8 }, '2026-05')).toBeNull();
+    expect(openedRange({ year: 2027, month: 1 }, '2026-05')).toBeNull();
+    expect(openedRange({ year: 2026, month: 2 }, null)).toBeNull();
   });
 
   it('opens a year on its oldest pending month, then the current one, then December', () => {

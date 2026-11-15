@@ -166,6 +166,84 @@ describe('DatePickerComponent', () => {
     expect(popover()).toBeNull();
   });
 
+  describe('focus leaving the calendar', () => {
+    afterEach(() => vi.useRealTimers());
+
+    const host = () => element.querySelector<HTMLElement>('app-date-picker')!;
+
+    function focusOut(target: Element, relatedTarget: EventTarget | null): void {
+      target.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget }));
+      fixture.detectChanges();
+    }
+
+    it('stays open on the days of the chosen month when the month button leaves the DOM', () => {
+      vi.useFakeTimers({ toFake: ['setTimeout'] });
+      open();
+      query('date-picker-view')!.click();
+      fixture.detectChanges();
+      const march = element.querySelector<HTMLButtonElement>('[data-date="2026-03-01"]')!;
+      march.focus();
+
+      march.click();
+      // Como en Chrome: el botón del mes pierde el foco sin destino antes de que el render enfoque
+      // el día activo. `blur()` dispara ese `focusout` con `relatedTarget` null.
+      march.blur();
+      expect(host().contains(document.activeElement)).toBe(false);
+      fixture.detectChanges();
+      expect(popover()).not.toBeNull();
+
+      vi.runAllTimers();
+      fixture.detectChanges();
+
+      expect(popover()).not.toBeNull();
+      expect(trigger().getAttribute('aria-expanded')).toBe('true');
+      expect(element.textContent).toContain('marzo de 2026');
+      expect(day('2026-03-15')).toBeTruthy();
+      const active = element.querySelector<HTMLElement>('[data-active-day="true"]');
+      expect(active?.getAttribute('data-date')).toBe('2026-03-01');
+      expect(document.activeElement).toBe(active);
+    });
+
+    it('closes at once when the focus goes to an element outside', () => {
+      vi.useFakeTimers({ toFake: ['setTimeout'] });
+      open();
+
+      focusOut(day('2026-11-03')!, query('outside'));
+
+      // Sin avanzar el reloj: con destino conocido no espera ningún timeout.
+      expect(popover()).toBeNull();
+      expect(trigger().getAttribute('aria-expanded')).toBe('false');
+    });
+
+    it('stays open when the focus moves to another element of the calendar', () => {
+      open();
+
+      focusOut(day('2026-11-03')!, query('date-picker-previous'));
+
+      expect(popover()).not.toBeNull();
+    });
+
+    it('closes after the render when the focus is lost with no target and ends outside', () => {
+      vi.useFakeTimers({ toFake: ['setTimeout'] });
+      open();
+      expect(host().contains(document.activeElement)).toBe(true);
+
+      // `blur()` dispara el `focusout` sin destino y deja el foco en el body, fuera del calendario.
+      (document.activeElement as HTMLElement).blur();
+      fixture.detectChanges();
+
+      // Aún no: espera al render por si el foco vuelve a un día del calendario.
+      expect(popover()).not.toBeNull();
+      expect(host().contains(document.activeElement)).toBe(false);
+
+      vi.runAllTimers();
+      fixture.detectChanges();
+
+      expect(popover()).toBeNull();
+      expect(trigger().getAttribute('aria-expanded')).toBe('false');
+    });
+  });
+
   it('allows any date when there is no max', () => {
     fixture.componentInstance.max.set(null);
     fixture.detectChanges();

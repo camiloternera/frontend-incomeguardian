@@ -1045,7 +1045,7 @@ describe('HomePageComponent', () => {
   describe('with the period closing', () => {
     it('shows the month selector and proposes closing the month that ended', async () => {
       const periods = new FakePeriodRepository();
-      periods.pendingPeriod = { year: 2026, month: 10, endedOn: '2026-10-31', autoCloseOn: null, canClose: true };
+      periods.pendingPeriod = { year: 2026, month: 10, endedOn: '2026-10-31', autoCloseOn: null, canClose: true, closesFrom: '2026-10' };
       await setup({ periods });
       const { fixture, element } = render();
 

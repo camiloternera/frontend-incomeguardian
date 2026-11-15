@@ -7,7 +7,6 @@ export const PeriodErrorCode = {
   AlreadyClosed: 'PERIOD_ALREADY_CLOSED',
   NotEnded: 'PERIOD_NOT_ENDED',
   NoActivity: 'PERIOD_NO_ACTIVITY',
-  PreviousOpen: 'PERIOD_PREVIOUS_OPEN',
   NotClosed: 'PERIOD_NOT_CLOSED',
   RecloseModeInvalid: 'PERIOD_RECLOSE_MODE_INVALID',
   ReasonMaxLength: 'PERIOD_REASON_MAX_LENGTH',

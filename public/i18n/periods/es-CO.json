@@ -35,7 +35,7 @@
     "pending": "Terminó hace {{days}} días · aún se puede editar",
     "pendingOne": "Terminó ayer · aún se puede editar",
     "autoCloseOn": "Se cierra solo el {{date}}.",
-    "previousOpen": "Cierra primero los meses anteriores.",
+    "closesFrom": "Al cerrarlo también se cierran los meses abiertos desde {{from}}.",
     "reopenedAuto": "Reabierto · se cierra solo el {{date}}",
     "reopenedManual": "Reabierto · ciérralo cuando termines",
     "current": "Mes en curso · se cierra cuando termine",
@@ -56,7 +56,7 @@
   },
   "yearHint": {
     "open": "Podrás cerrar el año cuando termine diciembre.",
-    "previousOpen": "Cierra primero los meses pendientes.",
+    "nothingToClose": "Este año no tiene meses por cerrar.",
     "ready": "El año terminó y ya se puede cerrar.",
     "closed": "Cerrado el {{date}}."
   },
@@ -96,6 +96,7 @@
     "monthRule": "No se podrán crear, editar ni borrar movimientos con fecha de {{month}}.",
     "yearRule": "No se podrán crear, editar ni borrar movimientos con fecha de {{year}}.",
     "lockedRule": "Sus reportes y saldos quedan fijos.",
+    "cascadeRule": "Antes se cierran, en orden, los meses que siguen abiertos desde {{from}}.",
     "reopenRule": "Puedes reabrirlo desde el selector de mes cuando lo necesites.",
     "confirmMonth": "Cerrar {{month}}",
     "confirmYear": "Cerrar {{year}}",
@@ -103,6 +104,7 @@
     "loading": "Cargando la revisión…",
     "monthDoneTitle": "{{month}} quedó cerrado",
     "monthDoneBody": "Sus números ya no cambian. Si necesitas corregir algo, reábrelo desde el selector de mes.",
+    "cascadeDoneBody": "También se cerraron los meses abiertos desde {{from}}. Si necesitas corregir alguno, reábrelo desde el selector de mes.",
     "yearDoneTitle": "{{year}} quedó cerrado",
     "yearDoneBody": "Sus 12 meses están en solo lectura. Puedes reabrir el año desde el selector de períodos."
   },
@@ -176,12 +178,29 @@
     "PERIOD_INVALID": "Ese período no es válido.",
     "PERIOD_ALREADY_CLOSED": "Este período ya estaba cerrado.",
     "PERIOD_NOT_ENDED": "Este período aún no termina; podrás cerrarlo cuando termine.",
-    "PERIOD_NO_ACTIVITY": "Este período es anterior a tu primera cuenta y no necesita cierre.",
-    "PERIOD_PREVIOUS_OPEN": "Primero cierra los meses anteriores: se cierran en orden.",
+    "PERIOD_NO_ACTIVITY": "Este período es anterior a tu primera cuenta o movimiento y no necesita cierre.",
     "PERIOD_NOT_CLOSED": "Este período ya estaba abierto.",
     "PERIOD_RECLOSE_MODE_INVALID": "Elige cuándo vuelve a cerrarse.",
     "PERIOD_REASON_MAX_LENGTH": "El motivo admite hasta {{reasonMax}} caracteres.",
     "PERIOD_CLOSE_DAY_INVALID": "Elige uno de los días disponibles.",
     "PERIOD_CLOSED": "El mes de esa fecha está cerrado. Reábrelo para registrar movimientos."
+  },
+  "earlyDate": {
+    "title": "Esta fecha es anterior a tu primera cuenta",
+    "bodyOne": "Al guardar se abre {{month}} para que puedas cerrarlo. Si tienes el cierre automático activo, se cierra solo.",
+    "bodyMany": "Al guardar se abren los meses de {{from}} a {{to}} para que puedas cerrarlos. Si tienes el cierre automático activo, se cierran solos."
+  },
+  "opened": {
+    "titleOne": "Se abrió {{month}}",
+    "titleMany": "Se abrieron {{count}} meses, de {{from}} a {{to}}",
+    "bodyOne": "Quedó sin cerrar por el movimiento que registraste. ¿Quieres cerrarlo ahora?",
+    "bodyMany": "Quedaron sin cerrar por el movimiento que registraste. ¿Quieres cerrarlos ahora?",
+    "closeOne": "Cerrar el mes",
+    "closeMany": "Cerrar los meses",
+    "later": "Ahora no",
+    "autoClosedOne": "{{month}} se abrió y se cerró solo",
+    "autoClosedMany": "Los meses de {{from}} a {{to}} se abrieron y se cerraron solos",
+    "autoClosedBody": "Tienes el cierre automático activo. Si necesitas corregir el movimiento, reabre el mes desde el selector.",
+    "ok": "Entendido"
   }
 }

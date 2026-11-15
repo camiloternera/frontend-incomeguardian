@@ -22,6 +22,7 @@ function monthDto(month: number, status = 'closed', overrides: Partial<PeriodMon
     autoCloseOn: null,
     canClose: false,
     canReopen: status === 'closed',
+    closesFrom: null,
     ...overrides,
   };
 }
@@ -99,6 +100,21 @@ describe('PeriodHttpRepository', () => {
     expect(result!.months[1].recloseMode).toBeNull();
   });
 
+  it('maps the month from which a close cascades, and null when the field is missing', () => {
+    let result: { months: { closesFrom: unknown }[] } | undefined;
+    repository.year(2026).subscribe((value) => (result = value));
+    const months = yearDto().months;
+    months[9] = monthDto(10, 'pending', { canClose: true, closesFrom: '2026-08' });
+    // Un backend anterior al cierre en cascada no manda el campo.
+    delete (months[10] as Partial<PeriodMonthDto>).closesFrom;
+
+    http.expectOne(`${URL}?year=2026`).flush(ok(yearDto({ months })));
+
+    expect(result!.months[9].closesFrom).toBe('2026-08');
+    expect(result!.months[10].closesFrom).toBeNull();
+    expect(result!.months[0].closesFrom).toBeNull();
+  });
+
   it('treats an unknown month status as an invalid response', () => {
     let error: unknown;
     repository.year(2026).subscribe({ error: (value) => (error = value) });
@@ -117,15 +133,26 @@ describe('PeriodHttpRepository', () => {
     repository.pending().subscribe((value) => results.push(value));
     http
       .expectOne(`${URL}/pending`)
-      .flush(ok({ year: 2026, month: 10, endedOn: '2026-10-31', autoCloseOn: '2026-11-05', canClose: true }));
+      .flush(ok({ year: 2026, month: 10, endedOn: '2026-10-31', autoCloseOn: '2026-11-05', canClose: true, closesFrom: '2026-09' }));
 
     repository.pending().subscribe((value) => results.push(value));
     http.expectOne(`${URL}/pending`).flush(ok(null));
 
     expect(results).toEqual([
-      { year: 2026, month: 10, endedOn: '2026-10-31', autoCloseOn: '2026-11-05', canClose: true },
+      { year: 2026, month: 10, endedOn: '2026-10-31', autoCloseOn: '2026-11-05', canClose: true, closesFrom: '2026-09' },
       null,
     ]);
+  });
+
+  it('fills a missing closesFrom of the pending month with null', () => {
+    let result: unknown;
+    repository.pending().subscribe((value) => (result = value));
+
+    http
+      .expectOne(`${URL}/pending`)
+      .flush(ok({ year: 2026, month: 10, endedOn: '2026-10-31', autoCloseOn: null, canClose: true }));
+
+    expect(result).toEqual({ year: 2026, month: 10, endedOn: '2026-10-31', autoCloseOn: null, canClose: true, closesFrom: null });
   });
 
   it('rejects a successful envelope without data where data is required', () => {

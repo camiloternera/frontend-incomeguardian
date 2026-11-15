@@ -99,11 +99,15 @@ export class LockedDateNoteComponent {
   });
 
   constructor() {
+    // La primera vez que se ve un año se pide fresco: el período pudo cambiar en otro dispositivo.
+    const refreshed = new Set<number>();
     effect(() => {
       const target = this.target();
 
       if (target) {
-        untracked(() => this.workspace.loadYear(target.year));
+        const force = !refreshed.has(target.year);
+        refreshed.add(target.year);
+        untracked(() => this.workspace.loadYear(target.year, force));
       }
     });
 
