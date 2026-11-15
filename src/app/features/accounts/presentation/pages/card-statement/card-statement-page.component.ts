@@ -1,4 +1,4 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -15,6 +15,7 @@ import { Account, isCreditCard } from '../../../domain/account';
 import { AccountError, AccountErrorCode } from '../../../domain/account-error';
 import { CardStatement, canPayStatement } from '../../../domain/card-statement';
 import { CardMonth } from '../../../domain/credit-card-calendar';
+import { MoneyPipe } from '@shared/money/money.pipe';
 
 /** Estado de la vista: cargando, listo, error al cargar o cuenta que no es una tarjeta (o no existe). */
 type PageStatus = 'loading' | 'ready' | 'error' | 'notFound';
@@ -28,7 +29,7 @@ const LIST_URL = '/accounts';
  */
 @Component({
   selector: 'app-card-statement-page',
-  imports: [CurrencyPipe, DatePipe, RouterLink, TranslocoDirective, LucideChevronLeft, LucideChevronRight],
+  imports: [MoneyPipe, DatePipe, RouterLink, TranslocoDirective, LucideChevronLeft, LucideChevronRight],
   templateUrl: './card-statement-page.component.html',
   host: { class: 'block' },
 })

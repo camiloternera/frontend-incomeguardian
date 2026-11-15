@@ -4,20 +4,22 @@ import { ACCOUNT_BALANCE_MAX_DECIMALS, ACCOUNT_BALANCE_MAX_INTEGER_DIGITS } from
 /** Número con signo opcional y coma o punto decimal, como lo escribe una persona. */
 const NUMBER = /^-?\d+(?:[.,]\d+)?$/;
 
-/** Convierte el texto del campo en número; acepta coma decimal, habitual en es-CO. */
+/** Convierte el texto del campo en número; acepta coma decimal, habitual en es-CO. Vacío es 0. */
 export function parseBalance(value: string): number {
-  return Number(value.trim().replace(',', '.'));
+  const text = value.trim();
+
+  return text ? Number(text.replace(',', '.')) : 0;
 }
 
 /**
- * Valida el saldo con las mismas reglas que el backend (NUMERIC(18,3)): obligatorio, número,
- * hasta 3 decimales y 15 cifras enteras. Puede ser negativo.
+ * Valida el saldo con las mismas reglas que el backend (NUMERIC(18,3)): número con hasta
+ * 3 decimales y 15 cifras enteras. Puede ser negativo. Vacío es válido y se guarda como 0.
  */
 export function balanceValidator(control: AbstractControl<string>): ValidationErrors | null {
   const value = (control.value ?? '').trim();
 
   if (!value) {
-    return { required: true };
+    return null;
   }
 
   if (!NUMBER.test(value)) {

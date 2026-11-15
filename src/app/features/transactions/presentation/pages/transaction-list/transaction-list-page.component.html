@@ -234,14 +234,14 @@
                             }
                             {{
                               item.amount
-                                | currency: row.currency : 'symbol' : moneyDigits(row.currency, item.amount) : locale()
+                                | money: row.currency : moneyDigits(row.currency, item.amount) : locale()
                             }}
                           </span>
                           @if (item.advanceFee) {
                             <span data-testid="row-advance-fee" class="whitespace-nowrap text-[12px] font-medium text-ig-muted sm:text-[13px]">
                               {{
                                 t('transactions.list.advanceFee', {
-                                  amount: (item.advanceFee | currency: row.currency : 'symbol' : moneyDigits(row.currency, item.advanceFee) : locale())
+                                  amount: (item.advanceFee | money: row.currency : moneyDigits(row.currency, item.advanceFee) : locale())
                                 })
                               }}
                             </span>
@@ -255,9 +255,8 @@
                               <span class="sr-only sm:not-sr-only">{{ t('transactions.list.arrived') }} </span>
                               {{
                                 destination.amount
-                                  | currency
+                                  | money
                                     : destination.currency
-                                    : 'symbol'
                                     : moneyDigits(destination.currency, destination.amount)
                                     : locale()
                               }}

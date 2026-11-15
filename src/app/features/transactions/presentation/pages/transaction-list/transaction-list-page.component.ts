@@ -1,4 +1,4 @@
-import { CurrencyPipe, formatDate } from '@angular/common';
+import { formatDate } from '@angular/common';
 import { Component, ElementRef, HostListener, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink, RouterOutlet } from '@angular/router';
@@ -53,6 +53,7 @@ import { injectTransactionsTranslations } from '../../transactions-translations'
 import { TransactionWorkspace } from '../../transaction-workspace';
 import { TransactionDeleteConfirmationComponent } from '../../components/delete-confirmation/delete-confirmation.component';
 import { transactionName } from '../../transaction-name';
+import { MoneyPipe } from '@shared/money/money.pipe';
 
 /** Texto ya resuelto para la fila de un movimiento. */
 interface TransactionRow {
@@ -103,7 +104,7 @@ function capitalized(text: string, locale: string): string {
 @Component({
   selector: 'app-transaction-list-page',
   imports: [
-    CurrencyPipe,
+    MoneyPipe,
     RouterLink,
     RouterOutlet,
     TranslocoDirective,

@@ -149,13 +149,33 @@ describe('TransactionPanelComponent', () => {
   it('validates locally before calling the backend', async () => {
     const { harness, element } = await open('/transactions/new/expense');
 
-    type(element, 'transaction-amount', '12,3456');
+    type(element, 'transaction-amount', '0');
     submit(element);
     harness.detectChanges();
 
-    expect(query(element, 'amount-error')?.textContent).toContain('up to 2 decimals');
+    expect(query(element, 'amount-error')?.textContent).toContain('The amount must be greater than zero.');
     expect(query(element, 'account-error')?.textContent).toContain('Pick the account the money comes out of.');
     expect(fakes.transactions.lastDraft).toBeNull();
+  });
+
+  it('groups the thousands of the amount while typing and cuts the extra decimals', async () => {
+    const { element } = await open('/transactions/new/expense');
+    const field = query<HTMLInputElement>(element, 'transaction-amount')!;
+
+    type(element, 'transaction-amount', '1500000.5');
+    expect(field.value).toBe('1,500,000.5');
+
+    // En en-US la coma es de miles: se ignora y se reagrupa.
+    type(element, 'transaction-amount', '12,3456');
+    expect(field.value).toBe('123,456');
+
+    type(element, 'transaction-amount', '12.3456');
+    expect(field.value).toBe('12.34');
+    expect(query(element, 'amount-error')).toBeNull();
+
+    // Un gasto no admite signo.
+    type(element, 'transaction-amount', '-500');
+    expect(field.value).toBe('500');
   });
 
   it('creates an income with the chosen category and returns to the list with a notice', async () => {
@@ -430,6 +450,241 @@ describe('TransactionPanelComponent', () => {
 
     expect(TestBed.inject(Router).url).toBe('/transactions');
   });
+  describe('with an amount over the available balance', () => {
+    function amountError(element: HTMLElement): string | null {
+      return query(element, 'amount-error')?.textContent?.trim() ?? null;
+    }
+
+    it('blocks an expense over the account balance as soon as the amount is typed', async () => {
+      const { harness, element } = await open('/transactions/new/expense');
+      choose(element, 'transaction-account', 'Nequi', harness);
+      choose(element, 'transaction-category', 'Mercado', harness);
+      const field = query<HTMLInputElement>(element, 'transaction-amount')!;
+      // Sin blur: el error sale mientras se escribe.
+      field.value = '100000';
+      field.dispatchEvent(new Event('input'));
+      await settle(harness);
+
+      expect(amountError(element)).toContain('The amount is more than the account balance. You have COP\u00A085,000 available.');
+      expect(query(element, 'transaction-amount')?.getAttribute('aria-describedby')).toBe('transaction-amount-error');
+      expect(submitButton(element).disabled).toBe(true);
+
+      submit(element);
+      await settle(harness);
+
+      expect(fakes.transactions.lastDraft).toBeNull();
+    });
+
+    it('allows an expense for exactly the account balance', async () => {
+      const { harness, element } = await open('/transactions/new/expense');
+      type(element, 'transaction-amount', '85000');
+      choose(element, 'transaction-account', 'Nequi', harness);
+      choose(element, 'transaction-category', 'Mercado', harness);
+      await settle(harness);
+
+      expect(amountError(element)).toBeNull();
+      expect(submitButton(element).disabled).toBe(false);
+    });
+
+    it('checks the balance again when the account changes', async () => {
+      const { harness, element } = await open('/transactions/new/expense');
+      type(element, 'transaction-amount', '100000');
+      choose(element, 'transaction-account', 'Nequi', harness);
+      await settle(harness);
+      expect(amountError(element)).toContain('COP\u00A085,000 available');
+
+      choose(element, 'transaction-account', 'Bancolombia', harness);
+      await settle(harness);
+
+      expect(amountError(element)).toBeNull();
+    });
+
+    it('blocks a transfer over the balance of the source account', async () => {
+      const { harness, element } = await open('/transactions/new/transfer');
+      type(element, 'transaction-amount', '100000');
+      choose(element, 'transaction-from', 'Nequi', harness);
+      await settle(harness);
+      choose(element, 'transaction-to', 'Bancolombia', harness);
+      await settle(harness);
+
+      expect(amountError(element)).toContain('The amount is more than the account balance. You have COP\u00A085,000 available.');
+      expect(submitButton(element).disabled).toBe(true);
+    });
+
+    it('does not check the balance of an income', async () => {
+      const { harness, element } = await open('/transactions/new/income');
+      type(element, 'transaction-amount', '5000000');
+      choose(element, 'transaction-account', 'Nequi', harness);
+      await settle(harness);
+
+      expect(amountError(element)).toBeNull();
+    });
+
+    it('says nothing while the account balance is unknown', async () => {
+      fakes.accounts.accounts = fakes.accounts.accounts.map((account) =>
+        account.id === 3 ? { ...account, currentBalance: null } : account,
+      );
+      const { harness, element } = await open('/transactions/new/expense');
+      type(element, 'transaction-amount', '100000');
+      choose(element, 'transaction-account', 'Nequi', harness);
+      await settle(harness);
+
+      expect(amountError(element)).toBeNull();
+    });
+
+    it('counts the original amount as available when editing from the same account', async () => {
+      // El movimiento 1 es un gasto de 52.300 desde Bancolombia, que tiene 1.250.000 de saldo.
+      const { harness, element } = await open('/transactions/1/edit');
+
+      type(element, 'transaction-amount', '1302300');
+      await settle(harness);
+
+      expect(amountError(element)).toBeNull();
+      expect(submitButton(element).disabled).toBe(false);
+
+      type(element, 'transaction-amount', '1302301');
+      await settle(harness);
+
+      expect(amountError(element)).toContain('You have COP\u00A01,302,300 available.');
+      expect(submitButton(element).disabled).toBe(true);
+    });
+
+    it('lets an overdrawn account keep or lower the amount of an edited expense, but not raise it', async () => {
+      // Bancolombia quedó sobregirada: -100.000. Con el gasto original de 52.300 devuelto, el
+      // disponible sigue siendo negativo (-47.700), pero lo que sale no aumenta.
+      fakes.accounts.accounts = fakes.accounts.accounts.map((account) =>
+        account.id === 2 ? { ...account, currentBalance: -100000 } : account,
+      );
+      const { harness, element } = await open('/transactions/1/edit');
+
+      expect(amountError(element)).toBeNull();
+      expect(submitButton(element).disabled).toBe(false);
+
+      type(element, 'transaction-amount', '40000');
+      await settle(harness);
+
+      expect(amountError(element)).toBeNull();
+      expect(submitButton(element).disabled).toBe(false);
+
+      type(element, 'transaction-amount', '52301');
+      await settle(harness);
+
+      // El disponible negativo se muestra como cero.
+      expect(amountError(element)).toContain('You have COP\u00A00 available.');
+      expect(submitButton(element).disabled).toBe(true);
+
+      type(element, 'transaction-amount', '52300');
+      await settle(harness);
+      submit(element);
+      await settle(harness);
+
+      expect(fakes.transactions.lastUpdate).toMatchObject({ id: 1, draft: { amount: 52300 } });
+    });
+
+    it('blocks an overdrawn account when the edit moves the expense to it', async () => {
+      fakes.accounts.accounts = fakes.accounts.accounts.map((account) =>
+        account.id === 3 ? { ...account, currentBalance: -1000 } : account,
+      );
+      const { harness, element } = await open('/transactions/1/edit');
+
+      // Mismo monto que el original, pero desde otra cuenta: no se devuelve nada.
+      choose(element, 'transaction-account', 'Nequi', harness);
+      await settle(harness);
+
+      expect(amountError(element)).toContain('You have COP\u00A00 available.');
+      expect(submitButton(element).disabled).toBe(true);
+    });
+
+    it('does not add the original amount when the edit moves it to another account', async () => {
+      const { harness, element } = await open('/transactions/1/edit');
+
+      choose(element, 'transaction-account', 'Nequi', harness);
+      type(element, 'transaction-amount', '100000');
+      await settle(harness);
+
+      expect(amountError(element)).toContain('You have COP\u00A085,000 available.');
+      expect(submitButton(element).disabled).toBe(true);
+    });
+
+    it('shows the insufficient funds error from the server next to the amount', async () => {
+      const { harness, element } = await open('/transactions/new/expense');
+      fakes.transactions.failWith = new TransactionError('Insufficient', TransactionErrorCode.InsufficientFunds);
+
+      type(element, 'transaction-amount', '1000');
+      choose(element, 'transaction-account', 'Nequi', harness);
+      choose(element, 'transaction-category', 'Mercado', harness);
+      submit(element);
+      await settle(harness);
+
+      expect(amountError(element)).toContain("The amount is more than the account balance or the card’s available credit.");
+      expect(query(element, 'form-error')).toBeNull();
+      expect(TestBed.inject(Router).url).toBe('/transactions/new/expense');
+
+      // Al cambiar el monto, el error del servidor se va.
+      type(element, 'transaction-amount', '900');
+      await settle(harness);
+
+      expect(amountError(element)).toBeNull();
+    });
+
+    it('reloads the accounts after the server says the funds are short, and validates with the fresh balance', async () => {
+      const { harness, element } = await open('/transactions/new/expense');
+      type(element, 'transaction-amount', '50000');
+      choose(element, 'transaction-account', 'Nequi', harness);
+      choose(element, 'transaction-category', 'Mercado', harness);
+      await settle(harness);
+      expect(query(element, 'account-balance')?.textContent?.trim()).toBe('Current balance: COP\u00A085,000');
+
+      // Otro dispositivo gastó: el backend ya ve Nequi en 30.000.
+      fakes.accounts.accounts = fakes.accounts.accounts.map((account) =>
+        account.id === 3 ? { ...account, currentBalance: 30000 } : account,
+      );
+      const list = vi.spyOn(fakes.accounts, 'list');
+      fakes.transactions.failWith = new TransactionError('Insufficient', TransactionErrorCode.InsufficientFunds);
+
+      submit(element);
+      await settle(harness);
+
+      expect(list).toHaveBeenCalledTimes(1);
+      expect(amountError(element)).toContain('The amount is more than the account balance or the card’s available credit.');
+      expect(query(element, 'account-balance')?.textContent?.trim()).toBe('Current balance: COP\u00A030,000');
+      // La cuenta elegida se conserva tras recargar.
+      expect(query(element, 'transaction-account')?.textContent).toContain('Nequi');
+
+      // Al tocar el monto, manda la validación local con el saldo nuevo.
+      type(element, 'transaction-amount', '40000');
+      await settle(harness);
+
+      expect(amountError(element)).toContain('You have COP\u00A030,000 available.');
+      expect(submitButton(element).disabled).toBe(true);
+    });
+
+    it('does not reload the accounts for an invalid amount from the server', async () => {
+      const { harness, element } = await open('/transactions/new/expense');
+      const list = vi.spyOn(fakes.accounts, 'list');
+      fakes.transactions.failWith = new TransactionError('Invalid', TransactionErrorCode.AmountInvalid);
+
+      type(element, 'transaction-amount', '1000');
+      choose(element, 'transaction-account', 'Nequi', harness);
+      choose(element, 'transaction-category', 'Mercado', harness);
+      submit(element);
+      await settle(harness);
+
+      expect(amountError(element)).toContain('The amount must be greater than zero with up to 2 decimals.');
+      expect(list).not.toHaveBeenCalled();
+    });
+
+    it('writes the balance error in Spanish', async () => {
+      TestBed.inject(LanguageService).setLanguage('es-CO');
+      const { harness, element } = await open('/transactions/new/expense');
+      type(element, 'transaction-amount', '100000');
+      choose(element, 'transaction-account', 'Nequi', harness);
+      await settle(harness);
+
+      expect(amountError(element)).toContain('85.000');
+    });
+  });
+
   describe('with a date in a closed month', () => {
     /** Cierra todos los meses anteriores al de `today` (este año y el pasado). */
     function closeMonthsBefore(today: string): void {
@@ -874,7 +1129,7 @@ describe('TransactionPanelComponent', () => {
     it('says how much is owed on the card instead of its balance', async () => {
       const { element } = await openCardExpense();
 
-      expect(query(element, 'account-balance')?.textContent?.trim()).toBe('You owe on this card: COP300,000');
+      expect(query(element, 'account-balance')?.textContent?.trim()).toBe('You owe on this card: COP\u00A0300,000');
     });
 
     it('says when the card has a credit balance', async () => {
@@ -883,7 +1138,7 @@ describe('TransactionPanelComponent', () => {
       );
       const { element } = await openCardExpense();
 
-      expect(query(element, 'account-balance')?.textContent?.trim()).toBe('Credit balance on this card: COP50,000');
+      expect(query(element, 'account-balance')?.textContent?.trim()).toBe('Credit balance on this card: COP\u00A050,000');
     });
 
     it('keeps the current balance for a standard account', async () => {
@@ -891,7 +1146,7 @@ describe('TransactionPanelComponent', () => {
       choose(element, 'transaction-account', 'Nequi', harness);
       await settle(harness);
 
-      expect(query(element, 'account-balance')?.textContent?.trim()).toBe('Current balance: COP85,000');
+      expect(query(element, 'account-balance')?.textContent?.trim()).toBe('Current balance: COP\u00A085,000');
     });
 
     it('says how much is owed on the card in Spanish', async () => {
@@ -912,7 +1167,12 @@ describe('TransactionPanelComponent', () => {
       expect(credit).toContain('1,700,000');
       expect(credit).toContain('-');
       expect(credit).toContain('300,000');
-      expect(credit).toContain('This purchase takes you over the limit');
+      // Ya no se puede guardar por encima del cupo: lo dice el error del monto.
+      expect(credit).not.toContain('You can still save it');
+      expect(query(element, 'amount-error')?.textContent).toContain(
+        'The amount is more than the card limit. You have COP\u00A01,700,000 of credit available.',
+      );
+      expect(submitButton(element).disabled).toBe(true);
     });
 
     it('shows a closed installment month with the button to reopen it', async () => {
@@ -1098,7 +1358,13 @@ describe('TransactionPanelComponent', () => {
     it('validates the fee as an amount and leaves it optional', async () => {
       const { harness, element } = await openAdvance();
 
+      // El signo menos ya no se deja escribir: «-5» queda en «5».
       type(element, 'transaction-advance-fee', '-5');
+      await settle(harness);
+      expect(query<HTMLInputElement>(element, 'transaction-advance-fee')!.value).toBe('5');
+      expect(query(element, 'advance-fee-error')).toBeNull();
+
+      type(element, 'transaction-advance-fee', '0');
       await settle(harness);
 
       expect(fieldText(element, 'advance-fee-error')).toBe('The fee must be greater than zero with up to 2 decimals.');
@@ -1148,7 +1414,22 @@ describe('TransactionPanelComponent', () => {
       type(element, 'transaction-advance-fee', '20000');
       await settle(harness);
 
-      expect(fieldText(element, 'credit-after')).toContain('This advance takes you over the limit. You can still save it.');
+      // 1.690.000 + 20.000 de comisión supera los 1.700.000 de cupo.
+      expect(fieldText(element, 'credit-after')).not.toContain('You can still save it');
+      expect(query(element, 'amount-error')?.textContent).toContain(
+        'The amount is more than the card limit. You have COP\u00A01,700,000 of credit available.',
+      );
+      expect(submitButton(element).disabled).toBe(true);
+    });
+
+    it('lets an advance that fits the limit with its fee be saved', async () => {
+      const { harness, element } = await openAdvance('1680000');
+      type(element, 'transaction-advance-fee', '20000');
+      await settle(harness);
+
+      // Exactamente el cupo disponible: alcanza.
+      expect(query(element, 'amount-error')).toBeNull();
+      expect(submitButton(element).disabled).toBe(false);
     });
 
     it('names the installments in the submit button', async () => {
@@ -1303,7 +1584,7 @@ describe('TransactionPanelComponent', () => {
         expect(query(element, 'installments-6')?.getAttribute('aria-checked')).toBe('true');
         expect(query(element, 'with-interest')?.getAttribute('aria-pressed')).toBe('true');
         expect(query<HTMLInputElement>(element, 'transaction-interest-rate')!.value).toBe('24.5');
-        expect(query<HTMLInputElement>(element, 'transaction-advance-fee')!.value).toBe('15000');
+        expect(query<HTMLInputElement>(element, 'transaction-advance-fee')!.value).toBe('15,000');
         // Al editar no se propone la categoría de avances.
         expect(fieldText(element, 'transaction-category')).toContain('Ahorro');
         expect(submitButton(element).textContent?.trim()).toBe('Save changes');
@@ -1463,12 +1744,12 @@ describe('TransactionPanelComponent', () => {
       expect(query(element, 'pay-preset-statement')?.textContent).toContain('150,000');
       expect(query(element, 'pay-preset-statement')?.getAttribute('aria-pressed')).toBe('true');
       expect(query(element, 'pay-preset-all')?.textContent).toContain('300,000');
-      expect(amount(element)).toBe('150000');
+      expect(amount(element)).toBe('150,000');
 
       click(element, 'pay-preset-all');
       await settle(harness);
 
-      expect(amount(element)).toBe('300000');
+      expect(amount(element)).toBe('300,000');
       expect(query(element, 'pay-preset-all')?.getAttribute('aria-pressed')).toBe('true');
     });
 
@@ -1476,7 +1757,7 @@ describe('TransactionPanelComponent', () => {
       const { element } = await openPayment('/transactions/new/transfer?payCard=20');
 
       expect(query(element, 'pay-preset-statement')).toBeNull();
-      expect(amount(element)).toBe('300000');
+      expect(amount(element)).toBe('300,000');
     });
 
     it('lets go of the preset when another amount is typed', async () => {
@@ -1487,7 +1768,7 @@ describe('TransactionPanelComponent', () => {
 
       expect(query(element, 'pay-preset-statement')?.getAttribute('aria-pressed')).toBe('false');
       expect(query(element, 'pay-preset-all')?.getAttribute('aria-pressed')).toBe('false');
-      expect(amount(element)).toBe('50000');
+      expect(amount(element)).toBe('50,000');
     });
 
     it('converts the preset with the rate of the date when the currencies differ', async () => {
@@ -1496,12 +1777,12 @@ describe('TransactionPanelComponent', () => {
       await settle(harness);
 
       // USD → COP multiplica por la TRM y redondea a 2 decimales: 150,25 × 3.950.
-      expect(amount(element)).toBe('593487.5');
+      expect(amount(element)).toBe('593,487.5');
       expect(fakes.rates.requestedDates.at(-1)).toBe(dateValue(element));
 
       click(element, 'pay-preset-all');
       await settle(harness);
-      expect(amount(element)).toBe('790000');
+      expect(amount(element)).toBe('790,000');
     });
 
     it('shows how the source account and the card debt end', async () => {

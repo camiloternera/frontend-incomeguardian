@@ -110,7 +110,7 @@ describe('TransactionDetailComponent', () => {
   it('counts only the pending installments as remaining', async () => {
     const { element } = await open('/transactions/41');
 
-    expect(text(element, 'detail-remaining')).toBe('2 installments · COP50,000');
+    expect(text(element, 'detail-remaining')).toBe('2 installments · COP 50,000');
   });
 
   it('links to the statement of the current installment', async () => {

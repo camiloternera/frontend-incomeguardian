@@ -14,8 +14,14 @@ describe('balanceValidator', () => {
     expect(errorsFor('9'.repeat(15))).toBeNull();
   });
 
-  it('rejects empty, malformed and oversized values', () => {
-    expect(errorsFor('  ')).toEqual({ required: true });
+  it('accepts an empty balance, which is saved as 0', () => {
+    expect(errorsFor('')).toBeNull();
+    expect(errorsFor('  ')).toBeNull();
+    expect(parseBalance('')).toBe(0);
+    expect(parseBalance('   ')).toBe(0);
+  });
+
+  it('rejects malformed and oversized values', () => {
     expect(errorsFor('1.000.000')).toEqual({ balanceInvalid: true });
     expect(errorsFor('abc')).toEqual({ balanceInvalid: true });
     expect(errorsFor('1.2345')).toEqual({ balanceInvalid: true });

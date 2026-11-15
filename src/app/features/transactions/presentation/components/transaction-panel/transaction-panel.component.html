@@ -187,6 +187,7 @@
                 id="transaction-amount"
                 data-testid="transaction-amount"
                 formControlName="amount"
+                appMoneyInput
                 type="text"
                 inputmode="decimal"
                 autocomplete="off"
@@ -703,6 +704,7 @@
                       data-testid="transaction-advance-fee"
                       class="min-h-11 w-full min-w-0 flex-1 border-0 bg-transparent px-2 text-[16px] tabular-nums text-ig-text outline-none lg:text-[14px]"
                       formControlName="advanceFee"
+                      appMoneyInput
                       type="text"
                       inputmode="decimal"
                       autocomplete="off"
@@ -853,9 +855,6 @@
                 @if (credit.after) {
                   <dt class="text-ig-muted">{{ t((isCardAdvance() ? 'transactions.form.advance' : 'transactions.form.installments') + '.availableAfter') }}</dt>
                   <dd class="m-0 text-right font-bold">{{ credit.after }}</dd>
-                }
-                @if (credit.over) {
-                  <dt class="col-span-2 text-[12px] font-bold">{{ t((isCardAdvance() ? 'transactions.form.advance' : 'transactions.form.installments') + '.overLimit') }}</dt>
                 }
               </dl>
             }

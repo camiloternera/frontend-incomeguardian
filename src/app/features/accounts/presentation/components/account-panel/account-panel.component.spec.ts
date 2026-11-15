@@ -70,6 +70,7 @@ describe('AccountPanelComponent', () => {
     const { harness, element } = await open('/accounts/new');
 
     type(element, 'account-name', 'x'.repeat(51));
+    // El cuarto decimal ya no se deja escribir: se corta en vez de dar error.
     type(element, 'account-balance', '1.2345');
     submit(element);
     harness.detectChanges();
@@ -77,10 +78,47 @@ describe('AccountPanelComponent', () => {
     expect(element.querySelector('[data-testid="name-error"]')?.textContent).toContain(
       'The name can be up to 50 characters.',
     );
-    expect(element.querySelector('[data-testid="balance-error"]')?.textContent).toContain(
-      'up to 3 decimals',
-    );
+    expect(element.querySelector<HTMLInputElement>('[data-testid="account-balance"]')?.value).toBe('1.234');
+    expect(element.querySelector('[data-testid="balance-error"]')).toBeNull();
     expect(fake.lastDraft).toBeNull();
+  });
+
+  it('starts a new account with an empty balance and saves it as 0', async () => {
+    const { harness, element } = await open('/accounts/new');
+    const balance = element.querySelector<HTMLInputElement>('[data-testid="account-balance"]')!;
+
+    expect(balance.value).toBe('');
+    expect(balance.placeholder).toBe('0');
+
+    type(element, 'account-name', 'Ahorros');
+    submit(element);
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+
+    expect(element.querySelector('[data-testid="balance-error"]')).toBeNull();
+    expect(Object.is(fake.lastDraft?.initialBalance, 0)).toBe(true);
+  });
+
+  it('groups the thousands of the balance while typing, in the active language', async () => {
+    const { element } = await open('/accounts/new');
+    const balance = element.querySelector<HTMLInputElement>('[data-testid="account-balance"]')!;
+
+    type(element, 'account-balance', '1500000.5');
+
+    expect(balance.value).toBe('1,500,000.5');
+  });
+
+  it('creates an account with a negative balance written with a decimal comma in Spanish', async () => {
+    TestBed.inject(LanguageService).setLanguage('es-CO');
+    const { harness, element } = await open('/accounts/new');
+
+    type(element, 'account-name', 'Sobregiro');
+    type(element, 'account-balance', '-1250,5');
+    expect(element.querySelector<HTMLInputElement>('[data-testid="account-balance"]')?.value).toBe('-1.250,5');
+    submit(element);
+    await harness.fixture.whenStable();
+
+    expect(fake.lastDraft?.initialBalance).toBe(-1250.5);
   });
 
   it('shows the symbol of the chosen currency beside the balance', async () => {
@@ -95,12 +133,12 @@ describe('AccountPanelComponent', () => {
     expect(element.querySelector('[data-testid="balance-symbol"]')?.textContent).toContain('US$');
   });
 
-  it('creates an account with a negative balance written with a comma and adds it to the list', async () => {
+  it('creates an account with a negative balance and adds it to the list', async () => {
     const { harness, element } = await open('/accounts/new');
 
     type(element, 'account-name', '  Visa 9000 ');
     click(element, 'currency-USD');
-    type(element, 'account-balance', '-1250,5');
+    type(element, 'account-balance', '-1250.5');
     submit(element);
     await harness.fixture.whenStable();
     harness.detectChanges();
@@ -182,7 +220,7 @@ describe('AccountPanelComponent', () => {
       'Visa 4417',
     );
     expect(element.querySelector<HTMLInputElement>('[data-testid="account-balance"]')?.value).toBe(
-      '-250000',
+      '-250,000',
     );
     expect(document.activeElement?.id).toBe('account-panel-title');
   });
@@ -434,7 +472,7 @@ describe('AccountPanelComponent', () => {
       await chooseCard(harness, element);
 
       type(element, 'account-name', 'Visa Oro');
-      type(element, 'account-balance', '150000,5');
+      type(element, 'account-balance', '150000.5');
       type(element, 'account-credit-limit', '2000000');
       await pickDay(harness, element, 'account-statement-day', 15);
       await pickDay(harness, element, 'account-payment-day', 5);
@@ -467,12 +505,23 @@ describe('AccountPanelComponent', () => {
       expect(fake.lastDraft?.creditLimit).toBeNull();
     });
 
-    it('validates the card fields before calling the backend', async () => {
+    it('does not let a minus sign be typed in the debt of a card', async () => {
       const { harness, element } = await open('/accounts/new');
       await chooseCard(harness, element);
 
-      type(element, 'account-name', 'Visa');
       type(element, 'account-balance', '-100');
+      harness.detectChanges();
+
+      expect(element.querySelector<HTMLInputElement>('[data-testid="account-balance"]')?.value).toBe('100');
+    });
+
+    it('validates the card fields before calling the backend', async () => {
+      const { harness, element } = await open('/accounts/new');
+      // Un saldo negativo escrito como cuenta normal sigue ahí al pasar a tarjeta.
+      type(element, 'account-balance', '-100');
+      await chooseCard(harness, element);
+
+      type(element, 'account-name', 'Visa');
       type(element, 'account-credit-limit', '0');
       submit(element);
       harness.detectChanges();
@@ -521,8 +570,8 @@ describe('AccountPanelComponent', () => {
       const { element } = await open('/accounts/9/edit');
 
       expect(element.querySelector<HTMLInputElement>('[data-testid="kind-credit_card"]')!.checked).toBe(true);
-      expect(element.querySelector<HTMLInputElement>('[data-testid="account-balance"]')!.value).toBe('150000');
-      expect(element.querySelector<HTMLInputElement>('[data-testid="account-credit-limit"]')!.value).toBe('2000000');
+      expect(element.querySelector<HTMLInputElement>('[data-testid="account-balance"]')!.value).toBe('150,000');
+      expect(element.querySelector<HTMLInputElement>('[data-testid="account-credit-limit"]')!.value).toBe('2,000,000');
       expect(element.querySelector('label[for="account-balance"]')?.textContent).toContain('Initial debt');
       expect(element.querySelector('[data-testid="account-statement-day"]')?.textContent).toContain('15');
       expect(element.querySelector('[data-testid="account-payment-day"]')?.textContent).toContain('5');

@@ -100,7 +100,7 @@
               <div class="flex flex-col gap-1">
                 <p class="m-0 text-[13px] text-ig-muted">{{ t('accounts.statement.balanceDue') }}</p>
                 <p data-testid="statement-balance-due" class="m-0 text-[24px] font-bold tabular-nums tracking-[-0.02em]">
-                  {{ s.balanceDue | currency: card.currency : 'symbol' : moneyDigits(card.currency, s.balanceDue) : locale() }}
+                  {{ s.balanceDue | money: card.currency : moneyDigits(card.currency, s.balanceDue) : locale() }}
                 </p>
                 <span
                   data-testid="statement-status"
@@ -119,13 +119,13 @@
               <div class="flex flex-col gap-1">
                 <p class="m-0 text-[13px] text-ig-muted">{{ t('accounts.statement.total') }}</p>
                 <p data-testid="statement-total" class="m-0 text-[20px] font-bold tabular-nums">
-                  {{ s.total | currency: card.currency : 'symbol' : moneyDigits(card.currency, s.total) : locale() }}
+                  {{ s.total | money: card.currency : moneyDigits(card.currency, s.total) : locale() }}
                 </p>
               </div>
               <div class="flex flex-col gap-1">
                 <p class="m-0 text-[13px] text-ig-muted">{{ t('accounts.statement.paid') }}</p>
                 <p data-testid="statement-paid" class="m-0 text-[20px] font-bold tabular-nums">
-                  {{ s.paymentsTotal | currency: card.currency : 'symbol' : moneyDigits(card.currency, s.paymentsTotal) : locale() }}
+                  {{ s.paymentsTotal | money: card.currency : moneyDigits(card.currency, s.paymentsTotal) : locale() }}
                 </p>
               </div>
               <div class="flex flex-col items-start gap-3">
@@ -144,7 +144,7 @@
                   >
                     {{
                       t('accounts.statement.pay', {
-                        amount: (s.balanceDue | currency: card.currency : 'symbol' : moneyDigits(card.currency, s.balanceDue) : locale())
+                        amount: (s.balanceDue | money: card.currency : moneyDigits(card.currency, s.balanceDue) : locale())
                       })
                     }}
                   </a>
@@ -194,7 +194,7 @@
                           <span class="block text-[12px] text-ig-muted">{{ t('accounts.statement.openingDebtHint') }}</span>
                         </td>
                         <td class="px-4 py-3 text-right font-bold">
-                          {{ s.openingDebt | currency: card.currency : 'symbol' : moneyDigits(card.currency, s.openingDebt) : locale() }}
+                          {{ s.openingDebt | money: card.currency : moneyDigits(card.currency, s.openingDebt) : locale() }}
                         </td>
                       </tr>
                     }
@@ -220,17 +220,17 @@
                           {{ t('accounts.statement.installmentOf', { number: item.number, total: item.installments }) }}
                         </td>
                         <td class="px-4 py-3 text-right">
-                          {{ item.principal | currency: card.currency : 'symbol' : moneyDigits(card.currency, item.principal) : locale() }}
+                          {{ item.principal | money: card.currency : moneyDigits(card.currency, item.principal) : locale() }}
                         </td>
                         <td class="px-4 py-3 text-right text-ig-muted">
                           @if (item.interest > 0) {
-                            {{ item.interest | currency: card.currency : 'symbol' : moneyDigits(card.currency, item.interest) : locale() }}
+                            {{ item.interest | money: card.currency : moneyDigits(card.currency, item.interest) : locale() }}
                           } @else {
                             —
                           }
                         </td>
                         <td class="px-4 py-3 text-right font-bold">
-                          {{ item.amount | currency: card.currency : 'symbol' : moneyDigits(card.currency, item.amount) : locale() }}
+                          {{ item.amount | money: card.currency : moneyDigits(card.currency, item.amount) : locale() }}
                         </td>
                       </tr>
                     }
@@ -239,7 +239,7 @@
                         {{ t('accounts.statement.total') }}
                       </th>
                       <td class="px-4 py-3 text-right font-bold">
-                        {{ s.total | currency: card.currency : 'symbol' : moneyDigits(card.currency, s.total) : locale() }}
+                        {{ s.total | money: card.currency : moneyDigits(card.currency, s.total) : locale() }}
                       </td>
                     </tr>
                   </tbody>
@@ -268,14 +268,14 @@
                           <span class="text-ig-muted">
                             {{
                               t('accounts.statement.paymentSplit', {
-                                amount: (payment.paymentAmount | currency: card.currency : 'symbol' : moneyDigits(card.currency, payment.paymentAmount) : locale())
+                                amount: (payment.paymentAmount | money: card.currency : moneyDigits(card.currency, payment.paymentAmount) : locale())
                               })
                             }}
                           </span>
                         }
                       </span>
                       <span class="font-bold tabular-nums">
-                        {{ payment.appliedAmount | currency: card.currency : 'symbol' : moneyDigits(card.currency, payment.appliedAmount) : locale() }}
+                        {{ payment.appliedAmount | money: card.currency : moneyDigits(card.currency, payment.appliedAmount) : locale() }}
                       </span>
                     </li>
                   }

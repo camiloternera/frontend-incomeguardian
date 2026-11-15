@@ -331,6 +331,29 @@ export interface TransactionAccountOption {
   nextStatementDate: string | null;
 }
 
+/**
+ * Indica si lo que sale de una cuenta supera lo disponible: el saldo en una cuenta normal o el cupo
+ * en una tarjeta. `spend` es lo que consume el movimiento (en un avance, monto más comisión) y
+ * `refund` lo que ya descontó el movimiento original al editar desde la misma cuenta. Devuelve lo
+ * disponible para el movimiento, o null si alcanza o si no se conoce el saldo o el cupo.
+ */
+export function exceedsAvailable(
+  account: Pick<TransactionAccountOption, 'isCreditCard' | 'currentBalance' | 'availableCredit'>,
+  spend: number,
+  refund = 0,
+): { available: number } | null {
+  const base = account.isCreditCard ? account.availableCredit : account.currentBalance;
+
+  if (base === null) {
+    return null;
+  }
+
+  // En milésimas, para no fallar por redondeo de punto flotante (el backend guarda 3 decimales).
+  const available = Math.round((base + refund) * 1000);
+
+  return Math.round(spend * 1000) > available ? { available: available / 1000 } : null;
+}
+
 /** Indica si la cuenta se puede usar en un movimiento nuevo: activa y en una moneda soportada. */
 export function isUsableAccount(account: TransactionAccountOption): boolean {
   return account.isActive && isTransactionCurrency(account.currency);

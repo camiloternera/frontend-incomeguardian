@@ -72,9 +72,8 @@
                     <p data-testid="position-assets" class="m-0 text-[20px] font-bold tabular-nums tracking-[-0.02em] sm:text-[24px]">
                       {{
                       item.assets
-                        | currency
+                        | money
                           : item.currency
-                          : 'symbol'
                           : balanceDigits(item.currency, item.assets)
                           : locale()
                     }}
@@ -87,9 +86,8 @@
                     <p data-testid="position-debt" class="m-0 text-[20px] font-bold tabular-nums tracking-[-0.02em] sm:text-[24px]">
                       {{
                       item.debt
-                        | currency
+                        | money
                           : item.currency
-                          : 'symbol'
                           : balanceDigits(item.currency, item.debt)
                           : locale()
                     }}
@@ -106,9 +104,8 @@
                     >
                       {{
                       item.net
-                        | currency
+                        | money
                           : item.currency
-                          : 'symbol'
                           : balanceDigits(item.currency, item.net)
                           : locale()
                     }}
@@ -136,9 +133,8 @@
                   >
                     {{
                       item.total
-                        | currency
+                        | money
                           : item.currency
-                          : 'symbol'
                           : balanceDigits(item.currency, item.total)
                           : locale()
                     }}
@@ -277,9 +273,8 @@
                             @let shown = account.currentBalance > 0 ? account.currentBalance : debt;
                             {{
                               shown
-                                | currency
+                                | money
                                   : account.currency
-                                  : 'symbol'
                                   : balanceDigits(account.currency, shown)
                                   : locale()
                             }}
@@ -301,15 +296,15 @@
                           @if (over) {
                             @let excess = -(account.availableCredit ?? 0);
                             <span data-testid="row-card-over" class="text-[12px] font-bold">
-                              {{ t('accounts.list.card.overLimit', { amount: (excess | currency: account.currency : 'symbol' : balanceDigits(account.currency, excess) : locale()) }) }}
+                              {{ t('accounts.list.card.overLimit', { amount: (excess | money: account.currency : balanceDigits(account.currency, excess) : locale()) }) }}
                             </span>
                           } @else {
                             @let available = account.availableCredit ?? 0;
                             <span data-testid="row-card-available" class="text-[12px] text-ig-muted">
                               {{
                                 t('accounts.list.card.available', {
-                                  available: (available | currency: account.currency : 'symbol' : balanceDigits(account.currency, available) : locale()),
-                                  limit: (account.creditLimit | currency: account.currency : 'symbol' : balanceDigits(account.currency, account.creditLimit) : locale())
+                                  available: (available | money: account.currency : balanceDigits(account.currency, available) : locale()),
+                                  limit: (account.creditLimit | money: account.currency : balanceDigits(account.currency, account.creditLimit) : locale())
                                 })
                               }}
                             </span>
@@ -325,9 +320,8 @@
                       >
                         {{
                           account.currentBalance
-                            | currency
+                            | money
                               : account.currency
-                              : 'symbol'
                               : balanceDigits(account.currency, account.currentBalance)
                               : locale()
                         }}
