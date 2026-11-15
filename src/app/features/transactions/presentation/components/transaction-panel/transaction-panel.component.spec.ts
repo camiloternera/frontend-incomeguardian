@@ -527,28 +527,23 @@ describe('TransactionPanelComponent', () => {
     });
   });
   describe('with a date before the first account', () => {
+    // Hoy es 8 de noviembre de 2026 en Bogotá, fijo para no depender del reloj ni de la zona del equipo.
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-11-08T15:00:00Z'));
+    });
+
+    afterEach(() => vi.useRealTimers());
+
     /**
-     * Deja el mes `{year, month}` como el último «sin actividad»: la primera cuenta es del mes
-     * siguiente. `status` es el estado con el que el backend lo devuelve tras guardar.
+     * Deja 2026 «sin actividad» hasta el mes `last` (incluido): la primera cuenta es del mes
+     * siguiente. `status` es el estado con el que el backend devuelve `last` tras guardar.
      */
-    function firstActivityAfter(year: number, month: number, status: PeriodMonthStatus = 'noActivity'): void {
+    function firstActivityAfter(last: number, status: PeriodMonthStatus = 'noActivity'): void {
       const statuses = Array.from({ length: 12 }, (_, index): PeriodMonthStatus =>
-        index + 1 < month ? 'noActivity' : index + 1 === month ? status : 'future',
+        index + 1 < last ? 'noActivity' : index + 1 === last ? status : index + 1 === 11 ? 'current' : 'future',
       );
-      const next = month === 12 ? `${year + 1}-01` : `${year}-${String(month + 1).padStart(2, '0')}`;
-      fakes.periods.years[year] = periodYear(year, statuses, { firstActivity: next });
-    }
-
-    function todayParts(): { year: number; month: number } {
-      const today = new Date();
-
-      return { year: today.getFullYear(), month: today.getMonth() + 1 };
-    }
-
-    function monthLabel(year: number, month: number): string {
-      return new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(
-        new Date(Date.UTC(year, month - 1, 15)),
-      );
+      fakes.periods.years[2026] = periodYear(2026, statuses, { firstActivity: `2026-${String(last + 1).padStart(2, '0')}` });
     }
 
     async function saveExpense(element: HTMLElement, harness: RouterTestingHarness): Promise<void> {
@@ -562,39 +557,69 @@ describe('TransactionPanelComponent', () => {
     it('does not show the note when the date is after the first account', async () => {
       const { element } = await open('/transactions/new/expense');
 
+      expect(dateValue(element)).toBe('2026-11-08');
       expect(query(element, 'early-date-note')).toBeNull();
     });
 
     it('explains under the date that saving opens the month, without blocking saving', async () => {
-      const { year, month } = todayParts();
-      firstActivityAfter(year, month);
+      firstActivityAfter(11);
       const { element } = await open('/transactions/new/expense');
 
       const note = query(element, 'early-date-note');
       expect(note?.id).toBe('transaction-date-early');
-      expect(note?.textContent).toContain(`Saving opens ${monthLabel(year, month)} so you can close it.`);
+      expect(note?.textContent).toContain('Saving opens November 2026 so you can close it.');
       expect(query(element, 'locked-date-note')).toBeNull();
       expect(submitButton(element).disabled).toBe(false);
     });
 
+    it('follows the picked date and names every month that saving opens', async () => {
+      firstActivityAfter(10);
+      const { harness, element } = await open('/transactions/new/expense');
+      expect(query(element, 'early-date-note')).toBeNull();
+
+      pickDate(element, '2026-09-15', harness);
+      await settle(harness);
+
+      expect(query(element, 'early-date-note')?.textContent).toContain(
+        'Saving opens the months from September 2026 to October 2026 so you can close them.',
+      );
+    });
+
     it('offers to close the opened month once the new transaction is saved', async () => {
-      const { year, month } = todayParts();
-      firstActivityAfter(year, month);
+      firstActivityAfter(11);
       const { harness, element } = await open('/transactions/new/expense');
       // Tras guardar, el backend ya devuelve el mes abierto y pendiente de cierre.
-      firstActivityAfter(year, month, 'pending');
+      firstActivityAfter(11, 'pending');
 
       await saveExpense(element, harness);
 
       expect(TestBed.inject(Router).url).toBe('/transactions');
-      expect(query(element, 'period-opened')?.textContent).toContain(`${monthLabel(year, month)} is now open`);
+      expect(query(element, 'period-opened')?.textContent).toContain('November 2026 is now open');
 
       click(element, 'period-opened-close');
       await settle(harness);
 
       expect(query(element, 'period-opened')).toBeNull();
       expect(element.querySelector<HTMLDialogElement>('dialog[data-testid="close-panel"]')?.open).toBe(true);
-      expect(fakes.periods.calls).toContain(`review ${year}-${String(month).padStart(2, '0')}`);
+      expect(fakes.periods.calls).toContain('review 2026-11');
+    });
+
+    it('announces the whole range of the picked date after saving', async () => {
+      firstActivityAfter(10);
+      const { harness, element } = await open('/transactions/new/expense');
+      pickDate(element, '2026-09-15', harness);
+      await settle(harness);
+      firstActivityAfter(10, 'pending');
+
+      await saveExpense(element, harness);
+
+      expect(query(element, 'period-opened')?.textContent).toContain('2 months are now open, from September 2026 to October 2026');
+
+      click(element, 'period-opened-close');
+      await settle(harness);
+
+      // Se cierra el último mes abierto; la cascada cierra también los anteriores.
+      expect(fakes.periods.calls).toContain('review 2026-10');
     });
 
     it('says nothing after saving a transaction that opens no months', async () => {
@@ -607,10 +632,9 @@ describe('TransactionPanelComponent', () => {
     });
 
     it('does not announce anything when saving fails', async () => {
-      const { year, month } = todayParts();
-      firstActivityAfter(year, month);
+      firstActivityAfter(11);
       const { harness, element } = await open('/transactions/new/expense');
-      firstActivityAfter(year, month, 'pending');
+      firstActivityAfter(11, 'pending');
       fakes.transactions.failWith = new TransactionError('Something broke.');
 
       await saveExpense(element, harness);
@@ -621,12 +645,12 @@ describe('TransactionPanelComponent', () => {
 
     it('also offers to close the opened month after editing a transaction', async () => {
       // El movimiento 1 es del 2 de noviembre de 2026; la primera cuenta, de diciembre.
-      firstActivityAfter(2026, 11);
+      firstActivityAfter(11);
       const { harness, element } = await open('/transactions/1/edit?month=2026-11');
 
       expect(query(element, 'early-date-note')?.textContent).toContain('Saving opens November 2026 so you can close it.');
 
-      firstActivityAfter(2026, 11, 'pending');
+      firstActivityAfter(11, 'pending');
       type(element, 'transaction-description', 'Mercado del mes');
       submit(element);
       await settle(harness);

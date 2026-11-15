@@ -185,9 +185,13 @@ describe('DatePickerComponent', () => {
       march.focus();
 
       march.click();
+      // Como en Chrome: el botón del mes pierde el foco sin destino antes de que el render enfoque
+      // el día activo. `blur()` dispara ese `focusout` con `relatedTarget` null.
+      march.blur();
+      expect(host().contains(document.activeElement)).toBe(false);
       fixture.detectChanges();
-      // Chrome avisa que el botón del mes perdió el foco sin destino, porque salió del DOM.
-      focusOut(host(), null);
+      expect(popover()).not.toBeNull();
+
       vi.runAllTimers();
       fixture.detectChanges();
 
@@ -222,9 +226,11 @@ describe('DatePickerComponent', () => {
     it('closes after the render when the focus is lost with no target and ends outside', () => {
       vi.useFakeTimers({ toFake: ['setTimeout'] });
       open();
-      (document.activeElement as HTMLElement | null)?.blur();
+      expect(host().contains(document.activeElement)).toBe(true);
 
-      focusOut(host(), null);
+      // `blur()` dispara el `focusout` sin destino y deja el foco en el body, fuera del calendario.
+      (document.activeElement as HTMLElement).blur();
+      fixture.detectChanges();
 
       // Aún no: espera al render por si el foco vuelve a un día del calendario.
       expect(popover()).not.toBeNull();
