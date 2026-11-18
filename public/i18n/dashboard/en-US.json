@@ -36,11 +36,42 @@
     },
     "cushion": {
       "title": "Your cushion",
+      "adjust": "Adjust",
+      "loading": "Working out your cushion…",
+      "retry": "Try again",
+      "emptyTitle": "Choose where you keep your emergency savings",
+      "emptyBody": "Mark those accounts and we'll tell you how many months of spending they cover. The goal starts at {{goal}} months and you can change it.",
+      "choose": "Choose accounts",
       "months": "{{months}} months",
-      "body": "Your savings cover {{months}} months of spending at your average pace ({{average}} a month).",
-      "goal": "Goal: {{months}} months",
+      "periodMany": "the last {{count}} months",
+      "periodOne": "the last month",
+      "body": "Your savings ({{savings}}) cover {{months}} months at your average pace over {{period}} ({{average}} a month).",
+      "zeroBody": "Your cushion accounts are at {{savings}}. Your average over {{period}} is {{average}} a month.",
+      "noPreviousBody": "Saved in your cushion. Once you close your first full month we'll tell you how many months of spending it covers.",
+      "noPreviousFoot": "The goal amount appears with your first full month.",
+      "noSpendingBody": "Saved in your cushion. There is no spending in {{currency}} over {{period}} to compare it with.",
+      "noSpendingFoot": "Once you record spending we'll work out the months it covers.",
+      "rowBody": "{{savings}} saved · average {{average}} a month",
+      "rowSaved": "{{savings}} saved",
+      "missing": "{{amount}} to go to reach the goal",
+      "missingShort": "{{amount}} to go",
+      "goalReached": "Goal reached",
+      "surplus": "You exceed the goal by {{amount}}",
+      "raiseGoal": "Raise the goal?",
       "meter": "{{months}} of a {{goal}}-month goal",
-      "empty": "Once you have earlier months recorded, we'll show how long your savings last."
+      "meterReached": "{{goal}}-month goal reached: {{months}} months",
+      "footer": "Goal: {{goal}} months",
+      "footerAccounts": "Goal: {{goal}} months · {{accounts}}",
+      "currencyName": {
+        "COP": "pesos",
+        "USD": "dollars",
+        "EUR": "euros"
+      },
+      "currencyLabel": {
+        "COP": "PESOS · COP",
+        "USD": "DOLLARS · USD",
+        "EUR": "EUROS · EUR"
+      }
     },
     "stats": {
       "label": "This month's indicators",
@@ -86,10 +117,41 @@
       "installments": "{{count}} installments",
       "advance": "Card advance",
       "advanceFee": "Advance fee"
+    },
+    "cushionSheet": {
+      "titleFirst": "Choose your cushion",
+      "titleEdit": "Adjust your cushion",
+      "subtitle": "Choose the accounts where you keep your emergency savings.",
+      "close": "Close",
+      "loading": "Loading your accounts…",
+      "retry": "Try again",
+      "accountsLegend": "Cushion accounts",
+      "accountType": "Account · {{currency}}",
+      "accountsHelp": "Credit cards and deactivated accounts don't appear. You can change this any time, even if the accounts have transactions.",
+      "noAccounts": "You don't have any accounts that can be part of the cushion yet. Create a savings account and come back.",
+      "goalLabel": "Goal",
+      "goalValue": "{{count}} months",
+      "goalValueOne": "1 month",
+      "decrease": "Lower the goal by one month",
+      "increase": "Raise the goal by one month",
+      "goalHelp": "Months of spending you want covered. Between {{min}} and {{max}}.",
+      "previewTitle": "With this selection",
+      "previewCovers": "covers {{months}}.",
+      "previewGoal": "{{goal}} goal ≈ {{amount}} · {{missing}} to go",
+      "previewGoalReached": "{{goal}} goal ≈ {{amount}} · reached",
+      "previewNoAverage": "{{saved}} saved. There is no spending in {{currency}} to compare it with yet.",
+      "previewEmpty": "With no accounts marked, the cushion card asks you to choose them again.",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saving": "Saving…"
     }
   },
   "errors": {
     "PERIOD_INVALID": "That month is not valid.",
-    "DASHBOARD_RECENT_LIMIT_INVALID": "The number of recent transactions must be between 1 and 20."
+    "DASHBOARD_RECENT_LIMIT_INVALID": "The number of recent transactions must be between 1 and 20.",
+    "ACCOUNT_CUSHION_CREDIT_CARD": "A credit card can't be part of the cushion.",
+    "ACCOUNT_CUSHION_INACTIVE": "A deactivated account can't be part of the cushion.",
+    "ACCOUNT_NOT_FOUND": "One of the accounts no longer exists. Open the sheet again.",
+    "USER_CUSHION_GOAL_INVALID": "The goal must be between 1 and 24 months."
   }
 }

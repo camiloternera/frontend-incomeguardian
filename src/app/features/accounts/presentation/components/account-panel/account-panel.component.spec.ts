@@ -152,6 +152,7 @@ describe('AccountPanelComponent', () => {
       creditLimit: null,
       statementDay: null,
       paymentDay: null,
+      isCushion: false,
     });
     expect(new Date(fake.lastDraft!.openingDate).getTime()).toBeLessThanOrEqual(Date.now());
     expect(TestBed.inject(Router).url).toBe('/accounts');
@@ -275,6 +276,58 @@ describe('AccountPanelComponent', () => {
     expect(element.querySelector('[data-testid="account-not-found"]')).toBeTruthy();
   });
 
+  describe('the cushion switch', () => {
+    function cushionSwitch(element: HTMLElement): HTMLButtonElement | null {
+      return element.querySelector<HTMLButtonElement>('[data-testid="account-cushion"]');
+    }
+
+    it('marks a new account as part of the cushion', async () => {
+      const { harness, element } = await open('/accounts/new');
+      const toggle = cushionSwitch(element)!;
+
+      expect(toggle.getAttribute('role')).toBe('switch');
+      expect(toggle.getAttribute('aria-checked')).toBe('false');
+      expect(element.querySelector('#account-cushion-label')?.textContent).toContain('Cushion account');
+
+      toggle.click();
+      harness.detectChanges();
+      expect(toggle.getAttribute('aria-checked')).toBe('true');
+
+      type(element, 'account-name', 'Ahorros');
+      type(element, 'account-balance', '1000');
+      submit(element);
+      await harness.fixture.whenStable();
+
+      expect(fake.lastDraft?.isCushion).toBe(true);
+    });
+
+    it('hides the switch for a credit card and never sends it as cushion', async () => {
+      const { harness, element } = await open('/accounts/new');
+      cushionSwitch(element)!.click();
+      harness.detectChanges();
+
+      click(element, 'kind-credit_card');
+      harness.detectChanges();
+      await harness.fixture.whenStable();
+
+      expect(cushionSwitch(element)).toBeNull();
+    });
+
+    it('can be changed on an account with transactions', async () => {
+      fake.accounts.find((account) => account.id === 5)!.isCushion = true;
+      const { harness, element } = await open('/accounts/5/edit');
+      const toggle = cushionSwitch(element)!;
+
+      expect(toggle.getAttribute('aria-checked')).toBe('true');
+      toggle.click();
+      harness.detectChanges();
+      submit(element);
+      await harness.fixture.whenStable();
+
+      expect(fake.lastDraft?.isCushion).toBe(false);
+    });
+  });
+
   describe('an account with transactions', () => {
     function field(element: HTMLElement, testId: string): HTMLInputElement {
       return element.querySelector<HTMLInputElement>(`[data-testid="${testId}"]`)!;
@@ -386,6 +439,7 @@ describe('AccountPanelComponent', () => {
       availableCredit: 1850000,
       nextStatementDate: '2026-11-15',
       nextPaymentDueDate: '2026-12-05',
+      isCushion: false,
       createdAt: '2026-10-01T00:00:00Z',
       updatedAt: null,
     };

@@ -18,6 +18,8 @@ export interface AccountDto {
   /** `yyyy-MM-dd`; null en una cuenta normal. */
   nextStatementDate?: string | null;
   nextPaymentDueDate?: string | null;
+  /** Opcional mientras el backend desplegado no lo envíe. */
+  isCushion?: boolean | null;
   createdAt: string;
   updatedAt: string | null;
 }
@@ -32,6 +34,7 @@ export interface AccountRequestDto {
   creditLimit?: number;
   statementDay?: number;
   paymentDay?: number;
+  isCushion: boolean;
 }
 
 /** Un mes de `GET /accounts/{id}/statement`. */

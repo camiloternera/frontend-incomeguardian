@@ -64,7 +64,8 @@
       "overLimit": "Pasaste el cupo por {{amount}}",
       "noLimit": "Sin cupo registrado.",
       "viewStatement": "Ver extracto"
-    }
+    },
+    "cushionBadge": "Colchón"
   },
   "form": {
     "close": "Cerrar panel",
@@ -123,6 +124,10 @@
       "paysSameMonth": "El pago cae en el mismo mes del corte.",
       "shortMonths": "Si un mes tiene menos días, usamos el último.",
       "daysChangeNote": "Si cambias el corte o el pago, solo aplica a las compras nuevas. Las cuotas ya registradas se quedan en sus meses."
+    },
+    "cushion": {
+      "label": "Cuenta para el colchón",
+      "help": "Su saldo cuenta como ahorro para emergencias en \"Tu colchón\". Puedes cambiarlo cuando quieras, aunque la cuenta tenga movimientos."
     }
   },
   "errors": {
@@ -144,7 +149,8 @@
     "ACCOUNT_PAYMENT_DAY_INVALID": "El día de pago debe estar entre 1 y 31.",
     "ACCOUNT_CREDIT_LIMIT_INVALID": "El cupo debe ser mayor que 0. Déjalo vacío si no lo conoces.",
     "CREDIT_CARD_INITIAL_BALANCE_POSITIVE": "La deuda de una tarjeta no puede quedar como saldo a favor. Escríbela en positivo.",
-    "ACCOUNT_NOT_CREDIT_CARD": "Esta cuenta no es una tarjeta de crédito."
+    "ACCOUNT_NOT_CREDIT_CARD": "Esta cuenta no es una tarjeta de crédito.",
+    "ACCOUNT_CUSHION_CREDIT_CARD": "Una tarjeta de crédito no puede ser parte del colchón."
   },
   "statement": {
     "breadcrumb": "Ruta",

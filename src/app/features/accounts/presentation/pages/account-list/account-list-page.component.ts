@@ -10,6 +10,7 @@ import {
   LucidePencil,
   LucidePlus,
   LucideSearch,
+  LucideShield,
 } from '@lucide/angular';
 import { finalize } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
@@ -56,6 +57,7 @@ export const ACCOUNT_PAGE_SIZE = 5;
     LucidePencil,
     LucidePlus,
     LucideSearch,
+    LucideShield,
   ],
   providers: [AccountWorkspace],
   templateUrl: './account-list-page.component.html',

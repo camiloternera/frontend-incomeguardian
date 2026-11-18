@@ -13,7 +13,7 @@ import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { AbstractControl, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
-import { LucideBan, LucideX } from '@lucide/angular';
+import { LucideBan, LucideShield, LucideX } from '@lucide/angular';
 import { Observable, finalize } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { LanguageService } from '@core/i18n/language.service';
@@ -97,6 +97,7 @@ const LIST_URL = '/accounts';
     TranslocoDirective,
     SelectComponent,
     LucideBan,
+    LucideShield,
     LucideX,
   ],
   templateUrl: './account-panel.component.html',
@@ -169,6 +170,8 @@ export class AccountPanelComponent {
       paymentDay: this.formBuilder.control<number | null>(null),
       openingDay: ['', Validators.required],
       openingTime: ['', Validators.required],
+      /** Si la cuenta va al colchón; se ignora (y se envía `false`) en una tarjeta. */
+      isCushion: this.formBuilder.control(false),
     },
     { validators: [openingNotInFuture, cardFieldsValidator] },
   );
@@ -185,6 +188,17 @@ export class AccountPanelComponent {
     initialValue: this.accountForm.controls.kind.value,
   });
   protected readonly isCard = computed(() => this.kind() === 'credit_card');
+
+  /** La marca de colchón, leída del control para pintar el switch. */
+  protected readonly isCushion = toSignal(this.accountForm.controls.isCushion.valueChanges, {
+    initialValue: this.accountForm.controls.isCushion.value,
+  });
+
+  protected toggleCushion(): void {
+    const control = this.accountForm.controls.isCushion;
+    control.setValue(!control.value);
+    control.markAsDirty();
+  }
 
   /** Días del 1 al 31 para el corte y el pago; la etiqueta del campo ya dice de qué día se trata. */
   protected readonly dayOptions: SelectOption<number>[] = Array.from(
@@ -394,6 +408,7 @@ export class AccountPanelComponent {
       creditLimit: isCard && limit ? parseBalance(limit) : null,
       statementDay: isCard ? value.statementDay : null,
       paymentDay: isCard ? value.paymentDay : null,
+      isCushion: !isCard && value.isCushion,
     };
     const request: Observable<Account> =
       id === null ? this.createAccount.execute(draft) : this.updateAccount.execute(id, draft);
@@ -472,6 +487,7 @@ export class AccountPanelComponent {
       paymentDay: null,
       openingDay: now.day,
       openingTime: now.time,
+      isCushion: false,
     });
     this.accountForm.controls.name.enable({ emitEvent: false });
     this.accountForm.controls.currency.enable({ emitEvent: false });
@@ -505,6 +521,7 @@ export class AccountPanelComponent {
           paymentDay: account.paymentDay,
           openingDay: opening.day,
           openingTime: opening.time,
+          isCushion: account.isCushion,
         });
         // Con movimientos el backend ya no deja cambiar nombre, moneda ni tipo; se envían igual al guardar.
         if (account.hasTransactions) {
