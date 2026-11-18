@@ -1,11 +1,11 @@
 import { Provider } from '@angular/core';
 import { GetMonthSummaryUseCase } from './application/get-month-summary.use-case';
-import { GetOverviewUseCase } from './application/get-overview.use-case';
+import { GetCushionCandidatesUseCase, GetCushionUseCase, SaveCushionUseCase } from './application/cushion-use-cases';
 import { GetRecentMovementsUseCase } from './application/get-recent-movements.use-case';
-import { DashboardRepository } from './domain/dashboard.repository';
+import { CushionRepository } from './domain/cushion.repository';
 import { MonthSummaryRepository } from './domain/month-summary.repository';
 import { RecentMovementsRepository } from './domain/recent-movements.repository';
-import { InMemoryDashboardRepository } from './infrastructure/in-memory-dashboard.repository';
+import { CushionHttpRepository } from './infrastructure/cushion-http.repository';
 import { MonthSummaryHttpRepository } from './infrastructure/month-summary-http.repository';
 import { RecentMovementsHttpRepository } from './infrastructure/recent-movements-http.repository';
 
@@ -15,15 +15,16 @@ import { RecentMovementsHttpRepository } from './infrastructure/recent-movements
  * is also why the use cases are listed here instead of `providedIn: 'root'`: a
  * root-provided use case cannot see a port bound in the lazy route injector.
  *
- * El bloque principal y los movimientos recientes ya leen del backend; el
- * colchón sigue con los datos de ejemplo en memoria.
+ * El bloque principal, los movimientos recientes y el colchón leen del backend.
  */
 export function provideDashboard(): Provider[] {
   return [
-    { provide: DashboardRepository, useClass: InMemoryDashboardRepository },
+    { provide: CushionRepository, useClass: CushionHttpRepository },
     { provide: MonthSummaryRepository, useClass: MonthSummaryHttpRepository },
     { provide: RecentMovementsRepository, useClass: RecentMovementsHttpRepository },
-    GetOverviewUseCase,
+    GetCushionUseCase,
+    GetCushionCandidatesUseCase,
+    SaveCushionUseCase,
     GetMonthSummaryUseCase,
     GetRecentMovementsUseCase,
   ];

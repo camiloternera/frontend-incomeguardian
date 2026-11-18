@@ -23,6 +23,7 @@ function account(
     availableCredit: null,
     nextStatementDate: null,
     nextPaymentDueDate: null,
+    isCushion: false,
     createdAt: '2026-10-01T00:00:00Z',
     updatedAt: null,
     ...overrides,

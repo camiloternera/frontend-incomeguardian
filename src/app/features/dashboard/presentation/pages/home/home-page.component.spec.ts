@@ -2,15 +2,15 @@ import { formatDate } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { Observable, Subject, firstValueFrom, of } from 'rxjs';
+import { Observable, Subject } from 'rxjs';
 import { translocoTesting } from '@core/i18n/i18n.testing';
 import { LanguageService } from '@core/i18n/language.service';
 import { FakePeriodRepository, periodYear, provideFakePeriods } from '@features/periods/testing';
 import { HomePageComponent } from './home-page.component';
 import { provideDashboard } from '../../../dashboard.providers';
 import { DashboardError, DashboardErrorCode } from '../../../domain/dashboard-error';
-import { DashboardOverview } from '../../../domain/dashboard-overview';
-import { DashboardRepository } from '../../../domain/dashboard.repository';
+import { Cushion } from '../../../domain/cushion';
+import { CushionRepository } from '../../../domain/cushion.repository';
 import {
   CategorySpent,
   CurrencyMonth,
@@ -24,7 +24,7 @@ import { MonthSummaryRepository } from '../../../domain/month-summary.repository
 import { monthOutlook } from '../../../domain/overview-insights';
 import { RECENT_MOVEMENTS_LIMIT, RecentMovement } from '../../../domain/recent-movement';
 import { RecentMovementsRepository } from '../../../domain/recent-movements.repository';
-import { InMemoryDashboardRepository } from '../../../infrastructure/in-memory-dashboard.repository';
+import { FakeCushionRepository, sampleCushion } from '../../cushion-repository.fake';
 import { FakeMonthSummaryRepository, sampleMonthSummary } from '../../month-summary-repository.fake';
 import { FakeRecentMovementsRepository, daysBefore, recentMovement } from '../../recent-movements-repository.fake';
 
@@ -71,16 +71,14 @@ function categories(count: number): CategorySpent[] {
 }
 
 interface Setup {
-  overview?: Partial<DashboardOverview>;
-  /** Reemplaza el flujo del colchón, por ejemplo para dejarlo cargando. */
-  overviewSource?: Observable<DashboardOverview>;
+  /** El colchón que devuelve el repositorio falso. */
+  cushion?: FakeCushionRepository;
   periods?: FakePeriodRepository;
   summaries?: MonthSummaryRepository;
   recent?: RecentMovementsRepository;
 }
 
-async function setup({ overview = {}, overviewSource, periods = new FakePeriodRepository(), summaries, recent }: Setup = {}) {
-  const sample = await firstValueFrom(new InMemoryDashboardRepository().overview());
+async function setup({ cushion = new FakeCushionRepository(), periods = new FakePeriodRepository(), summaries, recent }: Setup = {}) {
   const fake = new FakeMonthSummaryRepository();
 
   await TestBed.configureTestingModule({
@@ -89,7 +87,7 @@ async function setup({ overview = {}, overviewSource, periods = new FakePeriodRe
       provideRouter([{ path: '', component: HomePageComponent }]),
       provideDashboard(),
       provideFakePeriods(periods),
-      { provide: DashboardRepository, useValue: { overview: () => overviewSource ?? of({ ...sample, ...overview }) } },
+      { provide: CushionRepository, useValue: cushion },
       { provide: MonthSummaryRepository, useValue: summaries ?? fake },
       { provide: RecentMovementsRepository, useValue: recent ?? new FakeRecentMovementsRepository(TODAY) },
     ],
@@ -197,8 +195,8 @@ describe('HomePageComponent', () => {
       const { element } = render();
 
       expect(text(element, 'cushion')).toContain('2.4 months');
-      expect(text(element, 'cushion')).toContain('Goal: 6 months');
-      expect(element.querySelectorAll('[data-testid="cushion"] [role="img"] > span').length).toBe(6);
+      expect(text(element, 'cushion')).toContain('Goal: 6 months · Davivienda ahorros, Bolsillo Nu');
+      expect(element.querySelectorAll('[data-testid="cushion-meter"] > span').length).toBe(6);
     });
 
     it('compares the month with the average of the previous months in the history', () => {
@@ -602,13 +600,52 @@ describe('HomePageComponent', () => {
     });
   });
 
-  describe('without previous months in the sample overview', () => {
-    beforeEach(() => setup({ overview: { cashFlow: [{ month: '2026-10', income: 6_200_000, expenses: 2_360_000 }] } }));
-
-    it('explains that the cushion needs earlier months', () => {
+  describe('with the cushion', () => {
+    it('asks to choose accounts when none is marked yet', async () => {
+      const cushion = new FakeCushionRepository();
+      cushion.current = sampleCushion({ hasCushionAccounts: false, currencies: [] });
+      await setup({ cushion });
       const { element } = render();
 
-      expect(text(element, 'cushion')).toContain('Once you have earlier months recorded');
+      expect(element.querySelector('[data-testid="cushion-empty"]')).toBeTruthy();
+      expect(text(element, 'cushion')).not.toContain('0.0 months');
+    });
+
+    it('opens the sheet from the card and reloads the cushion after saving', async () => {
+      const cushion = new FakeCushionRepository();
+      await setup({ cushion });
+      const { fixture, element } = render();
+      await fixture.whenStable();
+
+      element.querySelector<HTMLButtonElement>('[data-testid="cushion-adjust"]')!.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(element.querySelectorAll('[data-testid="cushion-candidate"]').length).toBe(3);
+
+      element.querySelector<HTMLButtonElement>('[data-testid="cushion-sheet-save"]')!.click();
+      fixture.detectChanges();
+
+      expect(cushion.savedAccounts).toEqual([[1, 2]]);
+      expect(cushion.savedGoals).toEqual([6]);
+      expect(cushion.cushionCalls).toBe(2);
+    });
+
+    it('shows the error and retries the cushion on demand', async () => {
+      const cushion = new FakeCushionRepository();
+      cushion.cushionError = new DashboardError('No pudimos cargar el colchón');
+      await setup({ cushion });
+      const { fixture, element } = render();
+
+      expect(text(element, 'cushion-error')).toContain('No pudimos cargar el colchón');
+
+      cushion.cushionError = null;
+      element.querySelector<HTMLButtonElement>('[data-testid="cushion-retry"]')!.click();
+      fixture.detectChanges();
+
+      expect(element.querySelector('[data-testid="cushion-error"]')).toBeNull();
+      expect(text(element, 'cushion')).toContain('2.4 months');
     });
   });
 
@@ -1033,11 +1070,13 @@ describe('HomePageComponent', () => {
       expect(text(element, 'recent-error')).not.toContain('boom');
     });
 
-    it('shows the movements while the rest of the overview is still loading', async () => {
-      await setup({ overviewSource: new Subject<DashboardOverview>() });
+    it('shows the movements while the cushion is still loading', async () => {
+      const cushion = new FakeCushionRepository();
+      cushion.cushionSource = new Subject<Cushion>();
+      await setup({ cushion });
       const { element } = render();
 
-      expect(element.querySelector('[data-testid="hero"]')).toBeNull();
+      expect(element.querySelector('[data-testid="cushion-loading"]')).toBeTruthy();
       expect(element.querySelectorAll('[data-testid="movement-day"]').length).toBe(3);
     });
   });

@@ -25,6 +25,7 @@ const CARD: Account = {
   availableCredit: 1600000,
   nextStatementDate: '2026-11-15',
   nextPaymentDueDate: '2026-12-05',
+  isCushion: false,
   createdAt: '2026-09-01T00:00:00Z',
   updatedAt: null,
 };

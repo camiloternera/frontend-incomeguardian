@@ -21,7 +21,7 @@ const DTO = {
 };
 
 /** Campos de tarjeta de una cuenta normal. */
-const NO_CARD = { kind: 'standard' as const, creditLimit: null, statementDay: null, paymentDay: null };
+const NO_CARD = { kind: 'standard' as const, creditLimit: null, statementDay: null, paymentDay: null, isCushion: false };
 
 function ok(data: unknown) {
   return { data, isSuccess: true, message: 'ok', errors: [] };
@@ -71,6 +71,7 @@ describe('AccountHttpRepository', () => {
         availableCredit: null,
         nextStatementDate: null,
         nextPaymentDueDate: null,
+        isCushion: false,
         createdAt: '2026-10-31T12:00:00+00:00',
         updatedAt: null,
       },
@@ -107,6 +108,7 @@ describe('AccountHttpRepository', () => {
       initialBalance: 320.5,
       currency: 'USD',
       openingDate: '2026-01-15T09:30:00-05:00',
+      isCushion: false,
     };
 
     repository.create(draft).subscribe();
@@ -219,6 +221,7 @@ describe('AccountHttpRepository', () => {
       creditLimit: 2000000,
       statementDay: 15,
       paymentDay: 5,
+      isCushion: false,
     };
 
     repository.create(card).subscribe();
@@ -228,6 +231,7 @@ describe('AccountHttpRepository', () => {
       initialBalance: -150000,
       currency: 'COP',
       openingDate: '2026-01-15T09:30:00-05:00',
+      isCushion: false,
       creditLimit: 2000000,
       statementDay: 15,
       paymentDay: 5,

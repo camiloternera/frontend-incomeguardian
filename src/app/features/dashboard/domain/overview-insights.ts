@@ -98,11 +98,6 @@ export function previousAverages(overview: Pick<DashboardOverview, 'month' | 'ca
   };
 }
 
-/** Meses de gasto promedio que cubren los ahorros; `null` sin gasto promedio. */
-export function cushionMonths(savings: number, averageExpenses: number): number | null {
-  return averageExpenses > 0 ? savings / averageExpenses : null;
-}
-
 /** Parte del ingreso que queda tras lo gastado y lo comprometido; `null` sin ingreso. */
 export function projectedSavingsRate(overview: DashboardOverview): number | null {
   if (overview.income <= 0) {
