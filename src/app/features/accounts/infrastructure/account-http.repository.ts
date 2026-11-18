@@ -58,6 +58,7 @@ function toAccount(dto: AccountDto): Account {
     availableCredit: dto.availableCredit ?? null,
     nextStatementDate: dto.nextStatementDate ? toDay(dto.nextStatementDate) : null,
     nextPaymentDueDate: dto.nextPaymentDueDate ? toDay(dto.nextPaymentDueDate) : null,
+    isCushion: dto.isCushion ?? false,
     createdAt: dto.createdAt,
     updatedAt: dto.updatedAt,
   };
@@ -71,6 +72,8 @@ function toRequest(draft: AccountDraft): AccountRequestDto {
     initialBalance: draft.initialBalance,
     currency: draft.currency,
     openingDate: draft.openingDate,
+    // Una deuda no es ahorro: una tarjeta nunca va al colchón.
+    isCushion: draft.kind !== 'credit_card' && draft.isCushion,
   };
 
   if (draft.kind === 'credit_card') {

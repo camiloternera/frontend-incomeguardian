@@ -242,9 +242,20 @@
                       }
                     </span>
                     <span class="min-w-0 flex-1">
-                      <span data-testid="row-name" class="block truncate text-[15px] font-bold">{{
-                        account.name
-                      }}</span>
+                      <span class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                        <span data-testid="row-name" class="block min-w-0 truncate text-[15px] font-bold">{{
+                          account.name
+                        }}</span>
+                        @if (account.isCushion) {
+                          <span
+                            data-testid="row-cushion"
+                            class="inline-flex shrink-0 items-center gap-1 rounded-full bg-ig-accent/15 px-2 py-0.5 text-[12px] font-bold text-ig-accent-text"
+                          >
+                            <svg lucideShield [size]="12" aria-hidden="true"></svg>
+                            {{ t('accounts.list.cushionBadge') }}
+                          </span>
+                        }
+                      </span>
                       @if (isCreditCard(account)) {
                         <span data-testid="row-card-meta" class="mt-0.5 block text-[13px] text-ig-muted">
                           {{ t('accounts.list.card.kind') }} · {{ account.currency }}

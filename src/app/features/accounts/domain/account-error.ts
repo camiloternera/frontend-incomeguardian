@@ -27,6 +27,8 @@ export const AccountErrorCode = {
   CardInitialBalancePositive: 'CREDIT_CARD_INITIAL_BALANCE_POSITIVE',
   /** Pedir el extracto de una cuenta que no es tarjeta. */
   NotCreditCard: 'ACCOUNT_NOT_CREDIT_CARD',
+  /** Marcar una tarjeta de crédito como cuenta del colchón. */
+  CushionCreditCard: 'ACCOUNT_CUSHION_CREDIT_CARD',
 } as const;
 
 export type AccountErrorCode = (typeof AccountErrorCode)[keyof typeof AccountErrorCode];

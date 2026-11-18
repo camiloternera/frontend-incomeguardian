@@ -1,0 +1,210 @@
+<section
+  *transloco="let t"
+  data-testid="cushion"
+  class="flex min-w-0 flex-1 flex-col gap-4 rounded-lg border border-ig-border bg-ig-surface p-6 lg:max-w-[340px]"
+  aria-labelledby="cushion-title"
+>
+  <div class="flex min-h-7 items-center justify-between gap-2">
+    <h2 id="cushion-title" class="m-0 flex items-center gap-2 text-[14px] font-medium text-ig-muted">
+      <svg lucideShield [size]="18" class="text-ig-accent-text" aria-hidden="true"></svg>
+      {{ t('dashboard.home.cushion.title') }}
+    </h2>
+    @if (cushion()?.hasCushionAccounts) {
+      <button
+        data-testid="cushion-adjust"
+        type="button"
+        class="-my-2 -mr-2 inline-flex min-h-11 items-center rounded-lg px-2 text-[13px] font-medium text-ig-accent-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ig-accent"
+        (click)="configure.emit()"
+      >
+        {{ t('dashboard.home.cushion.adjust') }}
+      </button>
+    }
+  </div>
+
+  @switch (load().status) {
+    @case ('loading') {
+      <p data-testid="cushion-loading" class="m-0 text-[14px] text-ig-muted" role="status">{{ t('dashboard.home.cushion.loading') }}</p>
+    }
+    @case ('error') {
+      @let failed = load();
+      <div data-testid="cushion-error" class="flex flex-col items-start gap-3" role="alert">
+        <p class="m-0 text-[14px] text-ig-text">{{ failed.status === 'error' ? failed.message : '' }}</p>
+        <button
+          data-testid="cushion-retry"
+          type="button"
+          class="inline-flex min-h-11 items-center rounded-lg border border-ig-border bg-transparent px-4 text-[14px] font-medium text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ig-accent"
+          (click)="retry.emit()"
+        >
+          {{ t('dashboard.home.cushion.retry') }}
+        </button>
+      </div>
+    }
+    @case ('ready') {
+      @let data = cushion()!;
+      @if (!data.hasCushionAccounts) {
+        <div data-testid="cushion-empty" class="flex flex-col gap-3">
+          <p class="m-0 text-[20px] font-bold leading-tight tracking-[-0.02em]">{{ t('dashboard.home.cushion.emptyTitle') }}</p>
+          <p class="m-0 text-[14px] leading-relaxed text-ig-muted">{{ t('dashboard.home.cushion.emptyBody', { goal: data.goalMonths }) }}</p>
+          <button
+            data-testid="cushion-choose"
+            type="button"
+            class="mt-1 inline-flex min-h-11 items-center self-start rounded-lg border border-ig-accent bg-ig-accent px-5 text-[14px] font-bold text-ig-on-accent hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ig-accent"
+            (click)="configure.emit()"
+          >
+            {{ t('dashboard.home.cushion.choose') }}
+          </button>
+        </div>
+      } @else {
+        <div class="flex flex-col gap-5">
+          @for (item of rows(); track item.currency; let first = $first) {
+            @let row = item.row;
+            <div
+              data-testid="cushion-row"
+              [attr.data-state]="item.state"
+              class="flex flex-col"
+              [class.gap-3]="!multi()"
+              [class.gap-2]="multi()"
+              [class.border-t]="multi() && !first"
+              [class.border-ig-border]="multi() && !first"
+              [class.pt-5]="multi() && !first"
+            >
+              @if (multi()) {
+                <p class="m-0 text-[12px] font-bold tracking-[0.04em] text-ig-muted">{{ currencyLabel(item.currency) }}</p>
+              }
+
+              <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <p
+                  data-testid="cushion-hero"
+                  class="m-0 font-bold leading-none tracking-[-0.04em] tabular-nums"
+                  [class.text-[40px]]="!multi()"
+                  [class.text-[28px]]="multi()"
+                >
+                  @if (row.monthsCovered === null) {
+                    {{ money(row.savings, item.currency) }}
+                  } @else {
+                    {{ t('dashboard.home.cushion.months', { months: months(row.monthsCovered) }) }}
+                  }
+                </p>
+                @if (item.state === 'goalReached') {
+                  <span
+                    data-testid="cushion-reached"
+                    class="inline-flex items-center gap-1 rounded-full bg-ig-accent/15 px-[10px] py-1 text-[12px] font-bold text-ig-accent-text"
+                  >
+                    <svg lucideCheck [size]="14" aria-hidden="true"></svg>
+                    {{ t('dashboard.home.cushion.goalReached') }}
+                  </span>
+                }
+              </div>
+
+              <p data-testid="cushion-body" class="m-0 text-[14px] leading-relaxed text-ig-muted">
+                @switch (item.state) {
+                  @case ('noPreviousMonths') {
+                    {{ multi() ? t('dashboard.home.cushion.rowSaved', { savings: money(row.savings, item.currency) }) : t('dashboard.home.cushion.noPreviousBody') }}
+                  }
+                  @case ('noSpending') {
+                    {{
+                      multi()
+                        ? t('dashboard.home.cushion.rowSaved', { savings: money(row.savings, item.currency) })
+                        : t('dashboard.home.cushion.noSpendingBody', { period: period(row), currency: currencyName(item.currency) })
+                    }}
+                  }
+                  @case ('zero') {
+                    {{
+                      multi()
+                        ? t('dashboard.home.cushion.rowBody', { savings: money(row.savings, item.currency), average: money(row.averageMonthlySpent, item.currency) })
+                        : t('dashboard.home.cushion.zeroBody', {
+                            savings: money(row.savings, item.currency),
+                            period: period(row),
+                            average: money(row.averageMonthlySpent, item.currency),
+                          })
+                    }}
+                  }
+                  @default {
+                    {{
+                      multi()
+                        ? t('dashboard.home.cushion.rowBody', { savings: money(row.savings, item.currency), average: money(row.averageMonthlySpent, item.currency) })
+                        : t('dashboard.home.cushion.body', {
+                            savings: money(row.savings, item.currency),
+                            months: months(row.monthsCovered),
+                            period: period(row),
+                            average: money(row.averageMonthlySpent, item.currency),
+                          })
+                    }}
+                  }
+                }
+              </p>
+
+              @if (row.monthsCovered !== null) {
+                <div
+                  data-testid="cushion-meter"
+                  class="relative mt-1 flex h-2 gap-1"
+                  role="img"
+                  [attr.aria-label]="
+                    item.state === 'goalReached'
+                      ? t('dashboard.home.cushion.meterReached', { goal: data.goalMonths, months: months(row.monthsCovered) })
+                      : t('dashboard.home.cushion.meter', { goal: data.goalMonths, months: months(row.monthsCovered) })
+                  "
+                >
+                  @for (segment of segments(); track segment) {
+                    <span class="h-full flex-1 overflow-hidden rounded-sm bg-ig-border">
+                      <span
+                        class="block h-full bg-ig-accent"
+                        [style.width.%]="segmentFill(item.fill, segment) * 100"
+                      ></span>
+                    </span>
+                  }
+                </div>
+              }
+
+              <p
+                data-testid="cushion-foot"
+                class="m-0 text-[13px]"
+                [class.text-ig-muted]="item.state !== 'goalReached'"
+                [class.text-ig-accent-text]="item.state === 'goalReached'"
+                [class.font-medium]="item.state === 'goalReached'"
+              >
+                @switch (item.state) {
+                  @case ('noPreviousMonths') {
+                    {{ t('dashboard.home.cushion.noPreviousFoot') }}
+                  }
+                  @case ('noSpending') {
+                    {{ t('dashboard.home.cushion.noSpendingFoot') }}
+                  }
+                  @case ('goalReached') {
+                    {{ t('dashboard.home.cushion.surplus', { amount: money(surplus(row), item.currency) }) }}
+                    @if (!multi()) {
+                      ·
+                      <button
+                        data-testid="cushion-raise"
+                        type="button"
+                        class="inline min-h-0 cursor-pointer border-0 bg-transparent p-0 font-medium text-ig-accent-text underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ig-accent"
+                        (click)="configure.emit()"
+                      >
+                        {{ t('dashboard.home.cushion.raiseGoal') }}
+                      </button>
+                    }
+                  }
+                  @default {
+                    {{
+                      multi()
+                        ? t('dashboard.home.cushion.missingShort', { amount: money(row.missing ?? 0, item.currency) })
+                        : t('dashboard.home.cushion.missing', { amount: money(row.missing ?? 0, item.currency) })
+                    }}
+                  }
+                }
+              </p>
+            </div>
+          }
+
+          <p data-testid="cushion-footer" class="m-0 border-t border-ig-border pt-3 text-[12px] text-ig-muted">
+            {{
+              accountNames()
+                ? t('dashboard.home.cushion.footerAccounts', { goal: data.goalMonths, accounts: accountNames() })
+                : t('dashboard.home.cushion.footer', { goal: data.goalMonths })
+            }}
+          </p>
+        </div>
+      }
+    }
+  }
+</section>

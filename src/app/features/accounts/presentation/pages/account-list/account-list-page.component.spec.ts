@@ -45,6 +45,7 @@ describe('AccountListPageComponent', () => {
       availableCredit: null,
       nextStatementDate: null,
       nextPaymentDueDate: null,
+      isCushion: false,
       isActive: true,
       hasTransactions: false,
       openingDate: '2026-10-20T00:00:00Z',
@@ -76,6 +77,14 @@ describe('AccountListPageComponent', () => {
     expect(visa.querySelector('[data-testid="row-balance"]')?.textContent).toContain('-COP');
     expect(visa.querySelector('a[href="/accounts/5/edit"]')).toBeTruthy();
     expect(element.querySelector('[data-testid="menu-5"]')).toBeTruthy();
+  });
+
+  it('marks the cushion accounts with a badge', async () => {
+    fake.accounts.push(account(20, 'Ahorros', { isCushion: true }));
+    const { element } = await open();
+
+    expect(element.querySelector('[data-testid="account-20"] [data-testid="row-cushion"]')?.textContent?.trim()).toBe('Cushion');
+    expect(element.querySelector('[data-testid="account-5"] [data-testid="row-cushion"]')).toBeNull();
   });
 
   it('puts the create action at the top of the page', async () => {
@@ -263,6 +272,7 @@ describe('AccountListPageComponent', () => {
         availableCredit: 1500000,
         nextStatementDate: '2026-11-15',
         nextPaymentDueDate: '2026-12-05',
+        isCushion: false,
         ...overrides,
       });
     }

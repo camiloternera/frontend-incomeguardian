@@ -36,11 +36,42 @@
     },
     "cushion": {
       "title": "Tu colchón",
+      "adjust": "Ajustar",
+      "loading": "Calculando tu colchón…",
+      "retry": "Reintentar",
+      "emptyTitle": "Elige dónde guardas tu ahorro para emergencias",
+      "emptyBody": "Marca esas cuentas y te diremos cuántos meses de gastos cubren. La meta empieza en {{goal}} meses y la puedes cambiar.",
+      "choose": "Elegir cuentas",
       "months": "{{months}} meses",
-      "body": "Tus ahorros cubren {{months}} meses de gastos al ritmo de tu promedio ({{average}} al mes).",
-      "goal": "Meta: {{months}} meses",
-      "meter": "{{months}} de {{goal}} meses de la meta",
-      "empty": "Cuando tengas meses anteriores registrados calcularemos cuánto te dura lo ahorrado."
+      "periodMany": "los últimos {{count}} meses",
+      "periodOne": "el último mes",
+      "body": "Tus ahorros ({{savings}}) cubren {{months}} meses al ritmo de tu promedio de {{period}} ({{average}} al mes).",
+      "zeroBody": "Tus cuentas del colchón están en {{savings}}. Tu promedio de {{period}} es {{average}} al mes.",
+      "noPreviousBody": "Ahorrados en tu colchón. Cuando cierres tu primer mes completo te diremos cuántos meses de gastos cubren.",
+      "noPreviousFoot": "La meta en dinero aparece con tu primer mes completo.",
+      "noSpendingBody": "Ahorrados en tu colchón. En {{period}} no hay gastos en {{currency}} con qué compararlos.",
+      "noSpendingFoot": "Cuando registres gastos calcularemos los meses que cubre.",
+      "rowBody": "{{savings}} ahorrados · promedio {{average}} al mes",
+      "rowSaved": "{{savings}} ahorrados",
+      "missing": "Te faltan {{amount}} para la meta",
+      "missingShort": "Te faltan {{amount}}",
+      "goalReached": "Meta cumplida",
+      "surplus": "Superas la meta por {{amount}}",
+      "raiseGoal": "¿Subir la meta?",
+      "meter": "{{months}} de {{goal}} meses de meta",
+      "meterReached": "Meta de {{goal}} meses cumplida: {{months}} meses",
+      "footer": "Meta: {{goal}} meses",
+      "footerAccounts": "Meta: {{goal}} meses · {{accounts}}",
+      "currencyName": {
+        "COP": "pesos",
+        "USD": "dólares",
+        "EUR": "euros"
+      },
+      "currencyLabel": {
+        "COP": "PESOS · COP",
+        "USD": "DÓLARES · USD",
+        "EUR": "EUROS · EUR"
+      }
     },
     "stats": {
       "label": "Indicadores del mes",
@@ -86,10 +117,41 @@
       "installments": "{{count}} cuotas",
       "advance": "Avance de tarjeta",
       "advanceFee": "Comisión del avance"
+    },
+    "cushionSheet": {
+      "titleFirst": "Elige tu colchón",
+      "titleEdit": "Ajustar tu colchón",
+      "subtitle": "Elige las cuentas donde guardas tu ahorro para emergencias.",
+      "close": "Cerrar",
+      "loading": "Cargando tus cuentas…",
+      "retry": "Reintentar",
+      "accountsLegend": "Cuentas del colchón",
+      "accountType": "Cuenta · {{currency}}",
+      "accountsHelp": "Las tarjetas de crédito y las cuentas desactivadas no aparecen. Puedes cambiar esto cuando quieras, aunque las cuentas tengan movimientos.",
+      "noAccounts": "Aún no tienes cuentas que puedan ser parte del colchón. Crea una cuenta de ahorros y vuelve aquí.",
+      "goalLabel": "Meta",
+      "goalValue": "{{count}} meses",
+      "goalValueOne": "1 mes",
+      "decrease": "Bajar la meta un mes",
+      "increase": "Subir la meta un mes",
+      "goalHelp": "Meses de gastos que quieres tener cubiertos. Entre {{min}} y {{max}}.",
+      "previewTitle": "Con esta selección",
+      "previewCovers": "cubren {{months}}.",
+      "previewGoal": "Meta de {{goal}} ≈ {{amount}} · faltan {{missing}}",
+      "previewGoalReached": "Meta de {{goal}} ≈ {{amount}} · cumplida",
+      "previewNoAverage": "{{saved}} ahorrados. Aún no hay gastos en {{currency}} con qué compararlos.",
+      "previewEmpty": "Sin cuentas marcadas, la tarjeta del colchón vuelve a pedirte que las elijas.",
+      "cancel": "Cancelar",
+      "save": "Guardar",
+      "saving": "Guardando…"
     }
   },
   "errors": {
     "PERIOD_INVALID": "Ese mes no es válido.",
-    "DASHBOARD_RECENT_LIMIT_INVALID": "La cantidad de movimientos recientes debe estar entre 1 y 20."
+    "DASHBOARD_RECENT_LIMIT_INVALID": "La cantidad de movimientos recientes debe estar entre 1 y 20.",
+    "ACCOUNT_CUSHION_CREDIT_CARD": "Una tarjeta de crédito no puede ser parte del colchón.",
+    "ACCOUNT_CUSHION_INACTIVE": "Una cuenta desactivada no puede ser parte del colchón.",
+    "ACCOUNT_NOT_FOUND": "Una de las cuentas ya no existe. Vuelve a abrir la hoja.",
+    "USER_CUSHION_GOAL_INVALID": "La meta debe estar entre 1 y 24 meses."
   }
 }

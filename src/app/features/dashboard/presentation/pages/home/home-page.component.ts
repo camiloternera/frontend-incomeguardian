@@ -1,12 +1,12 @@
-import { formatCurrency, formatDate, formatNumber, formatPercent } from '@angular/common';
+import { formatCurrency, formatDate, formatPercent } from '@angular/common';
 import { Component, computed, effect, inject, signal } from '@angular/core';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { SelectComponent, SelectOption } from '@shared/ui/select/select.component';
 import { formatMoney } from '@shared/money/money-format';
-import { LucideArrowDownLeft, LucideArrowLeftRight, LucideArrowUpRight, LucideEye, LucideEyeOff, LucidePlus, LucideShield } from '@lucide/angular';
+import { LucideArrowDownLeft, LucideArrowLeftRight, LucideArrowUpRight, LucideEye, LucideEyeOff, LucidePlus } from '@lucide/angular';
 import { LanguageService } from '@core/i18n/language.service';
 import {
   ClosedMonthBadgeComponent,
@@ -16,21 +16,17 @@ import {
 } from '@features/periods';
 import { ThemeService } from '@core/theme/theme.service';
 import { GetMonthSummaryUseCase } from '../../../application/get-month-summary.use-case';
-import { GetOverviewUseCase } from '../../../application/get-overview.use-case';
+import { GetCushionUseCase } from '../../../application/cushion-use-cases';
 import { GetRecentMovementsUseCase } from '../../../application/get-recent-movements.use-case';
 import { CategorySpent, MonthSummary, monthKey, monthOfDay, todayInDashboardZone } from '../../../domain/month-summary';
-import { cushionMonths, groupByDay, monthOutlook, previousAverages } from '../../../domain/overview-insights';
+import { groupByDay, monthOutlook, previousAverages } from '../../../domain/overview-insights';
 import { RecentMovement } from '../../../domain/recent-movement';
 import { CashFlowBar, CashFlowChartComponent } from '../../components/cash-flow-chart.component';
+import { CushionCardComponent, CushionLoad } from '../../components/cushion-card/cushion-card.component';
+import { CushionSheetComponent } from '../../components/cushion-sheet/cushion-sheet.component';
 
 /** Texto que reemplaza un monto cuando el usuario decide ocultarlos. */
 const MASK = '•••••';
-
-/** Segmentos de la meta del colchón: uno por mes, con el relleno de 0 a 1. */
-interface MeterSegment {
-  index: number;
-  fill: number;
-}
 
 /** Categoría del mes con su parte del gasto, de 0 a 1. */
 interface CategoryShare extends CategorySpent {
@@ -60,6 +56,8 @@ type RecentState =
     SelectComponent,
     TranslocoDirective,
     CashFlowChartComponent,
+    CushionCardComponent,
+    CushionSheetComponent,
     ClosedMonthBadgeComponent,
     PeriodBannerComponent,
     PeriodOverlaysComponent,
@@ -70,13 +68,12 @@ type RecentState =
     LucideEye,
     LucideEyeOff,
     LucidePlus,
-    LucideShield,
   ],
   templateUrl: './home-page.component.html',
   styleUrls: ['./home-page.component.css'],
 })
 export class HomePageComponent {
-  private readonly getOverview = inject(GetOverviewUseCase);
+  private readonly getCushion = inject(GetCushionUseCase);
   private readonly languageService = inject(LanguageService);
   private readonly themeService = inject(ThemeService);
   private readonly getMonthSummary = inject(GetMonthSummaryUseCase);
@@ -88,7 +85,18 @@ export class HomePageComponent {
   protected readonly theme = this.themeService.theme;
   protected readonly locale = this.languageService.language;
 
-  protected readonly overview = toSignal(this.getOverview.execute(), { initialValue: null });
+  /** «Tu colchón», que carga aparte del bloque principal. */
+  protected readonly cushionState = signal<CushionLoad>({ status: 'loading' });
+
+  /** El colchón cargado, para la hoja; `null` mientras carga o si falló. */
+  protected readonly readyCushion = computed(() => {
+    const state = this.cushionState();
+
+    return state.status === 'ready' ? state.cushion : null;
+  });
+
+  /** Si la hoja para elegir cuentas y meta está abierta. */
+  protected readonly cushionSheetOpen = signal(false);
 
   /** Si los montos se muestran enmascarados (por ejemplo, en un lugar público). */
   protected readonly amountsHidden = signal(false);
@@ -213,36 +221,11 @@ export class HomePageComponent {
 
   protected readonly visibleCategories = VISIBLE_CATEGORIES;
 
-  /** Promedios del Resumen de ejemplo; solo los usa el colchón, que aún no lee del backend. */
-  protected readonly sampleAverages = computed(() => {
-    const overview = this.overview();
-
-    return overview ? previousAverages(overview) : null;
-  });
-
-  protected readonly cushion = computed(() => {
-    const overview = this.overview();
-    const averages = this.sampleAverages();
-
-    return overview && averages ? cushionMonths(overview.savings, averages.expenses) : null;
-  });
-
   /** Movimientos recientes agrupados por día, con «Hoy» y «Ayer» respecto a hoy en Colombia. */
   protected readonly days = computed(() => {
     const state = this.recentState();
 
     return state.status === 'ready' ? groupByDay(state.movements, this.today) : [];
-  });
-
-  /** Un segmento por mes de la meta; el colchón llena los primeros. */
-  protected readonly meter = computed<MeterSegment[]>(() => {
-    const goal = this.overview()?.goals.cushionMonths ?? 0;
-    const months = this.cushion() ?? 0;
-
-    return Array.from({ length: goal }, (_, index) => ({
-      index,
-      fill: Math.min(1, Math.max(0, months - index)),
-    }));
   });
 
   protected readonly bars = computed<CashFlowBar[]>(() =>
@@ -270,6 +253,29 @@ export class HomePageComponent {
 
     this.loadSummary();
     this.loadRecent();
+    this.loadCushion();
+  }
+
+  /** Pide el colchón; también sirve de reintento y de recarga tras guardar la hoja. */
+  protected loadCushion(): void {
+    this.cushionState.set({ status: 'loading' });
+    this.getCushion.execute().subscribe({
+      next: (cushion) => this.cushionState.set({ status: 'ready', cushion }),
+      error: (error: unknown) =>
+        this.cushionState.set({
+          status: 'error',
+          message: error instanceof Error ? error.message : this.transloco.translate('errors.generic'),
+        }),
+    });
+  }
+
+  protected openCushionSheet(): void {
+    this.cushionSheetOpen.set(true);
+  }
+
+  protected onCushionSaved(): void {
+    this.cushionSheetOpen.set(false);
+    this.loadCushion();
   }
 
   /** Pide las cifras del mes en curso; también sirve de reintento tras un error. */
@@ -366,7 +372,7 @@ export class HomePageComponent {
       return MASK;
     }
 
-    const currency = currencyCode ?? this.overview()?.currency ?? 'COP';
+    const currency = currencyCode ?? 'COP';
 
     if (compact) {
       const format = new Intl.NumberFormat(this.locale(), { style: 'currency', currency, currencyDisplay: 'narrowSymbol', notation: 'compact', maximumFractionDigits: 1 });
@@ -393,11 +399,6 @@ export class HomePageComponent {
   /** Porcentaje con hasta un decimal en el idioma activo. */
   protected percent(value: number): string {
     return formatPercent(value, this.locale(), '1.0-1');
-  }
-
-  /** Número con un decimal, para los meses del colchón. */
-  protected decimal(value: number): string {
-    return formatNumber(value, this.locale(), '1.1-1');
   }
 
   /** Fecha larga de un día: «viernes 17 de octubre» / «Friday, October 17». */

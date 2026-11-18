@@ -21,6 +21,7 @@ export class FakeAccountRepository extends AccountRepository {
       availableCredit: null,
       nextStatementDate: null,
       nextPaymentDueDate: null,
+      isCushion: false,
       initialBalance: -250000,
       currentBalance: -250000,
       currency: 'COP',
@@ -40,6 +41,7 @@ export class FakeAccountRepository extends AccountRepository {
       availableCredit: null,
       nextStatementDate: null,
       nextPaymentDueDate: null,
+      isCushion: false,
       initialBalance: 1250000,
       currentBalance: 1250000,
       currency: 'COP',
@@ -59,6 +61,7 @@ export class FakeAccountRepository extends AccountRepository {
       availableCredit: null,
       nextStatementDate: null,
       nextPaymentDueDate: null,
+      isCushion: false,
       initialBalance: 320.5,
       currentBalance: 320.5,
       currency: 'USD',
@@ -141,6 +144,7 @@ export class FakeAccountRepository extends AccountRepository {
       availableCredit: draft.creditLimit === null ? null : draft.creditLimit + draft.initialBalance,
       nextStatementDate: null,
       nextPaymentDueDate: null,
+      isCushion: false,
       ...rest,
     };
   }

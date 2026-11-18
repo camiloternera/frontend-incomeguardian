@@ -1,5 +1,5 @@
 import { DashboardOverview } from './dashboard-overview';
-import { cushionMonths, groupByDay, monthOutlook, previousAverages, projectedSavingsRate } from './overview-insights';
+import { groupByDay, monthOutlook, previousAverages, projectedSavingsRate } from './overview-insights';
 import { RecentMovement } from './recent-movement';
 
 function overview(changes: Partial<DashboardOverview> = {}): DashboardOverview {
@@ -107,16 +107,6 @@ describe('previousAverages', () => {
 
   it('is null when there is no earlier month', () => {
     expect(previousAverages(overview({ cashFlow: [{ month: '2026-10', income: 1, expenses: 1 }] }))).toBeNull();
-  });
-});
-
-describe('cushionMonths', () => {
-  it('divides the savings by the average monthly spending', () => {
-    expect(cushionMonths(9_400_000, 3_880_000)).toBeCloseTo(2.42, 2);
-  });
-
-  it('is null without an average to divide by', () => {
-    expect(cushionMonths(9_400_000, 0)).toBeNull();
   });
 });
 

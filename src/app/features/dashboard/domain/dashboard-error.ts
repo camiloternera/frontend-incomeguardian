@@ -2,6 +2,10 @@
 export const DashboardErrorCode = {
   PeriodInvalid: 'PERIOD_INVALID',
   RecentLimitInvalid: 'DASHBOARD_RECENT_LIMIT_INVALID',
+  CushionCreditCard: 'ACCOUNT_CUSHION_CREDIT_CARD',
+  CushionInactive: 'ACCOUNT_CUSHION_INACTIVE',
+  AccountNotFound: 'ACCOUNT_NOT_FOUND',
+  CushionGoalInvalid: 'USER_CUSHION_GOAL_INVALID',
 } as const;
 
 export type DashboardErrorCode = (typeof DashboardErrorCode)[keyof typeof DashboardErrorCode];

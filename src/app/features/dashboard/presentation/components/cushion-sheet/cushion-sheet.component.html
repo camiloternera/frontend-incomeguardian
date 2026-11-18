@@ -1,0 +1,179 @@
+<dialog
+  #dialog
+  *transloco="let t"
+  data-testid="cushion-sheet"
+  class="m-0 mt-auto w-full max-w-none overflow-hidden rounded-t-2xl border-0 border-t border-ig-border bg-ig-canvas p-0 text-ig-text backdrop:bg-black/60 max-h-[92dvh] sm:m-auto sm:max-h-[min(820px,92dvh)] sm:w-[560px] sm:rounded-xl sm:border"
+  aria-labelledby="cushion-sheet-title"
+  (close)="onDialogClosed()"
+  (cancel)="onCancel($event)"
+  (click)="onDialogClick($event)"
+>
+  @if (open()) {
+    <div class="flex max-h-[inherit] flex-col">
+      <span aria-hidden="true" class="mt-2 h-1 w-10 self-center rounded-full bg-ig-border sm:hidden"></span>
+
+      <header class="flex items-start justify-between gap-4 border-b border-ig-border px-4 pb-4 pt-3 sm:px-8 sm:py-6">
+        <div class="flex min-w-0 flex-col gap-1">
+          <h2 #heading id="cushion-sheet-title" tabindex="-1" class="m-0 text-[20px] font-bold tracking-[-0.02em] outline-none">
+            {{ firstTime() ? t('dashboard.home.cushionSheet.titleFirst') : t('dashboard.home.cushionSheet.titleEdit') }}
+          </h2>
+          <p class="m-0 text-[13px] text-ig-muted">{{ t('dashboard.home.cushionSheet.subtitle') }}</p>
+        </div>
+        <button
+          data-testid="cushion-sheet-close"
+          type="button"
+          class="-mr-2 -mt-2 inline-grid size-11 shrink-0 place-items-center rounded-lg text-ig-muted hover:bg-ig-surface-raised hover:text-ig-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ig-accent"
+          [attr.aria-label]="t('dashboard.home.cushionSheet.close')"
+          (click)="dismiss()"
+        >
+          <svg lucideX [size]="18" aria-hidden="true"></svg>
+        </button>
+      </header>
+
+      <div class="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-4 py-4 sm:px-8 sm:py-6">
+        <fieldset class="m-0 flex flex-col gap-2 border-0 p-0">
+          <legend class="mb-2 p-0 text-[13px] font-bold">{{ t('dashboard.home.cushionSheet.accountsLegend') }}</legend>
+
+          @switch (state().status) {
+            @case ('loading') {
+              <p data-testid="cushion-sheet-loading" class="m-0 text-[14px] text-ig-muted" role="status">{{ t('dashboard.home.cushionSheet.loading') }}</p>
+            }
+            @case ('error') {
+              @let failed = state();
+              <div class="flex flex-col items-start gap-3" role="alert">
+                <p data-testid="cushion-sheet-load-error" class="m-0 text-[14px]">{{ failed.status === 'error' ? failed.message : '' }}</p>
+                <button
+                  type="button"
+                  class="inline-flex min-h-11 items-center rounded-lg border border-ig-border bg-transparent px-4 text-[14px] font-medium text-ig-text hover:bg-ig-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ig-accent"
+                  (click)="loadCandidates()"
+                >
+                  {{ t('dashboard.home.cushionSheet.retry') }}
+                </button>
+              </div>
+            }
+            @case ('ready') {
+              @if (candidates().length === 0) {
+                <p data-testid="cushion-sheet-no-accounts" class="m-0 text-[14px] text-ig-muted">{{ t('dashboard.home.cushionSheet.noAccounts') }}</p>
+              } @else {
+                <div class="overflow-hidden rounded-lg border border-ig-border bg-ig-surface">
+                  @for (candidate of candidates(); track candidate.id; let last = $last) {
+                    @let checked = selected().has(candidate.id);
+                    <button
+                      data-testid="cushion-candidate"
+                      type="button"
+                      role="checkbox"
+                      class="flex min-h-[60px] w-full cursor-pointer items-center gap-3 border-0 bg-transparent px-4 py-2 text-left text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ig-accent"
+                      [class.border-b]="!last"
+                      [class.border-ig-border]="!last"
+                      [class.bg-ig-accent/10]="checked"
+                      [attr.aria-checked]="checked"
+                      (click)="toggle(candidate.id)"
+                    >
+                      <span
+                        aria-hidden="true"
+                        class="grid size-5 shrink-0 place-items-center rounded border-2"
+                        [class.border-ig-accent]="checked"
+                        [class.bg-ig-accent]="checked"
+                        [class.border-ig-muted]="!checked"
+                      >
+                        @if (checked) {
+                          <svg lucideCheck [size]="14" [strokeWidth]="3" class="text-ig-on-accent"></svg>
+                        }
+                      </span>
+                      <span class="min-w-0 flex-1">
+                        <span class="block truncate text-[15px] font-medium">{{ candidate.name }}</span>
+                        <span class="block text-[12px] text-ig-muted">{{ t('dashboard.home.cushionSheet.accountType', { currency: candidate.currency }) }}</span>
+                      </span>
+                      <span class="whitespace-nowrap text-[14px] font-medium tabular-nums">{{ money(candidate.balance, candidate.currency) }}</span>
+                    </button>
+                  }
+                </div>
+              }
+            }
+          }
+          <p class="m-0 text-[12px] text-ig-muted">{{ t('dashboard.home.cushionSheet.accountsHelp') }}</p>
+        </fieldset>
+
+        <div class="flex flex-col gap-2">
+          <p id="cushion-goal-label" class="m-0 text-[13px] font-bold">{{ t('dashboard.home.cushionSheet.goalLabel') }}</p>
+          <div role="group" aria-labelledby="cushion-goal-label" class="flex items-center gap-3">
+            <button
+              data-testid="cushion-goal-decrease"
+              type="button"
+              class="grid size-11 place-items-center rounded-lg border border-ig-border bg-ig-surface text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ig-accent disabled:cursor-not-allowed disabled:opacity-40"
+              [attr.aria-label]="t('dashboard.home.cushionSheet.decrease')"
+              [disabled]="goal() <= min"
+              (click)="step(-1)"
+            >
+              <svg lucideMinus [size]="18" aria-hidden="true"></svg>
+            </button>
+            <output data-testid="cushion-goal" aria-live="polite" class="min-w-24 text-center text-[20px] font-bold tabular-nums">{{ goalText(goal()) }}</output>
+            <button
+              data-testid="cushion-goal-increase"
+              type="button"
+              class="grid size-11 place-items-center rounded-lg border border-ig-border bg-ig-surface text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ig-accent disabled:cursor-not-allowed disabled:opacity-40"
+              [attr.aria-label]="t('dashboard.home.cushionSheet.increase')"
+              [disabled]="goal() >= max"
+              (click)="step(1)"
+            >
+              <svg lucidePlus [size]="18" aria-hidden="true"></svg>
+            </button>
+          </div>
+          <p class="m-0 text-[12px] text-ig-muted">{{ t('dashboard.home.cushionSheet.goalHelp', { min: min, max: max }) }}</p>
+        </div>
+
+        <div data-testid="cushion-preview" aria-live="polite" class="flex flex-col gap-2 rounded-lg border border-ig-border bg-ig-surface-raised p-4">
+          <p class="m-0 text-[12px] font-bold uppercase tracking-[0.04em] text-ig-muted">{{ t('dashboard.home.cushionSheet.previewTitle') }}</p>
+          @for (line of preview(); track line.currency) {
+            <p class="m-0 text-[14px] leading-normal">
+              @if (line.monthsCovered === null) {
+                {{ t('dashboard.home.cushionSheet.previewNoAverage', { saved: money(line.savings, line.currency), currency: currencyName(line.currency) }) }}
+              } @else {
+                <strong class="tabular-nums">{{ money(line.savings, line.currency) }}</strong>
+                {{ t('dashboard.home.cushionSheet.previewCovers', { months: monthsText(line.monthsCovered) }) }}
+                <span class="text-ig-muted">
+                  {{
+                    line.missing === 0
+                      ? t('dashboard.home.cushionSheet.previewGoalReached', { goal: goalText(goal()), amount: money(line.goalAmount ?? 0, line.currency) })
+                      : t('dashboard.home.cushionSheet.previewGoal', {
+                          goal: goalText(goal()),
+                          amount: money(line.goalAmount ?? 0, line.currency),
+                          missing: money(line.missing ?? 0, line.currency),
+                        })
+                  }}
+                </span>
+              }
+            </p>
+          } @empty {
+            <p class="m-0 text-[14px] text-ig-muted">{{ t('dashboard.home.cushionSheet.previewEmpty') }}</p>
+          }
+        </div>
+
+        @if (saveError()) {
+          <p data-testid="cushion-sheet-error" class="m-0 text-[14px] text-ig-text" role="alert">{{ saveError() }}</p>
+        }
+      </div>
+
+      <footer class="flex gap-2 border-t border-ig-border px-4 pb-6 pt-4 sm:px-8 sm:py-5">
+        <button
+          data-testid="cushion-sheet-cancel"
+          type="button"
+          class="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg border border-ig-border bg-transparent px-4 font-medium text-ig-text hover:bg-ig-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ig-accent"
+          [disabled]="saving()"
+          (click)="dismiss()"
+        >
+          {{ t('dashboard.home.cushionSheet.cancel') }}
+        </button>
+        <button
+          data-testid="cushion-sheet-save"
+          type="button"
+          class="inline-flex min-h-11 flex-[2] items-center justify-center rounded-lg border border-ig-accent bg-ig-accent px-4 font-bold text-ig-on-accent hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ig-accent disabled:cursor-not-allowed disabled:opacity-60"
+          [disabled]="saving() || state().status !== 'ready'"
+          (click)="save()"
+        >
+          {{ saving() ? t('dashboard.home.cushionSheet.saving') : t('dashboard.home.cushionSheet.save') }}
+        </button>
+      </footer>
+    </div>
+  }
+</dialog>

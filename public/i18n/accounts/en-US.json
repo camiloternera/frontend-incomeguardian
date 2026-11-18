@@ -64,7 +64,8 @@
       "overLimit": "Over the limit by {{amount}}",
       "noLimit": "No credit limit recorded.",
       "viewStatement": "View statement"
-    }
+    },
+    "cushionBadge": "Cushion"
   },
   "form": {
     "close": "Close panel",
@@ -123,6 +124,10 @@
       "paysSameMonth": "The payment falls in the same month as the statement.",
       "shortMonths": "If a month has fewer days, we use its last day.",
       "daysChangeNote": "Changing the statement or payment day only affects new purchases. Installments already recorded stay in their months."
+    },
+    "cushion": {
+      "label": "Cushion account",
+      "help": "Its balance counts as emergency savings in \"Your cushion\". You can change this any time, even if the account has transactions."
     }
   },
   "errors": {
@@ -144,7 +149,8 @@
     "ACCOUNT_PAYMENT_DAY_INVALID": "The payment day must be between 1 and 31.",
     "ACCOUNT_CREDIT_LIMIT_INVALID": "The credit limit must be greater than 0. Leave it empty if you don't know it.",
     "CREDIT_CARD_INITIAL_BALANCE_POSITIVE": "A card's debt can't start as a credit balance. Enter it as a positive number.",
-    "ACCOUNT_NOT_CREDIT_CARD": "This account is not a credit card."
+    "ACCOUNT_NOT_CREDIT_CARD": "This account is not a credit card.",
+    "ACCOUNT_CUSHION_CREDIT_CARD": "A credit card can't be part of the cushion."
   },
   "statement": {
     "breadcrumb": "Breadcrumb",

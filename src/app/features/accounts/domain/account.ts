@@ -69,6 +69,8 @@ export interface Account {
   /** Próximo corte y fecha límite de pago (`YYYY-MM-DD`); null en una cuenta normal. */
   nextStatementDate: string | null;
   nextPaymentDueDate: string | null;
+  /** Si su saldo cuenta como ahorro en «Tu colchón»; nunca en una tarjeta. */
+  isCushion: boolean;
   /** Auditoría del servidor, distinta de la fecha de apertura. */
   createdAt: string;
   updatedAt: string | null;
@@ -118,6 +120,8 @@ export interface AccountDraft {
   creditLimit: number | null;
   statementDay: number | null;
   paymentDay: number | null;
+  /** Si su saldo cuenta como ahorro en «Tu colchón»; siempre `false` en una tarjeta. */
+  isCushion: boolean;
 }
 
 /** Suma de los saldos de las cuentas activas en una misma moneda. */
