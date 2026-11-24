@@ -22,7 +22,7 @@ const DTO = {
 };
 
 /** Campos de tarjeta de una cuenta normal. */
-const NO_CARD = { kind: 'standard' as const, creditLimit: null, statementDay: null, paymentDay: null, isCushion: false };
+const NO_CARD = { kind: 'standard' as const, accountKindId: 1, creditLimit: null, statementDay: null, paymentDay: null, isCushion: false };
 
 function ok(data: unknown) {
   return { data, isSuccess: true, message: 'ok', errors: [] };
@@ -59,6 +59,8 @@ describe('AccountHttpRepository', () => {
         name: 'Visa 4417',
         // Sin `kind` (backend anterior a las tarjetas) la cuenta es normal.
         kind: 'standard',
+        // Sin `accountKindId` (backend anterior al catálogo) se deduce del código.
+        accountKindId: 1,
         initialBalance: -250000.5,
         currentBalance: -250000.5,
         currency: 'COP',
@@ -103,10 +105,10 @@ describe('AccountHttpRepository', () => {
       openingDate: '2026-01-15T09:30:00-05:00',
       ...NO_CARD,
     };
-    // Una cuenta normal manda `kind` y ningún campo de tarjeta.
+    // Una cuenta normal manda su `accountKindId` y ningún campo de tarjeta.
     const body = {
       name: 'Wise',
-      kind: 'standard',
+      accountKindId: 1,
       initialBalance: 320.5,
       currencyId: 2,
       openingDate: '2026-01-15T09:30:00-05:00',
@@ -217,6 +219,7 @@ describe('AccountHttpRepository', () => {
     const card = {
       name: 'Visa',
       kind: 'credit_card' as const,
+      accountKindId: 2,
       initialBalance: -150000,
       currencyId: 1,
       openingDate: '2026-01-15T09:30:00-05:00',
@@ -229,7 +232,7 @@ describe('AccountHttpRepository', () => {
     repository.create(card).subscribe();
     expect(http.expectOne(URL).request.body).toEqual({
       name: 'Visa',
-      kind: 'credit_card',
+      accountKindId: 2,
       initialBalance: -150000,
       currencyId: 1,
       openingDate: '2026-01-15T09:30:00-05:00',
@@ -243,9 +246,10 @@ describe('AccountHttpRepository', () => {
     expect(http.expectOne(URL).request.body).not.toHaveProperty('creditLimit');
 
     // Si el borrador cambia a cuenta normal, los días que traiga no se envían.
-    repository.update(5, { ...card, kind: 'standard' }).subscribe();
+    repository.update(5, { ...card, kind: 'standard', accountKindId: 1 }).subscribe();
     const body = http.expectOne(`${URL}/5`).request.body;
-    expect(body.kind).toBe('standard');
+    expect(body.accountKindId).toBe(1);
+    expect(body).not.toHaveProperty('kind');
     expect(body).not.toHaveProperty('creditLimit');
     expect(body).not.toHaveProperty('statementDay');
     expect(body).not.toHaveProperty('paymentDay');

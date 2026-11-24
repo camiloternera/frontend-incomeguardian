@@ -147,6 +147,7 @@ describe('AccountPanelComponent', () => {
     expect(fake.lastDraft).toEqual({
       name: 'Visa 9000',
       kind: 'standard',
+      accountKindId: 1,
       currencyId: 2,
       initialBalance: -1250.5,
       openingDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00[+-]\d{2}:\d{2}$/),
@@ -428,6 +429,7 @@ describe('AccountPanelComponent', () => {
       id: 9,
       name: 'Visa Oro',
       kind: 'credit_card',
+      accountKindId: 2,
       initialBalance: -150000,
       currentBalance: -150000,
       currency: 'COP',

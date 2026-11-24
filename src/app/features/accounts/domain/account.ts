@@ -18,13 +18,25 @@ export function isCurrency(value: unknown): value is Currency {
   return typeof value === 'string' && (CURRENCIES as readonly string[]).includes(value);
 }
 
-/** Tipos de cuenta: una cuenta normal (banco, billetera, efectivo) o una tarjeta de crédito. */
+/**
+ * Tipos de cuenta que la app sabe manejar: una cuenta normal (banco, billetera, efectivo) o una
+ * tarjeta de crédito. Los que se pueden elegir salen del catálogo del backend (`AccountKindOption`).
+ */
 export const ACCOUNT_KINDS = ['standard', 'credit_card'] as const;
 export type AccountKind = (typeof ACCOUNT_KINDS)[number];
 
 /** Indica si el valor recibido es un tipo de cuenta conocido. */
 export function isAccountKind(value: unknown): value is AccountKind {
   return typeof value === 'string' && (ACCOUNT_KINDS as readonly string[]).includes(value);
+}
+
+/** Un tipo activo del catálogo del backend (`GET /api/v1/account-kinds`). */
+export interface AccountKindOption {
+  /** Lo que se envía al backend al crear o editar una cuenta. */
+  id: number;
+  /** Código del tipo, con el que la vista decide qué campos mostrar. */
+  code: AccountKind;
+  name: string;
 }
 
 /** Días del mes que admite el backend para el corte y el pago de una tarjeta. */
@@ -36,6 +48,8 @@ export interface Account {
   id: number;
   name: string;
   kind: AccountKind;
+  /** Id del tipo en el catálogo del backend; precarga el selector al editar. */
+  accountKindId: number;
   /**
    * Saldo con el que empezó la cuenta. En una tarjeta es la deuda inicial y es negativo (o 0):
    * la vista la muestra en positivo.
@@ -103,7 +117,10 @@ export function matchesAccount(account: Account, query: string): boolean {
 /** La parte editable de una cuenta, usada para crearla y para actualizarla. */
 export interface AccountDraft {
   name: string;
+  /** Código del tipo: decide qué campos de tarjeta se envían. */
   kind: AccountKind;
+  /** Id del tipo en el catálogo del backend; es lo que se envía. */
+  accountKindId: number;
   /** En una tarjeta es la deuda, negativa o 0. */
   initialBalance: number;
   /** Id de la moneda en el catálogo del backend. */
