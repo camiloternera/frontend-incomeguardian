@@ -22,6 +22,7 @@ const ROW_DTO = {
   categoryName: 'Alimentación',
   categoryTypeId: 2,
   currency: 'COP',
+  currencyId: 1,
   budgetAmount: 850000,
   spentAmount: 30000,
   availableAmount: 820000,
@@ -80,6 +81,7 @@ describe('BudgetHttpRepository', () => {
           categoryName: 'Alimentación',
           categoryType: 'expense',
           currency: 'COP',
+          currencyId: 1,
           budgetAmount: 850000,
           spentAmount: 30000,
           availableAmount: 820000,
@@ -163,21 +165,21 @@ describe('BudgetHttpRepository', () => {
   });
 
   it('sets the recurring limit from a month on', () => {
-    repository.saveRecurring({ categoryId: 1, currency: 'COP' }, 900000, NOVEMBER).subscribe();
+    repository.saveRecurring({ categoryId: 1, currencyId: 1 }, 900000, NOVEMBER).subscribe();
 
     const request = http.expectOne(`${URL}/recurring`);
     expect(request.request.method).toBe('PUT');
-    expect(request.request.body).toEqual({ categoryId: 1, currency: 'COP', amount: 900000, fromYear: 2026, fromMonth: 11 });
+    expect(request.request.body).toEqual({ categoryId: 1, currencyId: 1, amount: 900000, fromYear: 2026, fromMonth: 11 });
     request.flush(ok({}));
   });
 
   it('removes the recurring limit from a month on', () => {
     let done = false;
-    repository.removeRecurring({ categoryId: 1, currency: 'USD' }, NOVEMBER).subscribe(() => (done = true));
+    repository.removeRecurring({ categoryId: 1, currency: 'USD', currencyId: 2 }, NOVEMBER).subscribe(() => (done = true));
 
     const request = http.expectOne((req) => req.url === `${URL}/recurring/1`);
     expect(request.request.method).toBe('DELETE');
-    expect(request.request.params.get('currency')).toBe('USD');
+    expect(request.request.params.get('currencyId')).toBe('2');
     expect(request.request.params.get('fromYear')).toBe('2026');
     expect(request.request.params.get('fromMonth')).toBe('11');
     request.flush(null, { status: 204, statusText: 'No Content' });
@@ -186,23 +188,23 @@ describe('BudgetHttpRepository', () => {
   });
 
   it('saves and removes the limit of a single month', () => {
-    repository.saveMonth(NOVEMBER, { categoryId: 6, currency: 'COP' }, 0).subscribe();
+    repository.saveMonth(NOVEMBER, { categoryId: 6, currencyId: 1 }, 0).subscribe();
     const save = http.expectOne(`${URL}/2026/11`);
     expect(save.request.method).toBe('PUT');
-    expect(save.request.body).toEqual({ categoryId: 6, currency: 'COP', amount: 0 });
+    expect(save.request.body).toEqual({ categoryId: 6, currencyId: 1, amount: 0 });
     save.flush(ok({}));
 
-    repository.removeMonth(NOVEMBER, { categoryId: 6, currency: 'COP' }).subscribe();
+    repository.removeMonth(NOVEMBER, { categoryId: 6, currency: 'COP', currencyId: 1 }).subscribe();
     const remove = http.expectOne((req) => req.url === `${URL}/2026/11/6`);
     expect(remove.request.method).toBe('DELETE');
-    expect(remove.request.params.get('currency')).toBe('COP');
+    expect(remove.request.params.get('currencyId')).toBe('1');
     remove.flush(ok(null));
   });
 
   it('keeps a known backend code with its translated copy', () => {
     let error: unknown;
     repository
-      .saveMonth(NOVEMBER, { categoryId: 6, currency: 'COP' }, 10)
+      .saveMonth(NOVEMBER, { categoryId: 6, currencyId: 1 }, 10)
       .subscribe({ error: (value) => (error = value) });
 
     http.expectOne(`${URL}/2026/11`).flush(failure(BudgetErrorCode.PeriodClosed), { status: 409, statusText: 'Conflict' });
@@ -261,7 +263,7 @@ describe('BudgetMovementsHttpRepository', () => {
 
   it('asks the month of the category and keeps only standard accounts in that currency', () => {
     let result: unknown;
-    repository.list(NOVEMBER, { categoryId: 4, currency: 'COP' }, 'expense').subscribe((value) => (result = value));
+    repository.list(NOVEMBER, { categoryId: 4, currency: 'COP', currencyId: 1 }, 'expense').subscribe((value) => (result = value));
 
     const transactions = http.expectOne((req) => req.url === TRANSACTIONS_URL);
     expect(transactions.request.params.get('categoryId')).toBe('4');
@@ -298,7 +300,7 @@ describe('BudgetMovementsHttpRepository', () => {
 
   it('translates a backend failure', () => {
     let error: unknown;
-    repository.list(NOVEMBER, { categoryId: 4, currency: 'COP' }, 'expense').subscribe({ error: (value) => (error = value) });
+    repository.list(NOVEMBER, { categoryId: 4, currency: 'COP', currencyId: 1 }, 'expense').subscribe({ error: (value) => (error = value) });
 
     http.expectOne((req) => req.url === TRANSACTIONS_URL).flush(failure('SOMETHING_ELSE'), { status: 500, statusText: 'Error' });
     // forkJoin cancela la otra petición al fallar la primera.

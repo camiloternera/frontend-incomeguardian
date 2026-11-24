@@ -214,7 +214,7 @@
             class="grid grid-cols-3 gap-1 rounded-lg border p-1"
             [class]="currencyError() ? 'border-ig-text' : 'border-ig-border'"
           >
-            @for (code of currencies; track code) {
+            @for (code of currencies(); track code) {
               <label
                 class="relative grid min-h-11 cursor-pointer place-items-center rounded-md text-[14px] text-ig-muted hover:text-ig-text has-disabled:cursor-not-allowed has-disabled:hover:text-ig-muted has-checked:bg-ig-surface-raised has-checked:font-bold has-checked:text-ig-text has-focus-visible:outline-2 has-focus-visible:outline-ig-accent has-focus-visible:outline-offset-2"
               >

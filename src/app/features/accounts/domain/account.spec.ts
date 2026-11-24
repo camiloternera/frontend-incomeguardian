@@ -14,6 +14,7 @@ function account(
     initialBalance,
     currentBalance: initialBalance,
     currency,
+    currencyId: currency === 'USD' ? 2 : currency === 'EUR' ? 3 : 1,
     isActive,
     hasTransactions: false,
     openingDate: '2026-10-01T00:00:00Z',

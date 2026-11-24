@@ -49,6 +49,7 @@ function toAccount(dto: AccountDto): Account {
     // Mientras el backend no lo informe, el saldo actual es el inicial.
     currentBalance: dto.currentBalance ?? dto.initialBalance,
     currency: dto.currency,
+    currencyId: dto.currencyId,
     isActive: dto.isActive,
     hasTransactions: dto.hasTransactions ?? false,
     openingDate: dto.openingDate,
@@ -70,7 +71,7 @@ function toRequest(draft: AccountDraft): AccountRequestDto {
     name: draft.name,
     kind: draft.kind,
     initialBalance: draft.initialBalance,
-    currency: draft.currency,
+    currencyId: draft.currencyId,
     openingDate: draft.openingDate,
     // Una deuda no es ahorro: una tarjeta nunca va al colchón.
     isCushion: draft.kind !== 'credit_card' && draft.isCushion,

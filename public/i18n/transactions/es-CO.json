@@ -243,7 +243,7 @@
     "TRANSACTION_PAGE_INVALID": "Esa página no existe.",
     "TRANSACTION_DATE_RANGE_INVALID": "El rango de fechas no es válido.",
     "TRANSACTION_NOT_FOUND": "No encontramos ese movimiento.",
-    "TRANSACTION_ACCOUNT_CURRENCY_UNSUPPORTED": "Esa cuenta está en una moneda que no admite movimientos. Elige una en pesos o dólares.",
+    "TRANSACTION_ACCOUNT_CURRENCY_UNSUPPORTED": "Esa cuenta está en una moneda que ya no admite movimientos. Elige otra cuenta.",
     "EXCHANGE_RATE_UNAVAILABLE": "La TRM no está disponible en este momento.",
     "EXCHANGE_RATE_DATE_INVALID": "No hay TRM para esa fecha. Elige hoy o una fecha anterior.",
     "PERIOD_CLOSED": "El mes de esa fecha está cerrado. Reábrelo para registrar o modificar movimientos.",

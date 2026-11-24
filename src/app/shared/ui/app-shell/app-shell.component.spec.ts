@@ -11,7 +11,7 @@ import { AppShellComponent } from './app-shell.component';
 @Component({ template: '<h1>Contenido</h1>' })
 class StubPageComponent {}
 
-async function render(url = '/home', user: CurrentUserProfile | null = { name: 'Camila Rojas', email: 'camila@example.com' }) {
+async function render(url = '/home', user: CurrentUserProfile | null = { id: 'user-1', name: 'Camila Rojas', email: 'camila@example.com' }) {
   const currentUser = new FakeCurrentUser(user);
 
   TestBed.configureTestingModule({

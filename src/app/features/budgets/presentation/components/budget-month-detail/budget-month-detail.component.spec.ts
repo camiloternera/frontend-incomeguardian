@@ -115,7 +115,7 @@ describe('BudgetMonthDetailComponent', () => {
   it('asks the standard account movements of the category, month and currency', async () => {
     await render(budgetRow({ categoryId: 4, categoryName: 'Mercado', currency: 'USD', categoryType: 'expense' }));
 
-    expect(movements.requested).toEqual([{ month: NOVEMBER, key: { categoryId: 4, currency: 'USD' }, type: 'expense' }]);
+    expect(movements.requested).toEqual([{ month: NOVEMBER, key: { categoryId: 4, currency: 'USD', currencyId: 2 }, type: 'expense' }]);
   });
 
   it('does not ask for movements when the category type is unknown', async () => {

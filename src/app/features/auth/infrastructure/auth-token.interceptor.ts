@@ -8,7 +8,8 @@ import { SessionStore } from '../domain/session.store';
 /**
  * Adjunta el token de acceso a las peticiones dirigidas a la API.
  * Si la API responde 401 con una sesión guardada, la sesión ya no sirve: se borra
- * y se envía al usuario al login conservando la ruta a la que quería volver.
+ * y se envía al usuario al login conservando la ruta a la que quería volver. Un 401 de una
+ * petición hecha con un token anterior no toca la sesión que la reemplazó (otro login).
  */
 export const authTokenInterceptor: HttpInterceptorFn = (request, next) => {
   const sessionStore = inject(SessionStore);
@@ -23,7 +24,9 @@ export const authTokenInterceptor: HttpInterceptorFn = (request, next) => {
 
   return next(authorized).pipe(
     catchError((error: unknown) => {
-      if (error instanceof HttpErrorResponse && error.status === HttpStatusCode.Unauthorized) {
+      const sameSession = sessionStore.read()?.accessToken === session.accessToken;
+
+      if (error instanceof HttpErrorResponse && error.status === HttpStatusCode.Unauthorized && sameSession) {
         sessionStore.clear();
         void router.navigate(['/login'], { queryParams: { returnUrl: router.url } });
       }

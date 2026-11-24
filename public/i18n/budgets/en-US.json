@@ -139,7 +139,7 @@
   },
   "errors": {
     "BUDGET_AMOUNT_INVALID": "The limit must be a number greater than or equal to zero with up to 2 decimals.",
-    "BUDGET_CURRENCY_UNSUPPORTED": "You can only set limits in pesos or dollars.",
+    "BUDGET_CURRENCY_UNSUPPORTED": "That currency does not allow limits. Pick one from the list.",
     "BUDGET_CATEGORY_TYPE_INVALID": "Only expense and transfer categories can have a limit.",
     "BUDGET_CATEGORY_NOT_FOUND": "That category is no longer available. Pick another one.",
     "BUDGET_NOT_FOUND": "That limit no longer exists. We refreshed the budget.",

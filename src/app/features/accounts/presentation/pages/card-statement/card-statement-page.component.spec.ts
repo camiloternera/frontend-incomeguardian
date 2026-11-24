@@ -16,6 +16,7 @@ const CARD: Account = {
   initialBalance: -150000,
   currentBalance: -400000,
   currency: 'COP',
+  currencyId: 1,
   isActive: true,
   hasTransactions: true,
   openingDate: '2026-09-01T00:00:00Z',

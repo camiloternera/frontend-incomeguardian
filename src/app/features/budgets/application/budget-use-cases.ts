@@ -30,7 +30,7 @@ export class SaveBudgetUseCase {
 
   /** «Desde {mes} en adelante» fija el recurrente; «Solo {mes}» guarda un tope propio del mes. */
   execute(draft: BudgetDraft): Observable<void> {
-    const target = { categoryId: draft.categoryId, currency: draft.currency };
+    const target = { categoryId: draft.categoryId, currencyId: draft.currencyId };
 
     return draft.scope === 'recurring'
       ? this.repository.saveRecurring(target, draft.amount, draft.month)

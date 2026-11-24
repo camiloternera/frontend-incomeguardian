@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.spec.json",
+  "include": [
+    "src/**/*.d.ts",
+    "src/**/*.review.spec.ts",
+    "src/app/features/transactions/presentation/components/transaction-panel/transaction-panel.component.spec.ts",
+    "src/app/features/transactions/presentation/validators/amount-review.spec.ts",
+    "src/app/features/auth/infrastructure/auth-token.interceptor.spec.ts"
+  ]
+}

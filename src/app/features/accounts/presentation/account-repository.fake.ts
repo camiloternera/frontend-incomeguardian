@@ -25,6 +25,7 @@ export class FakeAccountRepository extends AccountRepository {
       initialBalance: -250000,
       currentBalance: -250000,
       currency: 'COP',
+      currencyId: 1,
       isActive: true,
       hasTransactions: true,
       openingDate: '2026-10-20T00:00:00Z',
@@ -45,6 +46,7 @@ export class FakeAccountRepository extends AccountRepository {
       initialBalance: 1250000,
       currentBalance: 1250000,
       currency: 'COP',
+      currencyId: 1,
       isActive: true,
       hasTransactions: false,
       openingDate: '2026-10-01T00:00:00Z',
@@ -65,6 +67,7 @@ export class FakeAccountRepository extends AccountRepository {
       initialBalance: 320.5,
       currentBalance: 320.5,
       currency: 'USD',
+      currencyId: 2,
       isActive: false,
       hasTransactions: false,
       openingDate: '2026-09-01T00:00:00Z',
@@ -140,6 +143,8 @@ export class FakeAccountRepository extends AccountRepository {
     return {
       id,
       ...draft,
+      // Ids del catálogo falso de `@core/currencies/currency-catalog.testing`.
+      currency: draft.currencyId === 2 ? 'USD' : 'COP',
       currentBalance: draft.initialBalance,
       availableCredit: draft.creditLimit === null ? null : draft.creditLimit + draft.initialBalance,
       nextStatementDate: null,

@@ -1,12 +1,12 @@
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { throwError } from 'rxjs';
+import { Subject, throwError } from 'rxjs';
 import { translocoTesting } from '@core/i18n/i18n.testing';
 import { LanguageService } from '@core/i18n/language.service';
 import { periodYear } from '@features/periods/testing';
 import { TransactionError, TransactionErrorCode } from '../../../domain/transaction-error';
-import { Transaction } from '../../../domain/transaction';
+import { dayOf, Transaction } from '../../../domain/transaction';
 import { TransactionFakes, fakeTransactionsRoutes, transaction } from '../../transaction-repository.fake';
 
 /** Estado de un mes del cierre, tal como lo arma `periodYear`. */
@@ -121,6 +121,100 @@ describe('TransactionPanelComponent', () => {
   function submitButton(element: HTMLElement): HTMLButtonElement {
     return query<HTMLButtonElement>(element, 'transaction-submit')!;
   }
+
+  it('review A1: saves the selected Colombian day independently of the browser timezone', async () => {
+    // Run with TZ=Asia/Tokyo to exercise a browser east of Colombia.
+    const { harness, element } = await open('/transactions/1/edit');
+    expect(dateValue(element)).toBe('2026-11-02');
+    type(element, 'transaction-description', 'Date preservation');
+    submit(element);
+    await settle(harness);
+
+    expect(fakes.transactions.lastUpdate).not.toBeNull();
+    expect(dayOf(fakes.transactions.lastUpdate!.draft.date)).toBe('2026-11-02');
+  });
+
+  it('review A2: ignores an invalid hidden rate after choosing no interest', async () => {
+    fakes.accounts.accounts.push({
+      id: 20, name: 'Visa', currency: 'COP', currentBalance: -300000,
+      isActive: true, isCreditCard: true, availableCredit: 1700000, nextStatementDate: '2026-11-15',
+    });
+    const { harness, element } = await open('/transactions/new/expense');
+    type(element, 'transaction-amount', '1000');
+    choose(element, 'transaction-account', 'Visa', harness);
+    choose(element, 'transaction-category', 'Mercado', harness);
+    click(element, 'installments-6');
+    await settle(harness);
+    click(element, 'with-interest');
+    await settle(harness);
+    type(element, 'transaction-interest-rate', '201');
+    await settle(harness);
+    expect(query(element, 'interest-rate-error')).not.toBeNull();
+    click(element, 'without-interest');
+    await settle(harness);
+    expect(query(element, 'transaction-interest-rate')).toBeNull();
+    submit(element);
+    await settle(harness);
+
+    expect(fakes.transactions.lastDraft).toMatchObject({ installments: 6, annualInterestRate: null });
+  });
+
+  it('review A2b: ignores invalid custom installments after choosing a regular account', async () => {
+    fakes.accounts.accounts.push({
+      id: 20, name: 'Visa', currency: 'COP', currentBalance: -300000,
+      isActive: true, isCreditCard: true, availableCredit: 1700000, nextStatementDate: '2026-11-15',
+    });
+    const { harness, element } = await open('/transactions/new/expense');
+    type(element, 'transaction-amount', '1000');
+    choose(element, 'transaction-account', 'Visa', harness);
+    choose(element, 'transaction-category', 'Mercado', harness);
+    await settle(harness);
+    type(element, 'installments-custom', '49');
+    await settle(harness);
+    expect(query(element, 'installments-error')).not.toBeNull();
+    choose(element, 'transaction-account', 'Nequi', harness);
+    await settle(harness);
+    expect(query(element, 'installments-custom')).toBeNull();
+    submit(element);
+    await settle(harness);
+
+    expect(fakes.transactions.lastDraft).toMatchObject({ installments: 1, annualInterestRate: null });
+  });
+
+  it('review A3: does not update the previous route after an out-of-order edit response', async () => {
+    const first = new Subject<Transaction>();
+    const second = new Subject<Transaction>();
+    const a = transaction(1, 'expense', 1000, { fromAccountId: 3, categoryId: 1, description: 'A' });
+    const b = transaction(2, 'expense', 2000, { fromAccountId: 3, categoryId: 1, description: 'B' });
+    vi.spyOn(fakes.transactions, 'get').mockImplementation((id) => id === 1 ? first : second);
+    const { harness, element } = await open('/transactions/1/edit');
+    await harness.navigateByUrl('/transactions/2/edit');
+    await settle(harness);
+    second.next(b);
+    second.complete();
+    await settle(harness);
+    expect(query<HTMLInputElement>(element, 'transaction-description')!.value).toBe('B');
+    first.next(a);
+    first.complete();
+    await settle(harness);
+    type(element, 'transaction-description', 'Edited B');
+    submit(element);
+    await settle(harness);
+
+    expect(fakes.transactions.lastUpdate).toMatchObject({ id: 2, draft: { amount: 2000 } });
+  });
+
+  it('review A4: preserves the stored amount when only the description changes', async () => {
+    fakes.transactions.transactions.unshift(
+      transaction(31, 'expense', 120.456, { fromAccountId: 8, categoryId: 1 }),
+    );
+    const { harness, element } = await open('/transactions/31/edit');
+    type(element, 'transaction-description', 'Description only');
+    submit(element);
+    await settle(harness);
+
+    expect(fakes.transactions.lastUpdate).toMatchObject({ id: 31, draft: { amount: 120.456 } });
+  });
 
   it('opens beside the list with the type selector and only the usable accounts', async () => {
     const { harness, element } = await open('/transactions/new/expense');

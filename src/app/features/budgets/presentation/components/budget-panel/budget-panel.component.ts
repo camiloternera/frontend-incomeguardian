@@ -15,10 +15,11 @@ import { AbstractControl, NonNullableFormBuilder, ReactiveFormsModule, Validatio
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { LucidePlus, LucideX } from '@lucide/angular';
-import { Observable, finalize, map, startWith } from 'rxjs';
+import { Observable, catchError, finalize, map, of, startWith } from 'rxjs';
+import { CurrencyCatalog } from '@core/currencies/currency-catalog';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { LanguageService } from '@core/i18n/language.service';
-import { normalizeAmount, parseAmount } from '@shared/money/amount-input';
+import { isExactAmount, normalizeAmount, parseAmount } from '@shared/money/amount-input';
 import { SelectComponent, SelectOption } from '@shared/ui/select/select.component';
 import {
   RemoveBudgetUseCase,
@@ -29,14 +30,11 @@ import {
   BUDGET_AMOUNT_MAX_DECIMALS,
   BUDGET_AMOUNT_MAX_INTEGER_DIGITS,
   BUDGET_CATEGORY_TYPES,
-  BUDGET_CURRENCIES,
-  BudgetCurrency,
   BudgetRow,
   BudgetScope,
   compareMonths,
   formatMonthKey,
   hasBudget,
-  isBudgetCurrency,
   monthOfDay,
   todayInBudgetZone,
 } from '../../../domain/budget';
@@ -90,7 +88,10 @@ function budgetAmountValidator(control: AbstractControl<string>): ValidationErro
     return { amountInvalid: true };
   }
 
-  return integer.replace(/^0+(?=\d)/, '').length > BUDGET_AMOUNT_MAX_INTEGER_DIGITS ? { amountTooLarge: true } : null;
+  // Fuera de la precisión de un número de JavaScript el tope cambiaría al enviarlo.
+  return integer.replace(/^0+(?=\d)/, '').length > BUDGET_AMOUNT_MAX_INTEGER_DIGITS || !isExactAmount(normalized)
+    ? { amountTooLarge: true }
+    : null;
 }
 
 /**
@@ -124,7 +125,12 @@ export class BudgetPanelComponent {
   private readonly heading = viewChild<ElementRef<HTMLElement>>('heading');
 
   protected readonly listUrl = LIST_URL;
-  protected readonly currencies = BUDGET_CURRENCIES;
+  /** Monedas activas del catálogo; vacío mientras llega o si falló. */
+  private readonly catalog = toSignal(inject(CurrencyCatalog).list().pipe(catchError(() => of([]))), {
+    initialValue: [],
+  });
+  /** Códigos que ofrece el selector al agregar un tope, en el orden del catálogo. */
+  protected readonly currencies = computed(() => this.catalog().map((currency) => currency.code));
   protected readonly locale = inject(LanguageService).language;
   protected readonly amountParams = { decimals: BUDGET_AMOUNT_MAX_DECIMALS, digits: BUDGET_AMOUNT_MAX_INTEGER_DIGITS };
 
@@ -141,7 +147,7 @@ export class BudgetPanelComponent {
 
   protected readonly form = this.formBuilder.group({
     categoryId: this.formBuilder.control<number | null>(null),
-    currency: this.formBuilder.control<BudgetCurrency>('COP'),
+    currency: this.formBuilder.control('COP'),
     amount: ['', budgetAmountValidator],
     scope: this.formBuilder.control<BudgetScope>('recurring'),
   });
@@ -300,6 +306,19 @@ export class BudgetPanelComponent {
       });
     });
 
+    // Al agregar, si la moneda propuesta no está activa en el catálogo, se propone la primera que sí.
+    effect(() => {
+      const codes = this.currencies();
+
+      untracked(() => {
+        const control = this.form.controls.currency;
+
+        if (this.isNew() && codes.length && !codes.includes(control.value) && !this.form.dirty) {
+          control.setValue(codes[0]);
+        }
+      });
+    });
+
     inject(DestroyRef).onDestroy(() => this.workspace.selectedKey.set(null));
 
     // Lleva el foco al título para que el lector de pantalla anuncie el panel recién abierto.
@@ -355,7 +374,7 @@ export class BudgetPanelComponent {
     return server ? { key: `budgets.errors.${server}` } : null;
   }
 
-  protected chooseCurrency(currency: BudgetCurrency): void {
+  protected chooseCurrency(currency: string): void {
     this.form.controls.currency.setValue(currency);
   }
 
@@ -381,7 +400,15 @@ export class BudgetPanelComponent {
     const categoryId = this.isNew() ? value.categoryId : (this.row()?.categoryId ?? null);
     const currency = this.currency();
 
-    if (this.form.invalid || this.amountError() || this.categoryError() || categoryId === null || !isBudgetCurrency(currency)) {
+    if (this.form.invalid || this.amountError() || this.categoryError() || categoryId === null) {
+      return;
+    }
+
+    // Al editar, el id llega en la fila; al agregar, sale del catálogo.
+    const currencyId = this.row()?.currencyId ?? this.catalog().find((item) => item.code === currency)?.id ?? null;
+
+    if (currencyId === null) {
+      this.formError.set(this.transloco.translate(GENERIC_ERROR_KEY));
       return;
     }
 
@@ -390,7 +417,7 @@ export class BudgetPanelComponent {
     this.run(
       this.saveBudget.execute({
         categoryId,
-        currency,
+        currencyId,
         amount: parseAmount(value.amount),
         month: this.month(),
         scope: value.scope,
@@ -445,7 +472,7 @@ export class BudgetPanelComponent {
     const filtered = this.route.snapshot.queryParamMap.get('currency');
     this.form.reset({
       categoryId: null,
-      currency: isBudgetCurrency(filtered) ? filtered : 'COP',
+      currency: filtered || 'COP',
       amount: '',
       scope: 'recurring',
     });
@@ -461,7 +488,7 @@ export class BudgetPanelComponent {
   private fill(row: BudgetRow): void {
     this.form.reset({
       categoryId: row.categoryId,
-      currency: isBudgetCurrency(row.currency) ? row.currency : 'COP',
+      currency: row.currency,
       amount: row.source === 'none' ? '' : String(row.budgetAmount),
       scope: row.source === 'month' ? 'month' : 'recurring',
     });
