@@ -7,6 +7,8 @@ export interface BudgetRowDto {
   /** 2 Gasto, 3 Transferencia. */
   categoryTypeId: number;
   currency: string;
+  /** Id de la moneda en el catálogo. */
+  currencyId: number;
   budgetAmount: number;
   spentAmount: number;
   availableAmount: number;
@@ -52,7 +54,7 @@ export interface BudgetSummaryDto {
 /** Cuerpo de `PUT /api/v1/budgets/recurring`. */
 export interface RecurringBudgetRequestDto {
   categoryId: number;
-  currency: string;
+  currencyId: number;
   amount: number;
   fromYear: number;
   fromMonth: number;
@@ -61,7 +63,7 @@ export interface RecurringBudgetRequestDto {
 /** Cuerpo de `PUT /api/v1/budgets/{year}/{month}`. */
 export interface MonthBudgetRequestDto {
   categoryId: number;
-  currency: string;
+  currencyId: number;
   amount: number;
 }
 
@@ -93,4 +95,6 @@ export interface BudgetTransactionDto {
 
 export interface BudgetTransactionPageDto {
   items: BudgetTransactionDto[];
+  /** Total de movimientos que cumplen el filtro, en todas las páginas. */
+  totalItems?: number | null;
 }

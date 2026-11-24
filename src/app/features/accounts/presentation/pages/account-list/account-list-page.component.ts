@@ -1,5 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { Component, ElementRef, HostListener, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink, RouterOutlet } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import {
@@ -12,7 +13,8 @@ import {
   LucideSearch,
   LucideShield,
 } from '@lucide/angular';
-import { finalize } from 'rxjs';
+import { catchError, finalize, map, of } from 'rxjs';
+import { CurrencyCatalog } from '@core/currencies/currency-catalog';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { LanguageService } from '@core/i18n/language.service';
 import { ThemeService } from '@core/theme/theme.service';
@@ -23,7 +25,6 @@ import {
   cardDebt,
   creditUsage,
   isCreditCard,
-  isSelectableCurrency,
   matchesAccount,
   positionsByCurrency,
   totalsByCurrency,
@@ -74,9 +75,22 @@ export class AccountListPageComponent {
   protected readonly theme = inject(ThemeService).theme;
   protected readonly locale = inject(LanguageService).language;
   protected readonly balanceDigits = balanceDigits;
-  /** Misma regla que el panel: solo se edita una cuenta activa en una moneda admitida. */
+  /**
+   * Ids de las monedas activas del catálogo; `null` mientras llega o si falló, y entonces la lista no
+   * descarta la edición: el panel vuelve a revisarla al abrir la cuenta.
+   */
+  private readonly activeCurrencyIds = toSignal(
+    inject(CurrencyCatalog)
+      .list()
+      .pipe(
+        map((currencies) => new Set(currencies.map((currency) => currency.id))),
+        catchError(() => of(null)),
+      ),
+    { initialValue: null },
+  );
+  /** Misma regla que el panel: solo se edita una cuenta activa en una moneda activa del catálogo. */
   protected readonly isEditable = (account: Account): boolean =>
-    account.isActive && isSelectableCurrency(account.currency);
+    account.isActive && (this.activeCurrencyIds()?.has(account.currencyId) ?? true);
   protected readonly isCreditCard = isCreditCard;
   protected readonly cardDebt = cardDebt;
   /** Porcentaje del cupo usado para la barra, de 0 a 100; null si la tarjeta no tiene cupo. */

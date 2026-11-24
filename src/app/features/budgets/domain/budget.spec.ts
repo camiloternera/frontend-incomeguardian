@@ -18,6 +18,7 @@ function row(overrides: Partial<BudgetRow>): BudgetRow {
     categoryName: 'Mercado',
     categoryType: 'expense',
     currency: 'COP',
+    currencyId: overrides.currency === 'USD' ? 2 : 1,
     budgetAmount: 100,
     spentAmount: 40,
     availableAmount: 60,

@@ -52,6 +52,18 @@ export function normalizeAmount(text: string): string | null {
   return decimals ? `${digits}.${decimals}` : digits;
 }
 
+/**
+ * Indica si el número de JavaScript representa exactamente el monto normalizado (`1234.56`). Con
+ * más de ~15 cifras significativas se redondea (`999999999999999.99` → `1000000000000000`), y se
+ * enviaría otro monto distinto al escrito.
+ */
+export function isExactAmount(normalized: string): boolean {
+  const [integer, decimals = ''] = normalized.split('.');
+  const canonical = (integer.replace(/^0+(?=\d)/, '') || '0') + (decimals ? `.${decimals}` : '');
+
+  return Number(normalized).toFixed(decimals.length) === canonical;
+}
+
 /** Convierte el texto del campo en número; `NaN` si no es válido. */
 export function parseAmount(text: string): number {
   const normalized = normalizeAmount(text);

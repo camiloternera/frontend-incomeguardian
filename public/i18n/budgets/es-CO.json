@@ -139,7 +139,7 @@
   },
   "errors": {
     "BUDGET_AMOUNT_INVALID": "El tope debe ser un número mayor o igual a cero con hasta 2 decimales.",
-    "BUDGET_CURRENCY_UNSUPPORTED": "Solo puedes fijar topes en pesos o dólares.",
+    "BUDGET_CURRENCY_UNSUPPORTED": "Esa moneda no admite topes. Elige una de la lista.",
     "BUDGET_CATEGORY_TYPE_INVALID": "Solo las categorías de gasto y de transferencia admiten tope.",
     "BUDGET_CATEGORY_NOT_FOUND": "Esa categoría ya no está disponible. Elige otra.",
     "BUDGET_NOT_FOUND": "Ese tope ya no existe. Actualizamos el presupuesto.",

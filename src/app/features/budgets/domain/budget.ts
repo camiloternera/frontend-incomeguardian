@@ -1,12 +1,3 @@
-/** Monedas en las que se puede fijar un tope, en código ISO 4217. */
-export const BUDGET_CURRENCIES = ['COP', 'USD'] as const;
-export type BudgetCurrency = (typeof BUDGET_CURRENCIES)[number];
-
-/** Indica si la moneda admite topes. */
-export function isBudgetCurrency(value: unknown): value is BudgetCurrency {
-  return typeof value === 'string' && (BUDGET_CURRENCIES as readonly string[]).includes(value);
-}
-
 /** Tipos de categoría que admiten tope: los ingresos no tienen. */
 export const BUDGET_CATEGORY_TYPES = ['expense', 'transfer'] as const;
 export type BudgetCategoryType = (typeof BUDGET_CATEGORY_TYPES)[number];
@@ -38,7 +29,10 @@ export interface BudgetRow {
   categoryName: string;
   /** null si el backend envía un tipo que la app no conoce. */
   categoryType: BudgetCategoryType | null;
+  /** Código ISO 4217, para mostrar los montos. */
   currency: string;
+  /** Id de la moneda en el catálogo, para editar o quitar el tope. */
+  currencyId: number;
   budgetAmount: number;
   spentAmount: number;
   /** Tope menos gastado; negativo si se pasó. */
@@ -121,16 +115,17 @@ export interface BudgetCategoryOption {
 /** Alcance de un tope: desde un mes en adelante o solo para ese mes. */
 export type BudgetScope = 'recurring' | 'month';
 
-/** Identifica el tope de una categoría en una moneda. */
+/** Identifica el tope de una categoría en una moneda: el código para mostrar y el id para el backend. */
 export interface BudgetKey {
   categoryId: number;
   currency: string;
+  currencyId: number;
 }
 
-/** Tope a guardar: categoría, moneda y monto, para un mes y su alcance. */
+/** Tope a guardar: categoría, moneda (id del catálogo) y monto, para un mes y su alcance. */
 export interface BudgetDraft {
   categoryId: number;
-  currency: BudgetCurrency;
+  currencyId: number;
   amount: number;
   month: BudgetMonth;
   scope: BudgetScope;
@@ -186,18 +181,13 @@ export interface BudgetCurrencyBlock {
   rows: BudgetRow[];
 }
 
-/** Agrupa el resumen por moneda: pesos primero, luego dólares y las demás por código. */
+/** Agrupa el resumen por moneda, por código como el catálogo (pesos antes que dólares). */
 export function blocksOf(summary: BudgetSummary): BudgetCurrencyBlock[] {
   const currencies = [
     ...new Set([...summary.totals.map((total) => total.currency), ...summary.rows.map((row) => row.currency)]),
   ];
-  const rank = (currency: string) => {
-    const index = (BUDGET_CURRENCIES as readonly string[]).indexOf(currency);
-    return index === -1 ? BUDGET_CURRENCIES.length : index;
-  };
-
   return currencies
-    .sort((a, b) => rank(a) - rank(b) || a.localeCompare(b))
+    .sort((a, b) => a.localeCompare(b))
     .map((currency) => ({
       currency,
       total: summary.totals.find((total) => total.currency === currency) ?? {
@@ -212,7 +202,7 @@ export function blocksOf(summary: BudgetSummary): BudgetCurrencyBlock[] {
 }
 
 /** Indica si la categoría ya tiene tope (recurrente o propio) en esa moneda este mes. */
-export function hasBudget(summary: BudgetSummary, key: BudgetKey): boolean {
+export function hasBudget(summary: BudgetSummary, key: Pick<BudgetKey, 'categoryId' | 'currency'>): boolean {
   return summary.rows.some(
     (row) => row.categoryId === key.categoryId && row.currency === key.currency && row.source !== 'none',
   );

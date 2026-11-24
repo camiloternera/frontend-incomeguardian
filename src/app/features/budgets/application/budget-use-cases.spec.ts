@@ -22,12 +22,12 @@ describe('budget use cases', () => {
     const save = TestBed.inject(SaveBudgetUseCase);
     const month = { year: 2026, month: 11 };
 
-    save.execute({ categoryId: 4, currency: 'COP', amount: 1800000, month, scope: 'recurring' }).subscribe();
-    save.execute({ categoryId: 6, currency: 'USD', amount: 0, month, scope: 'month' }).subscribe();
+    save.execute({ categoryId: 4, currencyId: 1, amount: 1800000, month, scope: 'recurring' }).subscribe();
+    save.execute({ categoryId: 6, currencyId: 2, amount: 0, month, scope: 'month' }).subscribe();
 
     expect(budgets.calls).toEqual([
-      { action: 'saveRecurring', args: [{ categoryId: 4, currency: 'COP' }, 1800000, month] },
-      { action: 'saveMonth', args: [month, { categoryId: 6, currency: 'USD' }, 0] },
+      { action: 'saveRecurring', args: [{ categoryId: 4, currencyId: 1 }, 1800000, month] },
+      { action: 'saveMonth', args: [month, { categoryId: 6, currencyId: 2 }, 0] },
     ]);
   });
 

@@ -14,7 +14,8 @@ import { AbstractControl, NonNullableFormBuilder, ReactiveFormsModule, Validator
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { LucideBan, LucideShield, LucideX } from '@lucide/angular';
-import { Observable, finalize } from 'rxjs';
+import { Observable, Subscription, finalize, forkJoin } from 'rxjs';
+import { CatalogCurrency, CurrencyCatalog } from '@core/currencies/currency-catalog';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { LanguageService } from '@core/i18n/language.service';
 import { dayPattern } from '@shared/dates/date-patterns';
@@ -36,8 +37,7 @@ import {
   CARD_DAY_MAX,
   CARD_DAY_MIN,
   Currency,
-  SELECTABLE_CURRENCIES,
-  isSelectableCurrency,
+  isCurrency,
 } from '../../../domain/account';
 import {
   AccountError,
@@ -110,13 +110,21 @@ export class AccountPanelComponent {
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly router = inject(Router);
   private readonly transloco = inject(TranslocoService);
+  private readonly currencyCatalog = inject(CurrencyCatalog);
   private readonly heading = viewChild<ElementRef<HTMLElement>>('heading');
 
   protected readonly listUrl = LIST_URL;
   protected readonly locale = inject(LanguageService).language;
   /** Patrón de fecha del idioma activo, con el mes en letras. */
   protected readonly day = computed(() => dayPattern(this.locale()));
-  protected readonly currencies = SELECTABLE_CURRENCIES;
+  /** Monedas activas del catálogo que la app sabe mostrar; vacío mientras llega. */
+  private readonly catalog = signal<CatalogCurrency[]>([]);
+  /** Códigos que ofrece el selector, en el orden del catálogo. */
+  protected readonly currencies = computed(() =>
+    this.catalog()
+      .map((currency) => currency.code)
+      .filter(isCurrency),
+  );
   protected readonly kinds = ACCOUNT_KINDS;
   protected readonly nameMax = ACCOUNT_NAME_MAX_LENGTH;
   protected readonly balanceDigits = balanceDigits;
@@ -153,6 +161,9 @@ export class AccountPanelComponent {
   protected readonly creditLimitServerError = signal<AccountErrorCode | null>(null);
   protected readonly statementDayServerError = signal<AccountErrorCode | null>(null);
   protected readonly paymentDayServerError = signal<AccountErrorCode | null>(null);
+
+  /** Carga en curso; se cancela al pasar a otra cuenta para que una respuesta vieja no pise la actual. */
+  private loading: Subscription | null = null;
 
   /** Hoy en el navegador: tope del selector de fecha de apertura. Se renueva al abrir el panel. */
   protected readonly today = signal(toOpeningParts(new Date()).day);
@@ -242,6 +253,12 @@ export class AccountPanelComponent {
     controls.creditLimit.valueChanges.subscribe(() => this.creditLimitServerError.set(null));
     controls.statementDay.valueChanges.subscribe(() => this.statementDayServerError.set(null));
     controls.paymentDay.valueChanges.subscribe(() => this.paymentDayServerError.set(null));
+
+    // Si falla, el selector queda vacío y el envío vuelve a pedir el catálogo.
+    this.currencyCatalog
+      .list()
+      .pipe(takeUntilDestroyed())
+      .subscribe({ next: (currencies) => this.catalog.set(currencies), error: () => undefined });
 
     // Al pasar de editar una fila a otra, Angular reutiliza el panel: se reinicia con cada id.
     inject(ActivatedRoute)
@@ -394,13 +411,22 @@ export class AccountPanelComponent {
 
     const id = this.accountId();
     const value = this.accountForm.getRawValue();
+    const currencyId = this.currencyIdOf(value.currency);
+
+    if (currencyId === null) {
+      // Sin catálogo no se sabe qué id enviar: se vuelve a pedir y se avisa.
+      this.currencyCatalog.list().subscribe({ next: (currencies) => this.catalog.set(currencies), error: () => undefined });
+      this.formError.set(this.transloco.translate(GENERIC_ERROR_KEY));
+      return;
+    }
+
     const isCard = value.kind === 'credit_card';
     const balance = parseBalance(value.initialBalance);
     const limit = value.creditLimit.trim();
     const draft = {
       name: value.name,
       kind: value.kind,
-      currency: value.currency,
+      currencyId,
       // La deuda se escribe en positivo y el backend la guarda en negativo; `|| 0` evita enviar -0.
       initialBalance: isCard ? -balance || 0 : balance,
       // El formulario es válido, así que el día y la hora forman un instante.
@@ -460,6 +486,8 @@ export class AccountPanelComponent {
 
   /** Prepara el panel para crear (`null`) o para editar la cuenta indicada. */
   private open(id: number | null): void {
+    this.loading?.unsubscribe();
+    this.loading = null;
     this.accountId.set(id);
     this.workspace.selectedId.set(id);
     this.account.set(null);
@@ -505,8 +533,10 @@ export class AccountPanelComponent {
     this.status.set('loading');
     this.loadError.set('');
 
-    this.getAccount.execute(id).subscribe({
-      next: (account) => {
+    this.loading?.unsubscribe();
+    this.loading = forkJoin({ account: this.getAccount.execute(id), currencies: this.currencyCatalog.list() }).subscribe({
+      next: ({ account, currencies }) => {
+        this.catalog.set(currencies);
         this.account.set(account);
         const opening = toOpeningParts(new Date(account.openingDate));
         const isCard = account.kind === 'credit_card';
@@ -529,8 +559,9 @@ export class AccountPanelComponent {
           this.accountForm.controls.currency.disable({ emitEvent: false });
           this.accountForm.controls.kind.disable({ emitEvent: false });
         }
-        // Una cuenta desactivada o en una moneda que ya no se admite (EUR) solo se consulta.
-        this.status.set(account.isActive && isSelectableCurrency(account.currency) ? 'ready' : 'readOnly');
+        // Una cuenta desactivada o en una moneda inactiva del catálogo (EUR) solo se consulta.
+        const activeCurrency = currencies.some((currency) => currency.id === account.currencyId);
+        this.status.set(account.isActive && activeCurrency ? 'ready' : 'readOnly');
       },
       error: (error: unknown) => {
         if (error instanceof AccountError && error.code === AccountErrorCode.NotFound) {
@@ -568,6 +599,17 @@ export class AccountPanelComponent {
     } else {
       this.formError.set(this.messageOf(error));
     }
+  }
+
+  /** Id de catálogo del código elegido; con la moneda bloqueada, el que ya tiene la cuenta. */
+  private currencyIdOf(code: Currency): number | null {
+    const account = this.account();
+
+    if (account && account.currency === code) {
+      return account.currencyId;
+    }
+
+    return this.catalog().find((currency) => currency.code === code)?.id ?? null;
   }
 
   private codeMessage(code: AccountErrorCode): FieldMessage {

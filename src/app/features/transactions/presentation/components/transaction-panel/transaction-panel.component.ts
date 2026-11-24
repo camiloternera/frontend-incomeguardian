@@ -228,6 +228,10 @@ export class TransactionPanelComponent {
   /** Si se pidió eliminar el movimiento que se edita y se espera la confirmación. */
   protected readonly askingDelete = signal(false);
   private editId: number | null = null;
+  /** Carga en curso del movimiento a editar; se cancela al pasar a otro para que no pise al actual. */
+  private editLoad: Subscription | null = null;
+  /** Monto tal como se escribió al llenar el formulario; si no cambia, se envía el monto guardado. */
+  private filledAmountText: string | null = null;
   protected readonly formError = signal('');
 
   protected readonly accountsStatus = signal<OptionsStatus>('loading');
@@ -833,6 +837,8 @@ export class TransactionPanelComponent {
           return;
         }
 
+        this.editLoad?.unsubscribe();
+        this.filledAmountText = null;
         const type = params.get('type');
         this.open(isTransactionType(type) ? type : 'expense');
       });
@@ -1089,7 +1095,7 @@ export class TransactionPanelComponent {
   protected submit(): void {
     this.formError.set('');
 
-    if (this.form.invalid || (this.installable() && this.interestRate() === undefined)) {
+    if (this.hasVisibleErrors() || (this.installable() && this.interestRate() === undefined)) {
       this.form.markAllAsTouched();
       return;
     }
@@ -1121,6 +1127,22 @@ export class TransactionPanelComponent {
   }
 
   /**
+   * Errores de los campos que se ven. Las cuotas a mano y la tasa quedan en el formulario aunque se
+   * oculten (al pasar a una cuenta normal o elegir «Sin interés») y no se envían: no deben bloquear.
+   */
+  private hasVisibleErrors(): boolean {
+    const { customInstallments, interestRate, ...rest } = this.form.controls;
+    const value = this.form.getRawValue();
+    const installable = this.installable();
+
+    return (
+      Object.values(rest).some((control) => control.enabled && control.invalid) ||
+      (installable && customInstallments.invalid) ||
+      (installable && value.installments > 1 && value.withInterest && interestRate.invalid)
+    );
+  }
+
+  /**
    * Carga el movimiento de la ruta `:id/edit` y llena el formulario con sus datos. Si ya no se
    * puede modificar (mes cerrado o cuenta de solo lectura) no se muestra el formulario.
    */
@@ -1135,7 +1157,8 @@ export class TransactionPanelComponent {
     this.editStatus.set('loading');
     this.editError.set('');
     this.askingDelete.set(false);
-    this.getTransaction.execute(id).subscribe({
+    this.editLoad?.unsubscribe();
+    this.editLoad = this.getTransaction.execute(id).subscribe({
       next: (transaction) => {
         this.editing.set(transaction);
 
@@ -1171,9 +1194,13 @@ export class TransactionPanelComponent {
     const installments = transaction.type === 'expense' || transaction.isCardAdvance ? transaction.installments : 1;
     const rate = transaction.annualInterestRate;
 
+    // El backend guarda hasta 3 decimales y el formulario admite 2: si el monto no se toca, se
+    // envía el guardado en vez del redondeado.
+    const amountText = String(Math.round(transaction.amount * 100) / 100);
+    this.filledAmountText = amountText;
+
     this.form.patchValue({
-      // El backend guarda hasta 3 decimales; el formulario admite 2.
-      amount: String(Math.round(transaction.amount * 100) / 100),
+      amount: amountText,
       description: transaction.description ?? '',
       date: dayOf(transaction.date),
       categoryId: transaction.categoryId,
@@ -1195,8 +1222,9 @@ export class TransactionPanelComponent {
   /** Arma el borrador del tipo elegido con los valores del formulario. */
   private draft(): TransactionDraft {
     const value = this.form.getRawValue();
+    const editing = this.editing();
     const base = {
-      amount: parseAmount(value.amount),
+      amount: editing && value.amount === this.filledAmountText ? editing.amount : parseAmount(value.amount),
       date: toUtcIso(value.date),
       description: value.description,
     };

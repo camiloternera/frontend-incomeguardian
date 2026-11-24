@@ -6,25 +6,16 @@ export const ACCOUNT_NAME_MAX_LENGTH = 50;
 export const ACCOUNT_BALANCE_MAX_DECIMALS = 3;
 export const ACCOUNT_BALANCE_MAX_INTEGER_DIGITS = 15;
 
-/** Monedas que acepta el backend, en código ISO 4217. */
+/**
+ * Monedas que la app sabe mostrar, en código ISO 4217. Las que se pueden elegir al crear o editar
+ * una cuenta salen del catálogo del backend (`CurrencyCatalog`), no de esta lista.
+ */
 export const CURRENCIES = ['COP', 'USD', 'EUR'] as const;
 export type Currency = (typeof CURRENCIES)[number];
 
 /** Indica si el valor recibido es una de las monedas que conoce la app. */
 export function isCurrency(value: unknown): value is Currency {
   return typeof value === 'string' && (CURRENCIES as readonly string[]).includes(value);
-}
-
-/**
- * Monedas en las que se puede crear o editar una cuenta. Las cuentas en otras monedas
- * (EUR) que ya existan quedan de solo lectura.
- */
-export const SELECTABLE_CURRENCIES = ['COP', 'USD'] as const satisfies readonly Currency[];
-export type SelectableCurrency = (typeof SELECTABLE_CURRENCIES)[number];
-
-/** Indica si la moneda se puede elegir al crear o editar una cuenta. */
-export function isSelectableCurrency(value: unknown): value is SelectableCurrency {
-  return typeof value === 'string' && (SELECTABLE_CURRENCIES as readonly string[]).includes(value);
 }
 
 /** Tipos de cuenta: una cuenta normal (banco, billetera, efectivo) o una tarjeta de crédito. */
@@ -53,6 +44,8 @@ export interface Account {
   /** Saldo inicial más el neto de los movimientos. */
   currentBalance: number;
   currency: Currency;
+  /** Id de la moneda en el catálogo del backend; precarga el selector al editar. */
+  currencyId: number;
   /** Las cuentas desactivadas se pueden consultar, pero no editar ni usar en movimientos nuevos. */
   isActive: boolean;
   /** Con movimientos (incluso eliminados) ya no se puede cambiar el nombre ni la moneda. */
@@ -113,7 +106,8 @@ export interface AccountDraft {
   kind: AccountKind;
   /** En una tarjeta es la deuda, negativa o 0. */
   initialBalance: number;
-  currency: Currency;
+  /** Id de la moneda en el catálogo del backend. */
+  currencyId: number;
   /** Fecha y hora de apertura en ISO 8601 con desfase; no puede ser futura. */
   openingDate: string;
   /** Solo para tarjetas; null en una cuenta normal o si la tarjeta no tiene cupo. */

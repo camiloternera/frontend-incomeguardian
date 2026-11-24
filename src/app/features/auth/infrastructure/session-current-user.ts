@@ -13,7 +13,7 @@ export class SessionCurrentUser extends CurrentUser {
   profile(): CurrentUserProfile | null {
     const session = this.sessionStore.read();
 
-    return session ? { name: session.name, email: session.email } : null;
+    return session ? { id: session.userId, name: session.name, email: session.email } : null;
   }
 
   signOut(): Observable<void> {

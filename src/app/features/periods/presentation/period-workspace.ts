@@ -3,6 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TranslocoService } from '@jsverse/transloco';
 import { Observable, Subject, tap } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
+import { CurrentUser } from '@core/session/current-user';
 import {
   ClosePeriodUseCase,
   GetPendingPeriodUseCase,
@@ -71,7 +72,11 @@ export class PeriodWorkspace {
   private readonly transloco = inject(TranslocoService);
   private readonly changes = new Subject<PeriodRef>();
   private readonly sync = inject(PeriodSync);
+  /** Opcional: sin él (algunos tests) la caché no se separa por usuario. */
+  private readonly currentUser = inject(CurrentUser, { optional: true });
   private pendingRequested = false;
+  /** Usuario dueño de la caché; el workspace vive en la ruta y sobrevive a un cierre de sesión. */
+  private owner: string | null | undefined;
 
   /** Años consultados, por número de año. */
   readonly years = signal<Record<number, YearEntry>>({});
@@ -104,6 +109,7 @@ export class PeriodWorkspace {
 
   /** Pide el estado del año si aún no se tiene (o siempre, con `force`). */
   loadYear(year: number, force = false): void {
+    this.resetIfUserChanged();
     // Se lee sin rastrear para que un `effect` que pide un año no dependa de todos los años.
     const entry = untracked(this.years)[year];
 
@@ -124,6 +130,7 @@ export class PeriodWorkspace {
 
   /** Consulta el mes pendiente (una vez, o siempre con `force`). Si falla, el aviso no se muestra. */
   loadPending(force = false): void {
+    this.resetIfUserChanged();
     if (this.pendingRequested && !force) {
       return;
     }
@@ -229,6 +236,29 @@ export class PeriodWorkspace {
     }
 
     this.changes.next(period);
+  }
+
+  /** Si otra persona inició sesión desde la última consulta, descarta lo que se sabía de la anterior. */
+  private resetIfUserChanged(): void {
+    const user = this.currentUser?.profile()?.id ?? null;
+
+    if (this.owner === undefined) {
+      this.owner = user;
+      return;
+    }
+
+    if (user === this.owner) {
+      return;
+    }
+
+    this.owner = user;
+    this.years.set({});
+    this.pending.set(undefined);
+    this.pendingRequested = false;
+    this.closing.set(null);
+    this.reopening.set(null);
+    this.notice.set(null);
+    this.opened.set(null);
   }
 
   private setYear(year: number, entry: YearEntry): void {

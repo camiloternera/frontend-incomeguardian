@@ -6,7 +6,10 @@ export interface AccountDto {
   kind?: string | null;
   initialBalance: number;
   currentBalance: number | null;
+  /** Código ISO 4217. */
   currency: string;
+  /** Id de la moneda en el catálogo. */
+  currencyId: number;
   isActive: boolean;
   hasTransactions?: boolean | null;
   /** Fecha y hora de apertura, en UTC. */
@@ -29,7 +32,8 @@ export interface AccountRequestDto {
   kind: string;
   /** En una tarjeta, la deuda en negativo. */
   initialBalance: number;
-  currency: string;
+  /** Id de una moneda activa del catálogo (`GET /api/v1/currencies`). */
+  currencyId: number;
   openingDate: string;
   creditLimit?: number;
   statementDay?: number;

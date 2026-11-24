@@ -35,6 +35,8 @@ export function budgetRow(overrides: Partial<BudgetRow> & Pick<BudgetRow, 'categ
   return {
     categoryType: 'expense',
     currency: 'COP',
+    // Ids del catálogo falso de `@core/currencies/currency-catalog.testing`.
+    currencyId: overrides.currency === 'USD' ? 2 : 1,
     budgetAmount,
     spentAmount,
     availableAmount: budgetAmount - spentAmount,
@@ -91,7 +93,7 @@ export class FakeBudgetRepository extends BudgetRepository {
   }
 
   removeRecurring(key: BudgetKey, from: BudgetMonth): Observable<void> {
-    return this.write('removeRecurring', [{ categoryId: key.categoryId, currency: key.currency }, from]);
+    return this.write('removeRecurring', [{ categoryId: key.categoryId, currencyId: key.currencyId }, from]);
   }
 
   saveMonth(month: BudgetMonth, target: BudgetTarget, amount: number): Observable<void> {
@@ -99,7 +101,7 @@ export class FakeBudgetRepository extends BudgetRepository {
   }
 
   removeMonth(month: BudgetMonth, key: BudgetKey): Observable<void> {
-    return this.write('removeMonth', [month, { categoryId: key.categoryId, currency: key.currency }]);
+    return this.write('removeMonth', [month, { categoryId: key.categoryId, currencyId: key.currencyId }]);
   }
 
   private write(action: string, args: unknown[]): Observable<void> {

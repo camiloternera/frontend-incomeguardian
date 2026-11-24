@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { TranslocoService } from '@jsverse/transloco';
-import { Observable, OperatorFunction, catchError, forkJoin, map, pipe, throwError } from 'rxjs';
+import { EMPTY, Observable, OperatorFunction, catchError, expand, forkJoin, map, pipe, reduce, throwError } from 'rxjs';
 import { environment } from '@env/environment';
 import { ApiResponse } from '@core/http/api-response';
 import { GENERIC_ERROR_KEY, apiErrorCode, resolveApiError } from '@core/http/api-error';
@@ -27,6 +27,7 @@ import { BUDGET_ERROR_KEYS } from './budget-error-messages';
 import {
   BudgetAccountDto,
   BudgetCategoryOptionDto,
+  BudgetTransactionDto,
   BudgetRowDto,
   BudgetTransactionPageDto,
   BudgetSummaryDto,
@@ -57,6 +58,7 @@ function toRow(dto: BudgetRowDto): BudgetRow {
     categoryName: dto.categoryName,
     categoryType: TYPES_BY_ID.get(dto.categoryTypeId) ?? null,
     currency: dto.currency,
+    currencyId: dto.currencyId,
     budgetAmount: dto.budgetAmount,
     spentAmount: dto.spentAmount,
     availableAmount: dto.availableAmount,
@@ -101,8 +103,10 @@ function monthRange({ year, month }: BudgetMonth): { fromDate: string; toDate: s
   return { fromDate: new Date(start).toISOString(), toDate: new Date(next - 1).toISOString() };
 }
 
-/** Movimientos que se piden de una vez para «Lo que cuenta este mes». */
+/** Movimientos por página para «Lo que cuenta este mes»; se piden todas las páginas del mes. */
 const MOVEMENTS_PAGE_SIZE = 50;
+/** Tope de páginas por si el backend no informa el total: evita un bucle sin fin. */
+const MOVEMENTS_MAX_PAGES = 40;
 
 function toSummary(dto: BudgetSummaryDto): BudgetSummary {
   return {
@@ -183,7 +187,7 @@ export class BudgetHttpRepository extends BudgetRepository {
   saveRecurring(target: BudgetTarget, amount: number, from: BudgetMonth): Observable<void> {
     const body: RecurringBudgetRequestDto = {
       categoryId: target.categoryId,
-      currency: target.currency,
+      currencyId: target.currencyId,
       amount,
       fromYear: from.year,
       fromMonth: from.month,
@@ -196,7 +200,7 @@ export class BudgetHttpRepository extends BudgetRepository {
 
   removeRecurring(key: BudgetKey, from: BudgetMonth): Observable<void> {
     const params = new HttpParams()
-      .set('currency', key.currency)
+      .set('currencyId', key.currencyId)
       .set('fromYear', from.year)
       .set('fromMonth', from.month);
 
@@ -206,7 +210,7 @@ export class BudgetHttpRepository extends BudgetRepository {
   }
 
   saveMonth({ year, month }: BudgetMonth, target: BudgetTarget, amount: number): Observable<void> {
-    const body: MonthBudgetRequestDto = { categoryId: target.categoryId, currency: target.currency, amount };
+    const body: MonthBudgetRequestDto = { categoryId: target.categoryId, currencyId: target.currencyId, amount };
 
     return this.http
       .put<ApiResponse<unknown> | null>(`${this.baseUrl}/${year}/${month}`, body)
@@ -214,7 +218,7 @@ export class BudgetHttpRepository extends BudgetRepository {
   }
 
   removeMonth({ year, month }: BudgetMonth, key: BudgetKey): Observable<void> {
-    const params = new HttpParams().set('currency', key.currency);
+    const params = new HttpParams().set('currencyId', key.currencyId);
 
     return this.http
       .delete<ApiResponse<unknown> | null>(`${this.baseUrl}/${year}/${month}/${key.categoryId}`, { params })
@@ -255,21 +259,37 @@ export class BudgetMovementsHttpRepository extends BudgetMovementsRepository {
   list(month: BudgetMonth, key: BudgetKey, type: BudgetCategoryType): Observable<BudgetMovement[]> {
     const range = monthRange(month);
     const params = new HttpParams()
-      .set('page', 1)
       .set('pageSize', MOVEMENTS_PAGE_SIZE)
       .set('fromDate', range.fromDate)
       .set('toDate', range.toDate)
       .set('categoryId', key.categoryId)
       .set('type', type);
 
+    const pageOf = (page: number) =>
+      this.http
+        .get<ApiResponse<BudgetTransactionPageDto>>(this.transactionsUrl, { params: params.set('page', page) })
+        .pipe(unwrap());
+    // Sigue pidiendo páginas mientras falten movimientos según `totalItems` (o, sin él, mientras lleguen llenas).
+    const items = pageOf(1).pipe(
+      expand((page, index) => {
+        const count = page.items?.length ?? 0;
+        const loaded = (index + 1) * MOVEMENTS_PAGE_SIZE;
+        const more =
+          typeof page.totalItems === 'number' ? loaded < page.totalItems && count > 0 : count === MOVEMENTS_PAGE_SIZE;
+
+        return more && index + 1 < MOVEMENTS_MAX_PAGES ? pageOf(index + 2) : EMPTY;
+      }),
+      reduce((all: BudgetTransactionDto[], page) => all.concat(page.items ?? []), []),
+    );
+
     return forkJoin({
-      page: this.http.get<ApiResponse<BudgetTransactionPageDto>>(this.transactionsUrl, { params }).pipe(unwrap()),
+      items,
       accounts: this.http.get<ApiResponse<BudgetAccountDto[]>>(this.accountsUrl).pipe(unwrap()),
     }).pipe(
-      map(({ page, accounts }) => {
+      map(({ items, accounts }) => {
         const byId = new Map(accounts.map((account) => [account.id, account]));
 
-        return (page.items ?? []).flatMap((item): BudgetMovement[] => {
+        return items.flatMap((item): BudgetMovement[] => {
           const account = item.fromAccountId === null ? undefined : byId.get(item.fromAccountId);
 
           if (!account || account.kind === 'credit_card' || account.currency !== key.currency) {

@@ -14,6 +14,7 @@ const DTO = {
   initialBalance: -250000.5,
   currentBalance: null,
   currency: 'COP',
+  currencyId: 1,
   isActive: true,
   openingDate: '2026-01-15T14:30:00Z',
   createdAt: '2026-10-31T12:00:00+00:00',
@@ -61,6 +62,7 @@ describe('AccountHttpRepository', () => {
         initialBalance: -250000.5,
         currentBalance: -250000.5,
         currency: 'COP',
+        currencyId: 1,
         isActive: true,
         // Sin el campo en la respuesta, la cuenta se toma como sin movimientos.
         hasTransactions: false,
@@ -97,7 +99,7 @@ describe('AccountHttpRepository', () => {
     const draft = {
       name: 'Wise',
       initialBalance: 320.5,
-      currency: 'USD' as const,
+      currencyId: 2,
       openingDate: '2026-01-15T09:30:00-05:00',
       ...NO_CARD,
     };
@@ -106,7 +108,7 @@ describe('AccountHttpRepository', () => {
       name: 'Wise',
       kind: 'standard',
       initialBalance: 320.5,
-      currency: 'USD',
+      currencyId: 2,
       openingDate: '2026-01-15T09:30:00-05:00',
       isCushion: false,
     };
@@ -115,7 +117,7 @@ describe('AccountHttpRepository', () => {
     const create = http.expectOne(URL);
     expect(create.request.method).toBe('POST');
     expect(create.request.body).toEqual(body);
-    create.flush(ok({ ...DTO, currency: 'USD' }), { status: 201, statusText: 'Created' });
+    create.flush(ok({ ...DTO, currency: 'USD', currencyId: 2 }), { status: 201, statusText: 'Created' });
 
     repository.update(5, draft).subscribe();
     const update = http.expectOne(`${URL}/5`);
@@ -137,7 +139,7 @@ describe('AccountHttpRepository', () => {
 
   it('keeps the backend code and translates it', () => {
     let error: unknown;
-    repository.update(5, { name: 'Wise', initialBalance: 0, currency: 'EUR', openingDate: '2026-01-15T09:30:00-05:00', ...NO_CARD }).subscribe({
+    repository.update(5, { name: 'Wise', initialBalance: 0, currencyId: 3, openingDate: '2026-01-15T09:30:00-05:00', ...NO_CARD }).subscribe({
       error: (value) => (error = value),
     });
 
@@ -150,7 +152,7 @@ describe('AccountHttpRepository', () => {
 
   it('keeps the locked name code and translates it', () => {
     let error: unknown;
-    repository.update(5, { name: 'Visa nueva', initialBalance: 0, currency: 'COP', openingDate: '2026-01-15T09:30:00-05:00', ...NO_CARD }).subscribe({
+    repository.update(5, { name: 'Visa nueva', initialBalance: 0, currencyId: 1, openingDate: '2026-01-15T09:30:00-05:00', ...NO_CARD }).subscribe({
       error: (value) => (error = value),
     });
 
@@ -216,7 +218,7 @@ describe('AccountHttpRepository', () => {
       name: 'Visa',
       kind: 'credit_card' as const,
       initialBalance: -150000,
-      currency: 'COP' as const,
+      currencyId: 1,
       openingDate: '2026-01-15T09:30:00-05:00',
       creditLimit: 2000000,
       statementDay: 15,
@@ -229,7 +231,7 @@ describe('AccountHttpRepository', () => {
       name: 'Visa',
       kind: 'credit_card',
       initialBalance: -150000,
-      currency: 'COP',
+      currencyId: 1,
       openingDate: '2026-01-15T09:30:00-05:00',
       isCushion: false,
       creditLimit: 2000000,

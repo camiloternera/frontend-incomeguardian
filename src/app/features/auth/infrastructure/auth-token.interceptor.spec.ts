@@ -64,4 +64,20 @@ describe('authTokenInterceptor', () => {
     expect(store.read()).toBeNull();
     expect(navigate).toHaveBeenCalledWith(['/login'], expect.objectContaining({ queryParams: expect.any(Object) }));
   });
+
+  it('review A6: keeps a replacement session when an older request returns 401', () => {
+    store.save(SESSION);
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    http.get(API).subscribe({ error: () => undefined });
+    const pending = controller.expectOne(API);
+    expect(pending.request.headers.get('Authorization')).toBe('Bearer access-token');
+    const replacement = { ...SESSION, accessToken: 'new-token', refreshToken: 'new-refresh' };
+    store.save(replacement);
+
+    pending.flush(null, { status: 401, statusText: 'Unauthorized' });
+
+    expect(store.read()).toEqual(replacement);
+    expect(navigate).not.toHaveBeenCalled();
+    controller.verify();
+  });
 });

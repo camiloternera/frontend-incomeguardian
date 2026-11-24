@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
+import { provideFakeCurrencyCatalog } from '@core/currencies/currency-catalog.testing';
 import { translocoTesting } from '@core/i18n/i18n.testing';
 import { LanguageService } from '@core/i18n/language.service';
 import { Account } from '../../../domain/account';
@@ -39,6 +40,7 @@ describe('AccountListPageComponent', () => {
       kind: 'standard' as const,
       initialBalance: 0,
       currency: 'COP' as const,
+      currencyId: overrides.currency === 'USD' ? 2 : overrides.currency === 'EUR' ? 3 : 1,
       creditLimit: null,
       statementDay: null,
       paymentDay: null,
@@ -61,7 +63,7 @@ describe('AccountListPageComponent', () => {
     fake = new FakeAccountRepository();
     await TestBed.configureTestingModule({
       imports: [translocoTesting()],
-      providers: [provideRouter(fakeAccountsRoutes(fake))],
+      providers: [provideRouter(fakeAccountsRoutes(fake)), ...provideFakeCurrencyCatalog()],
     }).compileComponents();
   });
 
