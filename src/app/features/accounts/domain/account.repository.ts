@@ -1,5 +1,5 @@
 import { Observable } from 'rxjs';
-import { Account, AccountDraft } from './account';
+import { Account, AccountDraft, AccountKindOption } from './account';
 import { CardStatement } from './card-statement';
 import { CardMonth } from './credit-card-calendar';
 
@@ -25,4 +25,10 @@ export abstract class AccountRepository {
 
   /** Extracto de una tarjeta en el mes de corte indicado; sin mes, el del próximo corte. */
   abstract statement(id: number, month?: CardMonth): Observable<CardStatement>;
+}
+
+/** Puerto: el catálogo de tipos de cuenta activos, para el selector de tipo. */
+export abstract class AccountKindRepository {
+  /** Tipos activos que la app sabe manejar, en el orden del backend. */
+  abstract list(): Observable<AccountKindOption[]>;
 }

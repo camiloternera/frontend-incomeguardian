@@ -41,6 +41,7 @@ describe('AccountListPageComponent', () => {
       initialBalance: 0,
       currency: 'COP' as const,
       currencyId: overrides.currency === 'USD' ? 2 : overrides.currency === 'EUR' ? 3 : 1,
+      accountKindId: overrides.kind === 'credit_card' ? 2 : 1,
       creditLimit: null,
       statementDay: null,
       paymentDay: null,

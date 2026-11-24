@@ -25,15 +25,16 @@ import { SelectComponent, SelectOption } from '@shared/ui/select/select.componen
 import {
   CreateAccountUseCase,
   GetAccountUseCase,
+  ListAccountKindsUseCase,
   UpdateAccountUseCase,
 } from '../../../application/account-use-cases';
 import {
   ACCOUNT_BALANCE_MAX_DECIMALS,
   ACCOUNT_BALANCE_MAX_INTEGER_DIGITS,
-  ACCOUNT_KINDS,
   ACCOUNT_NAME_MAX_LENGTH,
   Account,
   AccountKind,
+  AccountKindOption,
   CARD_DAY_MAX,
   CARD_DAY_MIN,
   Currency,
@@ -111,6 +112,7 @@ export class AccountPanelComponent {
   private readonly router = inject(Router);
   private readonly transloco = inject(TranslocoService);
   private readonly currencyCatalog = inject(CurrencyCatalog);
+  private readonly listKinds = inject(ListAccountKindsUseCase);
   private readonly heading = viewChild<ElementRef<HTMLElement>>('heading');
 
   protected readonly listUrl = LIST_URL;
@@ -125,7 +127,10 @@ export class AccountPanelComponent {
       .map((currency) => currency.code)
       .filter(isCurrency),
   );
-  protected readonly kinds = ACCOUNT_KINDS;
+  /** Tipos activos del catálogo; vacío mientras llega. */
+  private readonly kindCatalog = signal<AccountKindOption[]>([]);
+  /** Códigos que ofrece el selector de tipo, en el orden del catálogo. */
+  protected readonly kinds = computed(() => this.kindCatalog().map((kind) => kind.code));
   protected readonly nameMax = ACCOUNT_NAME_MAX_LENGTH;
   protected readonly balanceDigits = balanceDigits;
   protected readonly balanceParams = {
@@ -255,6 +260,10 @@ export class AccountPanelComponent {
     controls.paymentDay.valueChanges.subscribe(() => this.paymentDayServerError.set(null));
 
     // Si falla, el selector queda vacío y el envío vuelve a pedir el catálogo.
+    this.listKinds
+      .execute()
+      .pipe(takeUntilDestroyed())
+      .subscribe({ next: (kinds) => this.kindCatalog.set(kinds), error: () => undefined });
     this.currencyCatalog
       .list()
       .pipe(takeUntilDestroyed())
@@ -412,10 +421,12 @@ export class AccountPanelComponent {
     const id = this.accountId();
     const value = this.accountForm.getRawValue();
     const currencyId = this.currencyIdOf(value.currency);
+    const accountKindId = this.kindIdOf(value.kind);
 
-    if (currencyId === null) {
-      // Sin catálogo no se sabe qué id enviar: se vuelve a pedir y se avisa.
+    if (currencyId === null || accountKindId === null) {
+      // Sin catálogos no se sabe qué ids enviar: se vuelven a pedir y se avisa.
       this.currencyCatalog.list().subscribe({ next: (currencies) => this.catalog.set(currencies), error: () => undefined });
+      this.listKinds.execute().subscribe({ next: (kinds) => this.kindCatalog.set(kinds), error: () => undefined });
       this.formError.set(this.transloco.translate(GENERIC_ERROR_KEY));
       return;
     }
@@ -426,6 +437,7 @@ export class AccountPanelComponent {
     const draft = {
       name: value.name,
       kind: value.kind,
+      accountKindId,
       currencyId,
       // La deuda se escribe en positivo y el backend la guarda en negativo; `|| 0` evita enviar -0.
       initialBalance: isCard ? -balance || 0 : balance,
@@ -610,6 +622,17 @@ export class AccountPanelComponent {
     }
 
     return this.catalog().find((currency) => currency.code === code)?.id ?? null;
+  }
+
+  /** Id de catálogo del tipo elegido; con el tipo bloqueado, el que ya tiene la cuenta. */
+  private kindIdOf(code: AccountKind): number | null {
+    const account = this.account();
+
+    if (account && account.kind === code) {
+      return account.accountKindId;
+    }
+
+    return this.kindCatalog().find((kind) => kind.code === code)?.id ?? null;
   }
 
   private codeMessage(code: AccountErrorCode): FieldMessage {

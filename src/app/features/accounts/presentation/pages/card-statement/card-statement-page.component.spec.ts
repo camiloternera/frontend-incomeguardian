@@ -13,6 +13,7 @@ const CARD: Account = {
   id: 9,
   name: 'Visa Oro',
   kind: 'credit_card',
+  accountKindId: 2,
   initialBalance: -150000,
   currentBalance: -400000,
   currency: 'COP',

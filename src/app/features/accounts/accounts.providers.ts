@@ -4,11 +4,12 @@ import {
   DeactivateAccountUseCase,
   GetAccountUseCase,
   GetCardStatementUseCase,
+  ListAccountKindsUseCase,
   ListAccountsUseCase,
   UpdateAccountUseCase,
 } from './application/account-use-cases';
-import { AccountRepository } from './domain/account.repository';
-import { AccountHttpRepository } from './infrastructure/account-http.repository';
+import { AccountKindRepository, AccountRepository } from './domain/account.repository';
+import { AccountHttpRepository, AccountKindHttpRepository } from './infrastructure/account-http.repository';
 
 /**
  * Enlaza los puertos de cuentas con sus adaptadores. Se registra en `accounts.routes.ts`
@@ -17,6 +18,8 @@ import { AccountHttpRepository } from './infrastructure/account-http.repository'
 export function provideAccounts(): Provider[] {
   return [
     { provide: AccountRepository, useClass: AccountHttpRepository },
+    { provide: AccountKindRepository, useClass: AccountKindHttpRepository },
+    ListAccountKindsUseCase,
     ListAccountsUseCase,
     GetAccountUseCase,
     CreateAccountUseCase,

@@ -1,17 +1,17 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { TranslocoService } from '@jsverse/transloco';
-import { Observable, OperatorFunction, catchError, map, pipe, throwError } from 'rxjs';
+import { Observable, OperatorFunction, catchError, map, pipe, shareReplay, throwError } from 'rxjs';
 import { environment } from '@env/environment';
 import { ApiResponse } from '@core/http/api-response';
 import { GENERIC_ERROR_KEY, apiErrorCode, resolveApiError } from '@core/http/api-error';
-import { Account, AccountDraft, isAccountKind, isCurrency } from '../domain/account';
+import { Account, AccountDraft, AccountKindOption, isAccountKind, isCurrency } from '../domain/account';
 import { AccountError, isAccountErrorCode } from '../domain/account-error';
-import { AccountRepository } from '../domain/account.repository';
+import { AccountKindRepository, AccountRepository } from '../domain/account.repository';
 import { CardStatement, isStatementStatus, toStatementItemKind } from '../domain/card-statement';
 import { CardMonth } from '../domain/credit-card-calendar';
 import { ACCOUNT_ERROR_KEYS, ACCOUNT_ERROR_PARAMS } from './account-error-messages';
-import { AccountDto, AccountRequestDto, StatementDto, StatementMonthDto } from './account.dto';
+import { AccountDto, AccountKindDto, AccountRequestDto, StatementDto, StatementMonthDto } from './account.dto';
 
 /** Valor que la app no conoce (moneda, tipo o estado): se trata como respuesta inválida en vez de inventarlo. */
 class UnknownCurrencyError extends Error {}
@@ -45,6 +45,8 @@ function toAccount(dto: AccountDto): Account {
     id: dto.id,
     name: dto.name,
     kind,
+    // Sin el campo (backend anterior al catálogo) se deduce del código: 1 normal, 2 tarjeta.
+    accountKindId: dto.accountKindId ?? (kind === 'credit_card' ? 2 : 1),
     initialBalance: dto.initialBalance,
     // Mientras el backend no lo informe, el saldo actual es el inicial.
     currentBalance: dto.currentBalance ?? dto.initialBalance,
@@ -69,7 +71,7 @@ function toAccount(dto: AccountDto): Account {
 function toRequest(draft: AccountDraft): AccountRequestDto {
   const body: AccountRequestDto = {
     name: draft.name,
-    kind: draft.kind,
+    accountKindId: draft.accountKindId,
     initialBalance: draft.initialBalance,
     currencyId: draft.currencyId,
     openingDate: draft.openingDate,
@@ -214,5 +216,35 @@ export class AccountHttpRepository extends AccountRepository {
 
   private toErrors<T>(): OperatorFunction<T, T> {
     return pipe(catchError((error: unknown) => throwError(() => toAccountError(error, this.transloco))));
+  }
+}
+
+/**
+ * Lee el catálogo de tipos de cuenta y deja solo los que la app sabe manejar. Se pide una vez
+ * mientras viva la ruta de cuentas; si falla, la siguiente llamada vuelve a intentarlo.
+ */
+@Injectable()
+export class AccountKindHttpRepository extends AccountKindRepository {
+  private readonly http = inject(HttpClient);
+  private readonly transloco = inject(TranslocoService);
+  private readonly url = `${environment.apiUrl}/api/v1/account-kinds`;
+  private cache: Observable<AccountKindOption[]> | null = null;
+
+  list(): Observable<AccountKindOption[]> {
+    this.cache ??= this.http.get<ApiResponse<AccountKindDto[]>>(this.url).pipe(
+      unwrap(),
+      map((dtos) =>
+        dtos.flatMap((dto): AccountKindOption[] =>
+          isAccountKind(dto.code) ? [{ id: dto.id, code: dto.code, name: dto.name }] : [],
+        ),
+      ),
+      catchError((error: unknown) => {
+        this.cache = null;
+        return throwError(() => toAccountError(error, this.transloco));
+      }),
+      shareReplay({ bufferSize: 1, refCount: false }),
+    );
+
+    return this.cache;
   }
 }
