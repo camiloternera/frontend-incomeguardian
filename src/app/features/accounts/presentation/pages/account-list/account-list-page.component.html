@@ -459,8 +459,9 @@
           <app-pagination
             [page]="page()"
             [totalItems]="visible().length"
-            [pageSize]="pageSize"
+            [pageSize]="pageSize()"
             (pageChange)="goToPage($event)"
+              (pageSizeChange)="changePageSize($event)"
           />
         } @else if (loadError()) {
           <div

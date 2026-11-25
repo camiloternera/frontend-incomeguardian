@@ -15,7 +15,8 @@
     "range": "Mostrando {{from}}–{{to}} de {{total}}",
     "previous": "Página anterior",
     "next": "Página siguiente",
-    "page": "Ir a la página {{page}}"
+    "page": "Ir a la página {{page}}",
+    "pageSize": "Registros por página"
   },
   "select": {
     "search": "Buscar",

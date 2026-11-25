@@ -65,6 +65,8 @@ export class SelectComponent<T> implements ControlValueAccessor {
 
   protected readonly value = signal<T | null>(null);
   protected readonly isOpen = signal(false);
+  /** La lista se abre hacia arriba porque abajo no cabe y arriba hay más espacio. */
+  protected readonly opensUp = signal(false);
   protected readonly isDisabled = signal(false);
   protected readonly query = signal('');
   /** Posición, dentro de las opciones filtradas, de la opción resaltada con el teclado o el ratón. */
@@ -214,6 +216,7 @@ export class SelectComponent<T> implements ControlValueAccessor {
     this.query.set('');
     const selectedIndex = this.options().findIndex((option) => option.value === this.value());
     this.activeIndex.set(selectedIndex >= 0 ? selectedIndex : 0);
+    this.opensUp.set(this.shouldOpenUp());
     this.isOpen.set(true);
 
     // Tras pintar la lista, el foco va a la búsqueda o a la lista y la opción elegida queda a la vista.
@@ -225,6 +228,28 @@ export class SelectComponent<T> implements ControlValueAccessor {
       },
       { injector: this.injector },
     );
+  }
+
+  /**
+   * Decide antes de pintar la lista si se abre hacia arriba: cuando bajo el botón no cabe y arriba
+   * hay más espacio. Así la lista no alarga la página (por ejemplo, en la paginación al final).
+   */
+  private shouldOpenUp(): boolean {
+    const trigger = this.find('[data-select-trigger]');
+
+    if (!trigger || typeof window === 'undefined') {
+      return false;
+    }
+
+    const rect = trigger.getBoundingClientRect();
+    const rows = Math.min(this.options().length, SELECT_VISIBLE_OPTIONS);
+    // Filas de 44 px con 2 px entre ellas, el relleno y borde del cuadro, la búsqueda si la hay y
+    // los 8 px de separación con el botón.
+    const height = rows * 44 + Math.max(0, rows - 1) * 2 + 10 + (this.searchable() ? 52 : 0) + 8;
+    const below = window.innerHeight - rect.bottom;
+    const above = rect.top;
+
+    return below < height && above > below;
   }
 
   /** Cierra la lista; `refocus` devuelve el foco al botón (al elegir o con Escape). */

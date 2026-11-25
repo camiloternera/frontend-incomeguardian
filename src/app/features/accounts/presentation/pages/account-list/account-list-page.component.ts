@@ -19,6 +19,7 @@ import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { LanguageService } from '@core/i18n/language.service';
 import { ThemeService } from '@core/theme/theme.service';
 import { PaginationComponent } from '@shared/ui/pagination.component';
+import { PageSizePreference } from '@shared/ui/page-size';
 import { ListAccountsUseCase } from '../../../application/account-use-cases';
 import {
   Account,
@@ -70,7 +71,9 @@ export class AccountListPageComponent {
   private readonly transloco = inject(TranslocoService);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
-  protected readonly pageSize = ACCOUNT_PAGE_SIZE;
+  /** Registros por página; la persona la elige y se recuerda para este listado. */
+  private readonly pageSizePreference = new PageSizePreference('accounts', ACCOUNT_PAGE_SIZE);
+  protected readonly pageSize = this.pageSizePreference.size;
   protected readonly tabs = TABS;
   protected readonly theme = inject(ThemeService).theme;
   protected readonly locale = inject(LanguageService).language;
@@ -147,15 +150,15 @@ export class AccountListPageComponent {
 
   /** Página mostrada; si una desactivación deja la página vacía, retrocede a la última que exista. */
   protected readonly page = computed(() => {
-    const lastPage = Math.max(1, Math.ceil(this.visible().length / ACCOUNT_PAGE_SIZE));
+    const lastPage = Math.max(1, Math.ceil(this.visible().length / this.pageSize()));
 
     return Math.min(this.requestedPage(), lastPage);
   });
 
   protected readonly pageItems = computed(() => {
-    const start = (this.page() - 1) * ACCOUNT_PAGE_SIZE;
+    const start = (this.page() - 1) * this.pageSize();
 
-    return this.visible().slice(start, start + ACCOUNT_PAGE_SIZE);
+    return this.visible().slice(start, start + this.pageSize());
   });
 
   constructor() {
@@ -178,6 +181,12 @@ export class AccountListPageComponent {
   protected selectTab(tab: AccountTab): void {
     this.tab.set(tab);
     this.resetPosition();
+  }
+
+  /** Cambia los registros por página y vuelve a la primera. */
+  protected changePageSize(size: number): void {
+    this.pageSizePreference.set(size);
+    this.requestedPage.set(1);
   }
 
   protected goToPage(page: number): void {

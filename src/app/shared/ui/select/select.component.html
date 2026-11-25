@@ -30,8 +30,10 @@
   @if (isOpen()) {
     <div
       data-testid="select-popover"
+      [attr.data-placement]="opensUp() ? 'top' : 'bottom'"
       (keydown.escape)="onEscape($event)"
-      class="absolute inset-x-0 top-[calc(100%+8px)] z-20 flex flex-col rounded-lg border border-ig-border bg-ig-surface-raised p-1 shadow-[0_8px_24px_rgb(0_0_0/0.16)]"
+      class="absolute inset-x-0 z-20 flex flex-col rounded-lg border border-ig-border bg-ig-surface-raised p-1 shadow-[0_8px_24px_rgb(0_0_0/0.16)]"
+      [class]="opensUp() ? 'bottom-[calc(100%+8px)]' : 'top-[calc(100%+8px)]'"
     >
       @if (searchable()) {
         <label class="relative mb-1 block">
