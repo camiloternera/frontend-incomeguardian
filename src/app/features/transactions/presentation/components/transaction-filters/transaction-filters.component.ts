@@ -1,9 +1,9 @@
-import { Component, computed, effect, inject, input, output } from '@angular/core';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { LucideSearch, LucideX } from '@lucide/angular';
-import { debounceTime, distinctUntilChanged, map } from 'rxjs';
+import { debounceTime, filter, map } from 'rxjs';
 import { DatePickerComponent } from '@shared/ui/date-picker/date-picker.component';
 import { SelectComponent, SelectOption } from '@shared/ui/select/select.component';
 
@@ -87,9 +87,7 @@ export class TransactionFiltersComponent {
   protected readonly active = computed(() => hasTransactionFilters(this.value()));
 
   /** Fechas elegidas, para limitar un extremo del rango con el otro. */
-  private readonly formValue = toSignal(this.form.valueChanges.pipe(map(() => this.form.getRawValue())), {
-    initialValue: this.form.getRawValue(),
-  });
+  private readonly formValue = signal(this.form.getRawValue());
   protected readonly fromMax = computed(() => this.formValue().to ?? this.today());
   protected readonly toMin = computed(() => this.formValue().from);
 
@@ -101,6 +99,7 @@ export class TransactionFiltersComponent {
 
       if (JSON.stringify(current) !== JSON.stringify(value)) {
         this.form.setValue(value, { emitEvent: false });
+        this.formValue.set(this.form.getRawValue());
       }
     });
 
@@ -109,7 +108,10 @@ export class TransactionFiltersComponent {
       .pipe(
         map((text) => text.trim()),
         debounceTime(SEARCH_DEBOUNCE_MS),
-        distinctUntilChanged(),
+        // Compara con lo aplicado, no con la búsqueda anterior a limpiar o navegar.
+        filter((text) =>
+          text === this.form.controls.search.value.trim() && text !== this.value().search.trim(),
+        ),
         takeUntilDestroyed(),
       )
       .subscribe(() => this.emit());
@@ -131,11 +133,13 @@ export class TransactionFiltersComponent {
 
   protected clear(): void {
     this.form.setValue(EMPTY_TRANSACTION_FILTERS, { emitEvent: false });
+    this.formValue.set(this.form.getRawValue());
     this.filtersChange.emit(EMPTY_TRANSACTION_FILTERS);
   }
 
   private emit(): void {
     const value = this.form.getRawValue();
+    this.formValue.set(value);
     this.filtersChange.emit({ ...value, search: value.search.trim() });
   }
 }

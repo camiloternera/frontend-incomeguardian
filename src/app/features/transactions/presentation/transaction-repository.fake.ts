@@ -131,10 +131,15 @@ export class FakeTransactionRepository extends TransactionRepository {
     this.lastQuery = query;
 
     return respond(this, () => {
+      const search = query.search?.trim().toLocaleLowerCase();
       const matching = this.transactions.filter(
         (item) =>
           (query.fromDate === undefined || item.date >= query.fromDate) &&
-          (query.toDate === undefined || item.date <= query.toDate),
+          (query.toDate === undefined || item.date <= query.toDate) &&
+          (!search || (item.description ?? '').toLocaleLowerCase().includes(search)) &&
+          (query.categoryId === undefined || item.categoryId === query.categoryId) &&
+          (query.accountId === undefined ||
+            item.fromAccountId === query.accountId || item.toAccountId === query.accountId),
       );
       const start = (query.page - 1) * query.pageSize;
 

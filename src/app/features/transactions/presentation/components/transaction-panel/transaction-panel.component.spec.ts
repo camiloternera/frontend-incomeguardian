@@ -38,7 +38,10 @@ describe('TransactionPanelComponent', () => {
   }
 
   function query<E extends HTMLElement = HTMLElement>(element: HTMLElement, testId: string): E | null {
-    return element.querySelector<E>(`[data-testid="${testId}"]`);
+    const scope = testId.startsWith('date-picker-')
+      ? element.querySelector<HTMLElement>('[data-testid="transaction-date"]')
+      : element;
+    return scope?.querySelector<E>(`[data-testid="${testId}"]`) ?? null;
   }
 
   function type(element: HTMLElement, testId: string, value: string): void {
@@ -115,7 +118,7 @@ describe('TransactionPanelComponent', () => {
   }
 
   function submit(element: HTMLElement): void {
-    element.querySelector('form')!.dispatchEvent(new Event('submit'));
+    element.querySelector('[data-testid="transaction-panel"] form')!.dispatchEvent(new Event('submit'));
   }
 
   function submitButton(element: HTMLElement): HTMLButtonElement {
@@ -1825,7 +1828,7 @@ describe('TransactionPanelComponent', () => {
         expect(query(element, 'edit-open-advance')?.getAttribute('href')).toBe('/transactions/50/edit?month=2026-11');
         expect(fieldText(element, 'edit-open-advance')).toBe('Open advance');
         expect(query(element, 'edit-locked')).toBeNull();
-        expect(element.querySelector('form')).toBeNull();
+        expect(element.querySelector('[data-testid="transaction-panel"] form')).toBeNull();
       });
 
       it('keeps the locked note for a locked transaction without a parent', async () => {
@@ -2177,7 +2180,7 @@ describe('TransactionPanelComponent', () => {
       const { element } = await open('/transactions/999/edit');
 
       expect(fieldText(element, 'edit-not-found')).toBe('We could not find that transaction.');
-      expect(element.querySelector('form')).toBeNull();
+      expect(element.querySelector('[data-testid="transaction-panel"] form')).toBeNull();
     });
 
     it('shows a load error and retries', async () => {
@@ -2189,7 +2192,7 @@ describe('TransactionPanelComponent', () => {
       const { harness, element } = await open('/transactions/1/edit');
 
       expect(fieldText(element, 'edit-error')).toBe('The service is down.');
-      expect(element.querySelector('form')).toBeNull();
+      expect(element.querySelector('[data-testid="transaction-panel"] form')).toBeNull();
 
       query(element, 'edit-error')!.parentElement!.querySelector('button')!.click();
       await settle(harness);
@@ -2203,7 +2206,7 @@ describe('TransactionPanelComponent', () => {
       const { element } = await open('/transactions/35/edit');
 
       expect(fieldText(element, 'edit-locked')).toContain('Can’t be edited or deleted');
-      expect(element.querySelector('form')).toBeNull();
+      expect(element.querySelector('[data-testid="transaction-panel"] form')).toBeNull();
       expect(query(element, 'panel-delete')).toBeNull();
     });
 
@@ -2365,7 +2368,7 @@ describe('TransactionPanelComponent', () => {
       const { harness, element } = await open('/transactions/36/edit');
 
       expect(query(element, 'accounts-error')).toBeNull();
-      expect(element.querySelector('form')).toBeTruthy();
+      expect(element.querySelector('[data-testid="transaction-panel"] form')).toBeTruthy();
       expect(optionLabels(element, 'transaction-account', harness)).toEqual(['Davivienda · COP (inactive)']);
     });
 
