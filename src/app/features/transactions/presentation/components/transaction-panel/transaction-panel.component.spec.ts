@@ -1091,6 +1091,7 @@ describe('TransactionPanelComponent', () => {
         installments: 3,
         annualInterestRate: null,
         categoryId: 1,
+        isAdvance: false,
       });
       expect(query(element, 'installments-plan')?.textContent).toContain('3 ×');
       expect(query(element, 'installments-plan')?.querySelectorAll('li')).toHaveLength(3);
@@ -1344,7 +1345,10 @@ describe('TransactionPanelComponent', () => {
           nextStatementDate: '2026-11-20',
         },
       );
-      fakes.categories.categories.push({ id: 6, name: 'Avance', type: 'transfer', isActive: true, code: 'CARD_ADVANCE' });
+      fakes.categories.categories.push(
+        { id: 6, name: 'Avance', type: 'transfer', isActive: true, code: 'CARD_ADVANCE' },
+        { id: 7, name: 'Pago tarjeta', type: 'transfer', isActive: true, code: 'CARD_PAYMENT' },
+      );
     });
 
     function fieldText(element: HTMLElement, testId: string): string {
@@ -1403,21 +1407,37 @@ describe('TransactionPanelComponent', () => {
       expect(fieldText(element, 'transaction-category')).toContain('Card advance');
     });
 
-    it('drops the proposed category when the transfer stops being an advance', async () => {
+    it('follows the route: card payment towards a card, advance from a card to an account', async () => {
       const { harness, element } = await openAdvance();
 
+      // De tarjeta a tarjeta el backend exige la categoría de pago de tarjeta.
       choose(element, 'transaction-to', 'Mastercard', harness);
       await settle(harness);
 
-      expect(fieldText(element, 'transaction-category')).not.toContain('Card advance');
+      expect(fieldText(element, 'transaction-category')).toContain('Card payment');
+      expect(optionLabels(element, 'transaction-category', harness)).toEqual(['Card payment']);
 
       choose(element, 'transaction-to', 'Bancolombia', harness);
       await settle(harness);
 
       expect(fieldText(element, 'transaction-category')).toContain('Card advance');
+      expect(optionLabels(element, 'transaction-category', harness)).toEqual(['Card advance']);
     });
 
-    it('keeps a category chosen by the person', async () => {
+    it('drops the system category and hides it when the transfer is between regular accounts', async () => {
+      const { harness, element } = await openAdvance();
+
+      choose(element, 'transaction-from', 'Nequi', harness);
+      await settle(harness);
+
+      expect(fieldText(element, 'transaction-category')).not.toContain('Card advance');
+      const labels = optionLabels(element, 'transaction-category', harness);
+      expect(labels).toContain('Ahorro');
+      expect(labels).not.toContain('Card advance');
+      expect(labels).not.toContain('Card payment');
+    });
+
+    it('replaces a category chosen by the person with the one the route requires', async () => {
       const { harness, element } = await open('/transactions/new/transfer');
       choose(element, 'transaction-category', 'Ahorro', harness);
       choose(element, 'transaction-from', 'Visa', harness);
@@ -1425,12 +1445,88 @@ describe('TransactionPanelComponent', () => {
       choose(element, 'transaction-to', 'Bancolombia', harness);
       await settle(harness);
 
-      expect(fieldText(element, 'transaction-category')).toContain('Ahorro');
+      expect(fieldText(element, 'transaction-category')).toContain('Card advance');
+    });
+
+    it.each(['missing', 'inactive'])('review: blocks a stale advance category when the payment category is %s', async (state) => {
+      fakes.categories.categories = fakes.categories.categories.filter((category) => category.code !== 'CARD_PAYMENT');
+      if (state === 'inactive') {
+        fakes.categories.categories.push({
+          id: 7, name: 'Pago tarjeta', type: 'transfer', isActive: false, code: 'CARD_PAYMENT',
+        });
+      }
+      const { harness, element } = await openAdvance();
+      expect(fieldText(element, 'transaction-category')).toContain('Card advance');
 
       choose(element, 'transaction-to', 'Mastercard', harness);
       await settle(harness);
+      expect(query(element, 'transaction-category')).toBeNull();
 
-      expect(fieldText(element, 'transaction-category')).toContain('Ahorro');
+      submit(element);
+      await settle(harness);
+
+      expect(fakes.transactions.lastDraft).toBeNull();
+      expect(TestBed.inject(Router).url).toBe('/transactions/new/transfer');
+    });
+
+    it('review: blocks a user category when the advance category is missing', async () => {
+      fakes.categories.categories = fakes.categories.categories.filter((category) => category.code !== 'CARD_ADVANCE');
+      const { harness, element } = await open('/transactions/new/transfer');
+      type(element, 'transaction-amount', '600000');
+      choose(element, 'transaction-category', 'Ahorro', harness);
+      choose(element, 'transaction-from', 'Visa', harness);
+      await settle(harness);
+      choose(element, 'transaction-to', 'Bancolombia', harness);
+      await settle(harness);
+      expect(query(element, 'transaction-category')).toBeNull();
+
+      submit(element);
+      await settle(harness);
+
+      expect(fakes.transactions.lastDraft).toBeNull();
+      expect(TestBed.inject(Router).url).toBe('/transactions/new/transfer');
+    });
+
+    it('review: previews and saves interest on a one-installment advance', async () => {
+      const { harness, element } = await openAdvance();
+      click(element, 'with-interest');
+      await settle(harness);
+      type(element, 'transaction-interest-rate', '24,5');
+      await waitForPlan(harness);
+
+      expect(fakes.transactions.lastPreview).toMatchObject({
+        installments: 1, annualInterestRate: 24.5, isAdvance: true,
+      });
+      submit(element);
+      await settle(harness);
+
+      expect(fakes.transactions.lastDraft).toMatchObject({
+        type: 'transfer', installments: 1, annualInterestRate: 24.5,
+      });
+    });
+
+    it.each(['', '201'])('review: blocks a one-installment advance with an invalid interest rate "%s"', async (rate) => {
+      const { harness, element } = await openAdvance();
+      click(element, 'with-interest');
+      await settle(harness);
+      type(element, 'transaction-interest-rate', rate);
+      await settle(harness);
+
+      submit(element);
+      await settle(harness);
+
+      expect(submitButton(element).disabled).toBe(true);
+      expect(fakes.transactions.lastDraft).toBeNull();
+    });
+
+    it('offers the interest rate on a one-installment advance and previews it as an advance', async () => {
+      const { harness, element } = await openAdvance();
+
+      expect(query(element, 'with-interest')).toBeTruthy();
+
+      await waitForPlan(harness);
+
+      expect(fakes.transactions.lastPreview).toMatchObject({ installments: 1, isAdvance: true });
     });
 
     it('asks for the plan without a category', async () => {
@@ -1445,6 +1541,7 @@ describe('TransactionPanelComponent', () => {
         installments: 3,
         annualInterestRate: null,
         categoryId: null,
+        isAdvance: true,
       });
       expect(query(element, 'installments-plan')?.querySelectorAll('li')).toHaveLength(3);
     });
@@ -1577,9 +1674,7 @@ describe('TransactionPanelComponent', () => {
 
       choose(element, 'transaction-to', 'Mastercard', harness);
       await settle(harness);
-      // La categoría propuesta se soltó con el avance: se elige otra.
-      choose(element, 'transaction-category', 'Ahorro', harness);
-      await settle(harness);
+      // De tarjeta a tarjeta la categoría pasa sola a la de pago de tarjeta.
       submit(element);
       await settle(harness);
 
@@ -1587,6 +1682,7 @@ describe('TransactionPanelComponent', () => {
         type: 'transfer',
         fromAccountId: 20,
         toAccountId: 21,
+        categoryId: 7,
         installments: 1,
         annualInterestRate: null,
         advanceFee: null,
@@ -1671,7 +1767,7 @@ describe('TransactionPanelComponent', () => {
           ...changes,
         });
 
-      it('fills the installments, the rate and the fee, and keeps its category', async () => {
+      it('fills the installments, the rate and the fee, and moves it to the advance category', async () => {
         store(advance());
         const { element } = await open('/transactions/50/edit');
 
@@ -1679,8 +1775,8 @@ describe('TransactionPanelComponent', () => {
         expect(query(element, 'with-interest')?.getAttribute('aria-pressed')).toBe('true');
         expect(query<HTMLInputElement>(element, 'transaction-interest-rate')!.value).toBe('24.5');
         expect(query<HTMLInputElement>(element, 'transaction-advance-fee')!.value).toBe('15,000');
-        // Al editar no se propone la categoría de avances.
-        expect(fieldText(element, 'transaction-category')).toContain('Ahorro');
+        // El backend exige la categoría de avance: un avance antiguo con otra pasa a esa.
+        expect(fieldText(element, 'transaction-category')).toContain('Card advance');
         expect(submitButton(element).textContent?.trim()).toBe('Save changes');
       });
 
@@ -1695,7 +1791,7 @@ describe('TransactionPanelComponent', () => {
 
         expect(fakes.transactions.lastUpdate).toMatchObject({
           id: 50,
-          draft: { type: 'transfer', fromAccountId: 20, toAccountId: 2, categoryId: 4, installments: 6, annualInterestRate: 24.5, advanceFee: 18000 },
+          draft: { type: 'transfer', fromAccountId: 20, toAccountId: 2, categoryId: 6, installments: 6, annualInterestRate: 24.5, advanceFee: 18000 },
         });
       });
 

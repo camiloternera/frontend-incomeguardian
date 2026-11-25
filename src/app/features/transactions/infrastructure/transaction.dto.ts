@@ -46,6 +46,8 @@ export interface InstallmentPreviewRequestDto {
   installments: number;
   annualInterestRate?: number;
   categoryId?: number;
+  /** Solo al simular un avance; sin él, a 1 cuota el plan sale sin interés. */
+  isAdvance?: boolean;
 }
 
 export interface BudgetAdjustmentDto {
