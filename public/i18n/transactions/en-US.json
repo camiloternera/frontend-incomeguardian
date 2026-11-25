@@ -301,5 +301,22 @@
     "confirm": "Delete",
     "deleting": "Deleting…",
     "withFee": "Its bank fee is deleted too."
+  },
+  "filters": {
+    "label": "Filter transactions",
+    "search": "Description",
+    "searchPlaceholder": "Search by description",
+    "category": "Category",
+    "allCategories": "All categories",
+    "account": "Account",
+    "allAccounts": "All accounts",
+    "from": "From",
+    "to": "To",
+    "clear": "Clear filters",
+    "rangeTitle": "Date range",
+    "empty": {
+      "title": "No transactions match the filters",
+      "body": "Try another description, category, account or date range."
+    }
   }
 }

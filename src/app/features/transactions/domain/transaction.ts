@@ -150,8 +150,17 @@ export interface TransactionPage {
   totalItems: number;
 }
 
+/** Filtros del listado además del rango de fechas; los vacíos no se envían. */
+export interface TransactionFilters {
+  /** Texto que debe contener la descripción, sin distinguir mayúsculas ni tildes. */
+  search?: string;
+  categoryId?: number;
+  /** Cuenta que participa como origen o destino. */
+  accountId?: number;
+}
+
 /** Filtros del listado de movimientos. */
-export interface TransactionQuery {
+export interface TransactionQuery extends TransactionFilters {
   page: number;
   pageSize: number;
   /** Primer instante incluido, ISO 8601 en UTC. */
@@ -173,6 +182,19 @@ const TIME_ZONE_OFFSET_HOURS = -5;
 export function monthRange({ year, month }: TransactionMonth): TransactionRange {
   const start = Date.UTC(year, month - 1, 1, -TIME_ZONE_OFFSET_HOURS);
   const next = Date.UTC(year, month, 1, -TIME_ZONE_OFFSET_HOURS);
+
+  return { fromDate: new Date(start).toISOString(), toDate: new Date(next - 1).toISOString() };
+}
+
+/**
+ * Rango de instantes UTC entre dos días `YYYY-MM-DD` en hora de Colombia: desde las 00:00 del
+ * primero hasta el último milisegundo del segundo, ambos incluidos.
+ */
+export function dayRange(fromDay: string, toDay: string): TransactionRange {
+  const [fromYear, fromMonth, fromDate] = fromDay.split('-').map(Number);
+  const [toYear, toMonth, toDate] = toDay.split('-').map(Number);
+  const start = Date.UTC(fromYear, fromMonth - 1, fromDate, -TIME_ZONE_OFFSET_HOURS);
+  const next = Date.UTC(toYear, toMonth - 1, toDate + 1, -TIME_ZONE_OFFSET_HOURS);
 
   return { fromDate: new Date(start).toISOString(), toDate: new Date(next - 1).toISOString() };
 }
