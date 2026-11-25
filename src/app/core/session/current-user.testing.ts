@@ -7,6 +7,7 @@ export class FakeCurrentUser extends CurrentUser {
 
   constructor(
     private readonly user: CurrentUserProfile | null = {
+      id: 'user-1',
       name: 'Camila Rojas',
       email: 'camila@example.com',
     },

@@ -15,6 +15,14 @@ export const TransactionErrorCode = {
   CategoryRequired: 'TRANSACTION_CATEGORY_REQUIRED',
   CategoryNotFound: 'TRANSACTION_CATEGORY_NOT_FOUND',
   CategoryTypeMismatch: 'TRANSACTION_CATEGORY_TYPE_MISMATCH',
+  /** La categoría de pago de tarjeta solo va en transferencias hacia una tarjeta. */
+  CategoryCardPaymentOnly: 'TRANSACTION_CATEGORY_CARD_PAYMENT_ONLY',
+  /** La categoría de avance solo va en avances (de tarjeta a cuenta normal). */
+  CategoryCardAdvanceOnly: 'TRANSACTION_CATEGORY_CARD_ADVANCE_ONLY',
+  /** Una transferencia hacia una tarjeta debe usar la categoría de pago de tarjeta. */
+  CardPaymentCategoryRequired: 'TRANSACTION_CARD_PAYMENT_CATEGORY_REQUIRED',
+  /** Un avance debe usar la categoría de avance. */
+  CardAdvanceCategoryRequired: 'TRANSACTION_CARD_ADVANCE_CATEGORY_REQUIRED',
   DescriptionMaxLength: 'TRANSACTION_DESCRIPTION_MAX_LENGTH',
   PageInvalid: 'TRANSACTION_PAGE_INVALID',
   DateRangeInvalid: 'TRANSACTION_DATE_RANGE_INVALID',
@@ -66,6 +74,10 @@ export const CATEGORY_ERROR_CODES: readonly TransactionErrorCode[] = [
   TransactionErrorCode.CategoryRequired,
   TransactionErrorCode.CategoryNotFound,
   TransactionErrorCode.CategoryTypeMismatch,
+  TransactionErrorCode.CategoryCardPaymentOnly,
+  TransactionErrorCode.CategoryCardAdvanceOnly,
+  TransactionErrorCode.CardPaymentCategoryRequired,
+  TransactionErrorCode.CardAdvanceCategoryRequired,
 ];
 
 export const DESCRIPTION_ERROR_CODES: readonly TransactionErrorCode[] = [TransactionErrorCode.DescriptionMaxLength];

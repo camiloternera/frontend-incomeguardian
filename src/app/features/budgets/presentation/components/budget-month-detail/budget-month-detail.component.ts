@@ -115,7 +115,7 @@ export class BudgetMonthDetailComponent {
         switchMap(({ row, month }) =>
           row.categoryType === null
             ? of<MovementsState>({ status: 'ready', movements: [] })
-            : this.listMovements.execute(month, { categoryId: row.categoryId, currency: row.currency }, row.categoryType).pipe(
+            : this.listMovements.execute(month, { categoryId: row.categoryId, currency: row.currency, currencyId: row.currencyId }, row.categoryType).pipe(
                 map((movements): MovementsState => ({ status: 'ready', movements })),
                 catchError((error: unknown) =>
                   of<MovementsState>({

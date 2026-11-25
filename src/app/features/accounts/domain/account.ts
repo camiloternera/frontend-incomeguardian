@@ -6,7 +6,10 @@ export const ACCOUNT_NAME_MAX_LENGTH = 50;
 export const ACCOUNT_BALANCE_MAX_DECIMALS = 3;
 export const ACCOUNT_BALANCE_MAX_INTEGER_DIGITS = 15;
 
-/** Monedas que acepta el backend, en código ISO 4217. */
+/**
+ * Monedas que la app sabe mostrar, en código ISO 4217. Las que se pueden elegir al crear o editar
+ * una cuenta salen del catálogo del backend (`CurrencyCatalog`), no de esta lista.
+ */
 export const CURRENCIES = ['COP', 'USD', 'EUR'] as const;
 export type Currency = (typeof CURRENCIES)[number];
 
@@ -16,24 +19,24 @@ export function isCurrency(value: unknown): value is Currency {
 }
 
 /**
- * Monedas en las que se puede crear o editar una cuenta. Las cuentas en otras monedas
- * (EUR) que ya existan quedan de solo lectura.
+ * Tipos de cuenta que la app sabe manejar: una cuenta normal (banco, billetera, efectivo) o una
+ * tarjeta de crédito. Los que se pueden elegir salen del catálogo del backend (`AccountKindOption`).
  */
-export const SELECTABLE_CURRENCIES = ['COP', 'USD'] as const satisfies readonly Currency[];
-export type SelectableCurrency = (typeof SELECTABLE_CURRENCIES)[number];
-
-/** Indica si la moneda se puede elegir al crear o editar una cuenta. */
-export function isSelectableCurrency(value: unknown): value is SelectableCurrency {
-  return typeof value === 'string' && (SELECTABLE_CURRENCIES as readonly string[]).includes(value);
-}
-
-/** Tipos de cuenta: una cuenta normal (banco, billetera, efectivo) o una tarjeta de crédito. */
 export const ACCOUNT_KINDS = ['standard', 'credit_card'] as const;
 export type AccountKind = (typeof ACCOUNT_KINDS)[number];
 
 /** Indica si el valor recibido es un tipo de cuenta conocido. */
 export function isAccountKind(value: unknown): value is AccountKind {
   return typeof value === 'string' && (ACCOUNT_KINDS as readonly string[]).includes(value);
+}
+
+/** Un tipo activo del catálogo del backend (`GET /api/v1/account-kinds`). */
+export interface AccountKindOption {
+  /** Lo que se envía al backend al crear o editar una cuenta. */
+  id: number;
+  /** Código del tipo, con el que la vista decide qué campos mostrar. */
+  code: AccountKind;
+  name: string;
 }
 
 /** Días del mes que admite el backend para el corte y el pago de una tarjeta. */
@@ -45,6 +48,8 @@ export interface Account {
   id: number;
   name: string;
   kind: AccountKind;
+  /** Id del tipo en el catálogo del backend; precarga el selector al editar. */
+  accountKindId: number;
   /**
    * Saldo con el que empezó la cuenta. En una tarjeta es la deuda inicial y es negativo (o 0):
    * la vista la muestra en positivo.
@@ -53,6 +58,8 @@ export interface Account {
   /** Saldo inicial más el neto de los movimientos. */
   currentBalance: number;
   currency: Currency;
+  /** Id de la moneda en el catálogo del backend; precarga el selector al editar. */
+  currencyId: number;
   /** Las cuentas desactivadas se pueden consultar, pero no editar ni usar en movimientos nuevos. */
   isActive: boolean;
   /** Con movimientos (incluso eliminados) ya no se puede cambiar el nombre ni la moneda. */
@@ -110,10 +117,14 @@ export function matchesAccount(account: Account, query: string): boolean {
 /** La parte editable de una cuenta, usada para crearla y para actualizarla. */
 export interface AccountDraft {
   name: string;
+  /** Código del tipo: decide qué campos de tarjeta se envían. */
   kind: AccountKind;
+  /** Id del tipo en el catálogo del backend; es lo que se envía. */
+  accountKindId: number;
   /** En una tarjeta es la deuda, negativa o 0. */
   initialBalance: number;
-  currency: Currency;
+  /** Id de la moneda en el catálogo del backend. */
+  currencyId: number;
   /** Fecha y hora de apertura en ISO 8601 con desfase; no puede ser futura. */
   openingDate: string;
   /** Solo para tarjetas; null en una cuenta normal o si la tarjeta no tiene cupo. */

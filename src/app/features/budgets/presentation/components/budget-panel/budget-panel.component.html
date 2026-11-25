@@ -60,7 +60,7 @@
           <fieldset class="m-0 flex flex-col gap-2 border-0 p-0">
             <legend class="mb-2 p-0 text-[13px] font-bold">{{ t('budgets.form.currency') }}</legend>
             <div class="grid grid-cols-2 gap-1 rounded-lg border border-ig-border p-1" role="radiogroup">
-              @for (code of currencies; track code) {
+              @for (code of currencies(); track code) {
                 <button
                   [attr.data-testid]="'budget-currency-' + code"
                   type="button"

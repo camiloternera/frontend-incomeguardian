@@ -84,7 +84,7 @@ features/<dominio>/
 
 - Dependencias permitidas: `presentation → application → domain` e `infrastructure → domain`. Presentation nunca importa infrastructure ni `HttpClient`.
 - `domain` no importa `@angular/*`; solo `rxjs` para firmas `Observable` de los puertos.
-- Un dominio no importa de otro dominio. Lo tecnico y transversal va en `core/` (http, theme); la UI reutilizable sin negocio va en `shared/ui/`.
+- Un dominio no importa de otro dominio. Lo tecnico y transversal va en `core/` (http, theme, currencies: el catalogo `CurrencyCatalog` de `GET /currencies`, que alimenta los selectores de moneda); la UI reutilizable sin negocio va en `shared/ui/`.
 - Excepcion documentada: `periods` (cierre de mes y de anio) es transversal y expone una API publica en `features/periods/index.ts` (`providePeriods()`, selector, aviso, capa de paneles, nota de fecha cerrada, boton de reabrir, `injectPeriodChanges()`, seccion de ajustes). Otros dominios la importan solo como `@features/periods`, nunca sus capas internas, y registran `providePeriods()` en su ruta. Sus specs usan el repositorio falso de `@features/periods/testing` (`provideFakePeriods()`), que el código de la app no importa.
 - Los DTOs del backend (PascalCase) se mapean a modelos de dominio (camelCase) en infrastructure y no salen de esa capa.
 - Los errores de negocio se traducen a copy de UI en infrastructure (`resolveApiError(error, MAPA_DEL_DOMINIO)`) y llegan a presentation como error de dominio.

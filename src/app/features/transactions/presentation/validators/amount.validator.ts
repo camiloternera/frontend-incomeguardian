@@ -1,5 +1,5 @@
 import { AbstractControl, ValidationErrors } from '@angular/forms';
-import { normalizeAmount } from '@shared/money/amount-input';
+import { isExactAmount, normalizeAmount } from '@shared/money/amount-input';
 import {
   TRANSACTION_AMOUNT_MAX_DECIMALS,
   TRANSACTION_AMOUNT_MAX_INTEGER_DIGITS,
@@ -31,7 +31,8 @@ export function amountValidator(control: AbstractControl<string>): ValidationErr
     return { amountInvalid: true };
   }
 
-  if (integer.replace(/^0+(?=\d)/, '').length > TRANSACTION_AMOUNT_MAX_INTEGER_DIGITS) {
+  // Fuera de la precisión de un número de JavaScript el monto cambiaría al enviarlo.
+  if (integer.replace(/^0+(?=\d)/, '').length > TRANSACTION_AMOUNT_MAX_INTEGER_DIGITS || !isExactAmount(normalized)) {
     return { amountTooLarge: true };
   }
 

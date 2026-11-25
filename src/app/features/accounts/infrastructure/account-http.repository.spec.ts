@@ -14,6 +14,7 @@ const DTO = {
   initialBalance: -250000.5,
   currentBalance: null,
   currency: 'COP',
+  currencyId: 1,
   isActive: true,
   openingDate: '2026-01-15T14:30:00Z',
   createdAt: '2026-10-31T12:00:00+00:00',
@@ -21,7 +22,7 @@ const DTO = {
 };
 
 /** Campos de tarjeta de una cuenta normal. */
-const NO_CARD = { kind: 'standard' as const, creditLimit: null, statementDay: null, paymentDay: null, isCushion: false };
+const NO_CARD = { kind: 'standard' as const, accountKindId: 1, creditLimit: null, statementDay: null, paymentDay: null, isCushion: false };
 
 function ok(data: unknown) {
   return { data, isSuccess: true, message: 'ok', errors: [] };
@@ -58,9 +59,12 @@ describe('AccountHttpRepository', () => {
         name: 'Visa 4417',
         // Sin `kind` (backend anterior a las tarjetas) la cuenta es normal.
         kind: 'standard',
+        // Sin `accountKindId` (backend anterior al catálogo) se deduce del código.
+        accountKindId: 1,
         initialBalance: -250000.5,
         currentBalance: -250000.5,
         currency: 'COP',
+        currencyId: 1,
         isActive: true,
         // Sin el campo en la respuesta, la cuenta se toma como sin movimientos.
         hasTransactions: false,
@@ -97,16 +101,16 @@ describe('AccountHttpRepository', () => {
     const draft = {
       name: 'Wise',
       initialBalance: 320.5,
-      currency: 'USD' as const,
+      currencyId: 2,
       openingDate: '2026-01-15T09:30:00-05:00',
       ...NO_CARD,
     };
-    // Una cuenta normal manda `kind` y ningún campo de tarjeta.
+    // Una cuenta normal manda su `accountKindId` y ningún campo de tarjeta.
     const body = {
       name: 'Wise',
-      kind: 'standard',
+      accountKindId: 1,
       initialBalance: 320.5,
-      currency: 'USD',
+      currencyId: 2,
       openingDate: '2026-01-15T09:30:00-05:00',
       isCushion: false,
     };
@@ -115,7 +119,7 @@ describe('AccountHttpRepository', () => {
     const create = http.expectOne(URL);
     expect(create.request.method).toBe('POST');
     expect(create.request.body).toEqual(body);
-    create.flush(ok({ ...DTO, currency: 'USD' }), { status: 201, statusText: 'Created' });
+    create.flush(ok({ ...DTO, currency: 'USD', currencyId: 2 }), { status: 201, statusText: 'Created' });
 
     repository.update(5, draft).subscribe();
     const update = http.expectOne(`${URL}/5`);
@@ -137,7 +141,7 @@ describe('AccountHttpRepository', () => {
 
   it('keeps the backend code and translates it', () => {
     let error: unknown;
-    repository.update(5, { name: 'Wise', initialBalance: 0, currency: 'EUR', openingDate: '2026-01-15T09:30:00-05:00', ...NO_CARD }).subscribe({
+    repository.update(5, { name: 'Wise', initialBalance: 0, currencyId: 3, openingDate: '2026-01-15T09:30:00-05:00', ...NO_CARD }).subscribe({
       error: (value) => (error = value),
     });
 
@@ -150,7 +154,7 @@ describe('AccountHttpRepository', () => {
 
   it('keeps the locked name code and translates it', () => {
     let error: unknown;
-    repository.update(5, { name: 'Visa nueva', initialBalance: 0, currency: 'COP', openingDate: '2026-01-15T09:30:00-05:00', ...NO_CARD }).subscribe({
+    repository.update(5, { name: 'Visa nueva', initialBalance: 0, currencyId: 1, openingDate: '2026-01-15T09:30:00-05:00', ...NO_CARD }).subscribe({
       error: (value) => (error = value),
     });
 
@@ -215,8 +219,9 @@ describe('AccountHttpRepository', () => {
     const card = {
       name: 'Visa',
       kind: 'credit_card' as const,
+      accountKindId: 2,
       initialBalance: -150000,
-      currency: 'COP' as const,
+      currencyId: 1,
       openingDate: '2026-01-15T09:30:00-05:00',
       creditLimit: 2000000,
       statementDay: 15,
@@ -227,9 +232,9 @@ describe('AccountHttpRepository', () => {
     repository.create(card).subscribe();
     expect(http.expectOne(URL).request.body).toEqual({
       name: 'Visa',
-      kind: 'credit_card',
+      accountKindId: 2,
       initialBalance: -150000,
-      currency: 'COP',
+      currencyId: 1,
       openingDate: '2026-01-15T09:30:00-05:00',
       isCushion: false,
       creditLimit: 2000000,
@@ -241,9 +246,10 @@ describe('AccountHttpRepository', () => {
     expect(http.expectOne(URL).request.body).not.toHaveProperty('creditLimit');
 
     // Si el borrador cambia a cuenta normal, los días que traiga no se envían.
-    repository.update(5, { ...card, kind: 'standard' }).subscribe();
+    repository.update(5, { ...card, kind: 'standard', accountKindId: 1 }).subscribe();
     const body = http.expectOne(`${URL}/5`).request.body;
-    expect(body.kind).toBe('standard');
+    expect(body.accountKindId).toBe(1);
+    expect(body).not.toHaveProperty('kind');
     expect(body).not.toHaveProperty('creditLimit');
     expect(body).not.toHaveProperty('statementDay');
     expect(body).not.toHaveProperty('paymentDay');

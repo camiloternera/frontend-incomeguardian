@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
-import { Account, AccountDraft, sortAccounts } from '../domain/account';
-import { AccountRepository } from '../domain/account.repository';
+import { Account, AccountDraft, AccountKindOption, sortAccounts } from '../domain/account';
+import { AccountKindRepository, AccountRepository } from '../domain/account.repository';
 import { CardStatement } from '../domain/card-statement';
 import { CardMonth } from '../domain/credit-card-calendar';
 
@@ -61,5 +61,15 @@ export class GetCardStatementUseCase {
   /** Extracto del mes de corte indicado; sin mes, el del próximo corte. */
   execute(accountId: number, month?: CardMonth): Observable<CardStatement> {
     return this.repository.statement(accountId, month);
+  }
+}
+
+@Injectable()
+export class ListAccountKindsUseCase {
+  private readonly repository = inject(AccountKindRepository);
+
+  /** Tipos de cuenta que ofrece el selector al crear o editar una cuenta. */
+  execute(): Observable<AccountKindOption[]> {
+    return this.repository.list();
   }
 }

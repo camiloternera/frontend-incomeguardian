@@ -4,9 +4,14 @@ export interface AccountDto {
   name: string;
   /** "standard" o "credit_card"; opcional mientras el backend desplegado no lo envíe. */
   kind?: string | null;
+  /** Id del tipo en el catálogo (`GET /api/v1/account-kinds`). */
+  accountKindId?: number | null;
   initialBalance: number;
   currentBalance: number | null;
+  /** Código ISO 4217. */
   currency: string;
+  /** Id de la moneda en el catálogo. */
+  currencyId: number;
   isActive: boolean;
   hasTransactions?: boolean | null;
   /** Fecha y hora de apertura, en UTC. */
@@ -26,15 +31,24 @@ export interface AccountDto {
 
 export interface AccountRequestDto {
   name: string;
-  kind: string;
+  /** Id de un tipo activo del catálogo; sin él el backend crea una cuenta normal. */
+  accountKindId: number;
   /** En una tarjeta, la deuda en negativo. */
   initialBalance: number;
-  currency: string;
+  /** Id de una moneda activa del catálogo (`GET /api/v1/currencies`). */
+  currencyId: number;
   openingDate: string;
   creditLimit?: number;
   statementDay?: number;
   paymentDay?: number;
   isCushion: boolean;
+}
+
+/** Un tipo de `GET /api/v1/account-kinds`. */
+export interface AccountKindDto {
+  id: number;
+  code: string;
+  name: string;
 }
 
 /** Un mes de `GET /accounts/{id}/statement`. */

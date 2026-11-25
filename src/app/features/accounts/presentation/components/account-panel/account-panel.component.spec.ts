@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { By } from '@angular/platform-browser';
+import { provideFakeCurrencyCatalog } from '@core/currencies/currency-catalog.testing';
 import { translocoTesting } from '@core/i18n/i18n.testing';
 import { LanguageService } from '@core/i18n/language.service';
 import { Account } from '../../../domain/account';
@@ -17,7 +18,7 @@ describe('AccountPanelComponent', () => {
     fake = new FakeAccountRepository();
     await TestBed.configureTestingModule({
       imports: [translocoTesting()],
-      providers: [provideRouter(fakeAccountsRoutes(fake))],
+      providers: [provideRouter(fakeAccountsRoutes(fake)), ...provideFakeCurrencyCatalog()],
     }).compileComponents();
   });
 
@@ -146,7 +147,8 @@ describe('AccountPanelComponent', () => {
     expect(fake.lastDraft).toEqual({
       name: 'Visa 9000',
       kind: 'standard',
-      currency: 'USD',
+      accountKindId: 1,
+      currencyId: 2,
       initialBalance: -1250.5,
       openingDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00[+-]\d{2}:\d{2}$/),
       creditLimit: null,
@@ -400,7 +402,7 @@ describe('AccountPanelComponent', () => {
       await harness.fixture.whenStable();
 
       expect(fake.lastDraft).toEqual(
-        expect.objectContaining({ name: 'Visa 4417', currency: 'COP', initialBalance: -300000 }),
+        expect.objectContaining({ name: 'Visa 4417', currencyId: 1, initialBalance: -300000 }),
       );
     });
 
@@ -427,9 +429,11 @@ describe('AccountPanelComponent', () => {
       id: 9,
       name: 'Visa Oro',
       kind: 'credit_card',
+      accountKindId: 2,
       initialBalance: -150000,
       currentBalance: -150000,
       currency: 'COP',
+      currencyId: 1,
       isActive: true,
       hasTransactions: false,
       openingDate: '2026-10-01T00:00:00Z',

@@ -52,8 +52,6 @@ import {
   UpdateTransactionUseCase,
 } from '../../../application/transaction-use-cases';
 import {
-  CARD_ADVANCE_CATEGORY_CODE,
-  CARD_PAYMENT_CATEGORY_CODE,
   ExchangeRate,
   INSTALLMENTS_MAX,
   INSTALLMENTS_MIN,
@@ -77,6 +75,8 @@ import {
   dayOf,
   exceedsAvailable,
   isCardAdvanceRoute,
+  requiredRouteCategoryCode,
+  ROUTE_CATEGORY_CODES,
   isCrossCurrency,
   isTransactionCurrency,
   isTransactionType,
@@ -228,6 +228,10 @@ export class TransactionPanelComponent {
   /** Si se pidió eliminar el movimiento que se edita y se espera la confirmación. */
   protected readonly askingDelete = signal(false);
   private editId: number | null = null;
+  /** Carga en curso del movimiento a editar; se cancela al pasar a otro para que no pise al actual. */
+  private editLoad: Subscription | null = null;
+  /** Monto tal como se escribió al llenar el formulario; si no cambia, se envía el monto guardado. */
+  private filledAmountText: string | null = null;
   protected readonly formError = signal('');
 
   protected readonly accountsStatus = signal<OptionsStatus>('loading');
@@ -334,9 +338,29 @@ export class TransactionPanelComponent {
   /** Saldo actual de la cuenta destino de la transferencia. */
   protected readonly destinationBalanceText = computed(() => this.balanceOf(this.destination()));
 
+  /**
+   * Categoría de sistema que exige la ruta de la transferencia (pago de tarjeta o avance); null si
+   * admite cualquiera del usuario.
+   */
+  private readonly requiredCategoryCode = computed(() =>
+    this.type() === 'transfer' ? requiredRouteCategoryCode(this.account(), this.destination()) : null,
+  );
+
+  /**
+   * Categorías que admite la ruta elegida: si exige una de sistema, solo esa; si no, todas menos
+   * las de sistema reservadas al pago de tarjeta y al avance.
+   */
+  private readonly routeCategories = computed(() => {
+    const required = this.requiredCategoryCode();
+
+    return this.categories().filter((category) =>
+      required ? category.code === required : !ROUTE_CATEGORY_CODES.includes(category.code ?? ''),
+    );
+  });
+
   /** No hay categorías activas del tipo: no se puede guardar hasta crear una. */
   protected readonly missingCategories = computed(
-    () => this.categoriesStatus() === 'ready' && this.categories().length === 0,
+    () => this.categoriesStatus() === 'ready' && this.routeCategories().length === 0,
   );
 
   /** Opciones del selector de categoría: las activas del tipo (y la original al editar), sin opción vacía. */
@@ -344,7 +368,7 @@ export class TransactionPanelComponent {
     // Las categorías de sistema se nombran por su código, en el idioma activo, cuando el scope ya cargó.
     const ready = this.translations() !== null;
 
-    return this.categories().map((category) => {
+    return this.routeCategories().map((category) => {
       const name = category.code && ready
         ? this.transloco.translate(`transactions.systemCategories.${category.code}`)
         : category.name;
@@ -524,11 +548,14 @@ export class TransactionPanelComponent {
     return { fee: this.money(fee), total: this.money(state.preview.totalAmount + fee) };
   });
 
+  /** Se puede cobrar interés: una compra a 2 cuotas o más, o un avance aun a 1 cuota. */
+  protected readonly interestApplies = computed(() => this.formValue().installments > 1 || this.isCardAdvance());
+
   /** Tasa escrita, si aplica y es válida; null sin interés. `undefined` si falta o no es válida. */
   private readonly interestRate = computed<number | null | undefined>(() => {
     const value = this.formValue();
 
-    if (!value.withInterest || value.installments <= 1) {
+    if (!value.withInterest || !this.interestApplies()) {
       return null;
     }
 
@@ -560,6 +587,7 @@ export class TransactionPanelComponent {
       annualInterestRate: rate,
       // Un avance se simula sin categoría: la de transferencia no aplica a las cuotas.
       categoryId: this.isCardAdvance() ? null : value.categoryId,
+      isAdvance: this.isCardAdvance(),
     };
   });
 
@@ -729,8 +757,6 @@ export class TransactionPanelComponent {
   });
 
   private categoriesRequest: Subscription | null = null;
-  /** Categoría de avance que propuso el panel, para soltarla si la transferencia deja de ser avance. */
-  private advanceCategoryId: number | null = null;
 
   constructor() {
     const controls = this.form.controls;
@@ -755,7 +781,6 @@ export class TransactionPanelComponent {
     // Al volverse avance se propone la categoría de sistema de avances; si deja de serlo, se suelta.
     effect(() => {
       const advance = this.isCardAdvance();
-      const categories = this.categories();
 
       untracked(() => {
         if (advance) {
@@ -763,9 +788,14 @@ export class TransactionPanelComponent {
         } else {
           controls.advanceFee.disable({ emitEvent: false });
         }
-
-        this.preselectCardAdvanceCategory(advance, categories);
       });
+    });
+    // La categoría sigue a la ruta: se elige la de sistema que exige y se suelta si deja de aplicar.
+    effect(() => {
+      const required = this.requiredCategoryCode();
+      const categories = this.categories();
+
+      untracked(() => this.syncRouteCategory(required, categories));
     });
     controls.date.valueChanges.subscribe(() => this.closedInstallmentMonth.set(null));
     controls.accountId.valueChanges.subscribe(() => this.closedInstallmentMonth.set(null));
@@ -833,6 +863,8 @@ export class TransactionPanelComponent {
           return;
         }
 
+        this.editLoad?.unsubscribe();
+        this.filledAmountText = null;
         const type = params.get('type');
         this.open(isTransactionType(type) ? type : 'expense');
       });
@@ -961,7 +993,7 @@ export class TransactionPanelComponent {
     const control = this.form.controls.interestRate;
     const value = this.formValue();
 
-    if (!value.withInterest || value.installments <= 1 || !control.touched) {
+    if (!value.withInterest || !this.interestApplies() || !control.touched) {
       return null;
     }
 
@@ -1059,7 +1091,6 @@ export class TransactionPanelComponent {
           ),
         );
         this.categoriesStatus.set('ready');
-        this.preselectCardPaymentCategory();
       },
       error: () => this.categoriesStatus.set('error'),
     });
@@ -1089,7 +1120,7 @@ export class TransactionPanelComponent {
   protected submit(): void {
     this.formError.set('');
 
-    if (this.form.invalid || (this.installable() && this.interestRate() === undefined)) {
+    if (this.hasVisibleErrors() || (this.installable() && this.interestRate() === undefined)) {
       this.form.markAllAsTouched();
       return;
     }
@@ -1121,6 +1152,22 @@ export class TransactionPanelComponent {
   }
 
   /**
+   * Errores de los campos que se ven. Las cuotas a mano y la tasa quedan en el formulario aunque se
+   * oculten (al pasar a una cuenta normal o elegir «Sin interés») y no se envían: no deben bloquear.
+   */
+  private hasVisibleErrors(): boolean {
+    const { customInstallments, interestRate, ...rest } = this.form.controls;
+    const value = this.form.getRawValue();
+    const installable = this.installable();
+
+    return (
+      Object.values(rest).some((control) => control.enabled && control.invalid) ||
+      (installable && customInstallments.invalid) ||
+      (installable && this.interestApplies() && value.withInterest && interestRate.invalid)
+    );
+  }
+
+  /**
    * Carga el movimiento de la ruta `:id/edit` y llena el formulario con sus datos. Si ya no se
    * puede modificar (mes cerrado o cuenta de solo lectura) no se muestra el formulario.
    */
@@ -1135,7 +1182,8 @@ export class TransactionPanelComponent {
     this.editStatus.set('loading');
     this.editError.set('');
     this.askingDelete.set(false);
-    this.getTransaction.execute(id).subscribe({
+    this.editLoad?.unsubscribe();
+    this.editLoad = this.getTransaction.execute(id).subscribe({
       next: (transaction) => {
         this.editing.set(transaction);
 
@@ -1170,10 +1218,16 @@ export class TransactionPanelComponent {
     const controls = this.form.controls;
     const installments = transaction.type === 'expense' || transaction.isCardAdvance ? transaction.installments : 1;
     const rate = transaction.annualInterestRate;
+    // Un avance lleva interés aun a 1 cuota; una compra, solo a 2 cuotas o más.
+    const withInterest = (installments > 1 || transaction.isCardAdvance) && rate !== null && rate > 0;
+
+    // El backend guarda hasta 3 decimales y el formulario admite 2: si el monto no se toca, se
+    // envía el guardado en vez del redondeado.
+    const amountText = String(Math.round(transaction.amount * 100) / 100);
+    this.filledAmountText = amountText;
 
     this.form.patchValue({
-      // El backend guarda hasta 3 decimales; el formulario admite 2.
-      amount: String(Math.round(transaction.amount * 100) / 100),
+      amount: amountText,
       description: transaction.description ?? '',
       date: dayOf(transaction.date),
       categoryId: transaction.categoryId,
@@ -1182,8 +1236,8 @@ export class TransactionPanelComponent {
       toAccountId: transaction.type === 'transfer' ? transaction.toAccountId : null,
       installments,
       customInstallments: (INSTALLMENT_CHOICES as readonly number[]).includes(installments) ? '' : String(installments),
-      withInterest: installments > 1 && rate !== null && rate > 0,
-      interestRate: installments > 1 && rate !== null && rate > 0 ? String(rate) : '',
+      withInterest,
+      interestRate: withInterest ? String(rate) : '',
       advanceFee: transaction.advanceFee === null ? '' : String(Math.round(transaction.advanceFee * 100) / 100),
     });
     // `open` deja la categoría vacía y la vuelve a cargar: se fija después y se recuerda.
@@ -1195,8 +1249,9 @@ export class TransactionPanelComponent {
   /** Arma el borrador del tipo elegido con los valores del formulario. */
   private draft(): TransactionDraft {
     const value = this.form.getRawValue();
+    const editing = this.editing();
     const base = {
-      amount: parseAmount(value.amount),
+      amount: editing && value.amount === this.filledAmountText ? editing.amount : parseAmount(value.amount),
       date: toUtcIso(value.date),
       description: value.description,
     };
@@ -1228,7 +1283,7 @@ export class TransactionPanelComponent {
           fromAccountId: value.fromAccountId!,
           toAccountId: value.toAccountId!,
           installments,
-          annualInterestRate: installments > 1 ? (this.interestRate() ?? null) : null,
+          annualInterestRate: advance ? (this.interestRate() ?? null) : null,
           advanceFee: advance ? this.advanceFee() : null,
         };
       }
@@ -1299,49 +1354,32 @@ export class TransactionPanelComponent {
     }
 
     this.payPreset.set(statement && query.get('due') ? 'statement' : 'all');
-    this.preselectCardPaymentCategory();
-  }
-
-  /** En un pago de tarjeta, elige la categoría de sistema de pago de tarjeta si existe y no hay otra elegida. */
-  private preselectCardPaymentCategory(): void {
-    const control = this.form.controls.categoryId;
-
-    if (!this.cardPayment() || this.type() !== 'transfer' || control.value !== null) {
-      return;
-    }
-
-    const category = this.categories().find((item) => item.code === CARD_PAYMENT_CATEGORY_CODE);
-
-    if (category) {
-      control.setValue(category.id);
-    }
   }
 
   /**
-   * En un avance nuevo, elige la categoría de sistema de avances si existe y no hay otra elegida. Si
-   * la transferencia deja de ser avance y la categoría sigue siendo la propuesta, se vacía.
+   * Ajusta la categoría a la ruta de la transferencia. Si la ruta exige una categoría de sistema
+   * (pago de tarjeta o avance), se elige esa; si falta o está desactivada, se vacía la elegida
+   * para que no se envíe una que el backend rechazaría. Si la ruta ya no exige ninguna y la
+   * elegida es una de ellas, también se vacía.
    */
-  private preselectCardAdvanceCategory(advance: boolean, categories: readonly TransactionCategoryOption[]): void {
+  private syncRouteCategory(required: string | null, categories: readonly TransactionCategoryOption[]): void {
     const control = this.form.controls.categoryId;
 
-    if (this.editing()) {
-      return;
-    }
+    if (required) {
+      const category = categories.find((item) => item.code === required);
+      const expected = category?.id ?? null;
 
-    if (!advance) {
-      if (this.advanceCategoryId !== null && control.value === this.advanceCategoryId) {
-        control.setValue(null);
+      if (control.value !== expected) {
+        control.setValue(expected);
       }
 
-      this.advanceCategoryId = null;
       return;
     }
 
-    const category = categories.find((item) => item.code === CARD_ADVANCE_CATEGORY_CODE);
+    const current = categories.find((category) => category.id === control.value);
 
-    if (category && control.value === null) {
-      control.setValue(category.id);
-      this.advanceCategoryId = category.id;
+    if (current && ROUTE_CATEGORY_CODES.includes(current.code ?? '')) {
+      control.setValue(null);
     }
   }
 

@@ -2,6 +2,8 @@ import { Observable } from 'rxjs';
 
 /** Datos del usuario con sesión que la interfaz necesita mostrar. */
 export interface CurrentUserProfile {
+  /** Identificador del usuario; distingue una sesión de otra aunque compartan correo. */
+  id: string;
   name: string;
   email: string;
 }

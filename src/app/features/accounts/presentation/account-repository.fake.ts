@@ -1,9 +1,9 @@
 import { Routes } from '@angular/router';
 import { Observable, of, throwError } from 'rxjs';
 import { accountsRoutes } from '../accounts.routes';
-import { Account, AccountDraft } from '../domain/account';
+import { Account, AccountDraft, AccountKindOption } from '../domain/account';
 import { AccountError, AccountErrorCode } from '../domain/account-error';
-import { AccountRepository } from '../domain/account.repository';
+import { AccountKindRepository, AccountRepository } from '../domain/account.repository';
 import { CardStatement } from '../domain/card-statement';
 import { CardMonth } from '../domain/credit-card-calendar';
 
@@ -15,6 +15,7 @@ export class FakeAccountRepository extends AccountRepository {
       name: 'Visa 4417',
       // Cuenta normal con saldo negativo, como antes de las tarjetas; los tests de tarjetas agregan las suyas.
       kind: 'standard',
+      accountKindId: 1,
       creditLimit: null,
       statementDay: null,
       paymentDay: null,
@@ -25,6 +26,7 @@ export class FakeAccountRepository extends AccountRepository {
       initialBalance: -250000,
       currentBalance: -250000,
       currency: 'COP',
+      currencyId: 1,
       isActive: true,
       hasTransactions: true,
       openingDate: '2026-10-20T00:00:00Z',
@@ -35,6 +37,7 @@ export class FakeAccountRepository extends AccountRepository {
       id: 2,
       name: 'Bancolombia',
       kind: 'standard',
+      accountKindId: 1,
       creditLimit: null,
       statementDay: null,
       paymentDay: null,
@@ -45,6 +48,7 @@ export class FakeAccountRepository extends AccountRepository {
       initialBalance: 1250000,
       currentBalance: 1250000,
       currency: 'COP',
+      currencyId: 1,
       isActive: true,
       hasTransactions: false,
       openingDate: '2026-10-01T00:00:00Z',
@@ -55,6 +59,7 @@ export class FakeAccountRepository extends AccountRepository {
       id: 8,
       name: 'Wise',
       kind: 'standard',
+      accountKindId: 1,
       creditLimit: null,
       statementDay: null,
       paymentDay: null,
@@ -65,6 +70,7 @@ export class FakeAccountRepository extends AccountRepository {
       initialBalance: 320.5,
       currentBalance: 320.5,
       currency: 'USD',
+      currencyId: 2,
       isActive: false,
       hasTransactions: false,
       openingDate: '2026-09-01T00:00:00Z',
@@ -140,6 +146,8 @@ export class FakeAccountRepository extends AccountRepository {
     return {
       id,
       ...draft,
+      // Ids del catálogo falso de `@core/currencies/currency-catalog.testing`.
+      currency: draft.currencyId === 2 ? 'USD' : 'COP',
       currentBalance: draft.initialBalance,
       availableCredit: draft.creditLimit === null ? null : draft.creditLimit + draft.initialBalance,
       nextStatementDate: null,
@@ -175,8 +183,26 @@ export class FakeAccountRepository extends AccountRepository {
   }
 }
 
+/** El catálogo de tipos que devuelve hoy el backend: 1 cuenta normal, 2 tarjeta. */
+export const FAKE_ACCOUNT_KINDS: AccountKindOption[] = [
+  { id: 1, code: 'standard', name: 'Cuenta' },
+  { id: 2, code: 'credit_card', name: 'Tarjeta de crédito' },
+];
+
+/** Catálogo de tipos en memoria; `kinds` se puede reemplazar antes de crear el componente. */
+export class FakeAccountKindRepository extends AccountKindRepository {
+  kinds: AccountKindOption[] = [...FAKE_ACCOUNT_KINDS];
+
+  list(): Observable<AccountKindOption[]> {
+    return of(this.kinds);
+  }
+}
+
 /** Las rutas reales del dominio montadas en `/accounts`, con el repositorio falso en lugar del HTTP. */
-export function fakeAccountsRoutes(fake: FakeAccountRepository): Routes {
+export function fakeAccountsRoutes(
+  fake: FakeAccountRepository,
+  kinds: FakeAccountKindRepository = new FakeAccountKindRepository(),
+): Routes {
   const [root] = accountsRoutes;
 
   return [
@@ -188,6 +214,7 @@ export function fakeAccountsRoutes(fake: FakeAccountRepository): Routes {
           providers: [
             ...(root.providers ?? []),
             { provide: AccountRepository, useValue: fake },
+            { provide: AccountKindRepository, useValue: kinds },
           ],
         },
       ],

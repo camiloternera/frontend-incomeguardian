@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
+import { provideFakeCurrencyCatalog } from '@core/currencies/currency-catalog.testing';
 import { translocoTesting } from '@core/i18n/i18n.testing';
 import { BudgetMonth, formatMonthKey, monthOfDay, shiftMonth, todayInBudgetZone } from '../../../domain/budget';
 import { BudgetError, BudgetErrorCode } from '../../../domain/budget-error';
@@ -19,7 +20,7 @@ describe('BudgetPanelComponent', () => {
     fakes.budgets.summaries[formatMonthKey(CURRENT)] = sampleSummary(CURRENT);
     await TestBed.configureTestingModule({
       imports: [translocoTesting()],
-      providers: [provideRouter(fakeBudgetsRoutes(fakes))],
+      providers: [provideRouter(fakeBudgetsRoutes(fakes)), ...provideFakeCurrencyCatalog()],
     }).compileComponents();
   });
 
@@ -95,7 +96,7 @@ describe('BudgetPanelComponent', () => {
     await settle(harness);
 
     expect(fakes.budgets.calls).toEqual([
-      { action: 'saveRecurring', args: [{ categoryId: 4, currency: 'COP' }, 2000000, CURRENT] },
+      { action: 'saveRecurring', args: [{ categoryId: 4, currencyId: 1 }, 2000000, CURRENT] },
     ]);
     expect(TestBed.inject(Router).url).toBe('/budgets');
     expect(text(element, 'budget-notice')).toContain('You saved the limit for Vivienda.');
@@ -118,7 +119,7 @@ describe('BudgetPanelComponent', () => {
     submit(element);
     await settle(harness);
 
-    expect(fakes.budgets.calls).toEqual([{ action: 'saveMonth', args: [CURRENT, { categoryId: 4, currency: 'COP' }, 0] }]);
+    expect(fakes.budgets.calls).toEqual([{ action: 'saveMonth', args: [CURRENT, { categoryId: 4, currencyId: 1 }, 0] }]);
   });
 
   it('brings a month with its own limit back to the recurring one', async () => {
@@ -130,7 +131,7 @@ describe('BudgetPanelComponent', () => {
     query(element, 'budget-reset')!.click();
     await settle(harness);
 
-    expect(fakes.budgets.calls).toEqual([{ action: 'removeMonth', args: [CURRENT, { categoryId: 1, currency: 'COP' }] }]);
+    expect(fakes.budgets.calls).toEqual([{ action: 'removeMonth', args: [CURRENT, { categoryId: 1, currencyId: 1 }] }]);
     expect(text(element, 'budget-notice')).toContain('Alimentación is back on its recurring limit.');
   });
 
@@ -141,7 +142,7 @@ describe('BudgetPanelComponent', () => {
     await settle(harness);
 
     expect(fakes.budgets.calls).toEqual([
-      { action: 'removeRecurring', args: [{ categoryId: 3, currency: 'COP' }, CURRENT] },
+      { action: 'removeRecurring', args: [{ categoryId: 3, currencyId: 1 }, CURRENT] },
     ]);
   });
 
@@ -174,7 +175,7 @@ describe('BudgetPanelComponent', () => {
     await settle(harness);
 
     expect(fakes.budgets.calls).toEqual([
-      { action: 'saveRecurring', args: [{ categoryId: 2, currency: 'COP' }, 300000, CURRENT] },
+      { action: 'saveRecurring', args: [{ categoryId: 2, currencyId: 1 }, 300000, CURRENT] },
     ]);
   });
 
@@ -227,7 +228,7 @@ describe('BudgetPanelComponent', () => {
     const { element } = await open('/budgets/1/COP');
 
     expect(query(element, 'budget-month-detail')).toBeTruthy();
-    expect(fakes.movements.requested).toEqual([{ month: CURRENT, key: { categoryId: 1, currency: 'COP' }, type: 'expense' }]);
+    expect(fakes.movements.requested).toEqual([{ month: CURRENT, key: { categoryId: 1, currency: 'COP', currencyId: 1 }, type: 'expense' }]);
     expect(text(element, 'budget-spent-lines')).toContain('Mercado');
   });
 
@@ -243,7 +244,7 @@ describe('BudgetPanelComponent', () => {
     expect(text(element, 'budget-read-only')).toContain("This month hasn't started yet");
     expect(element.querySelector('form')).toBeNull();
     expect(query(element, 'budget-month-detail')).toBeTruthy();
-    expect(fakes.movements.requested).toEqual([{ month: NEXT, key: { categoryId: 1, currency: 'COP' }, type: 'expense' }]);
+    expect(fakes.movements.requested).toEqual([{ month: NEXT, key: { categoryId: 1, currency: 'COP', currencyId: 1 }, type: 'expense' }]);
   });
 
   it('is view-only when adding a limit in a future month', async () => {

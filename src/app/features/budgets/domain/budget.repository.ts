@@ -2,17 +2,14 @@ import { Observable } from 'rxjs';
 import {
   BudgetCategoryOption,
   BudgetCategoryType,
-  BudgetCurrency,
   BudgetKey,
   BudgetMonth,
   BudgetMovement,
   BudgetSummary,
 } from './budget';
 
-/** Tope de una categoría en una moneda que admite topes. */
-export interface BudgetTarget extends BudgetKey {
-  currency: BudgetCurrency;
-}
+/** Tope a guardar: la categoría y el id de catálogo de su moneda. */
+export type BudgetTarget = Pick<BudgetKey, 'categoryId' | 'currencyId'>;
 
 /**
  * Puerto: cómo llega el dominio de presupuestos al backend. Se implementa en infrastructure.
