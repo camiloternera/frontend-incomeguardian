@@ -107,6 +107,9 @@ function toPreviewRequest(request: InstallmentPreviewRequest): InstallmentPrevie
   if (request.categoryId !== null) {
     body.categoryId = request.categoryId;
   }
+  if (request.isAdvance) {
+    body.isAdvance = true;
+  }
 
   return body;
 }
@@ -186,10 +189,11 @@ function toRequest(draft: TransactionDraft): TransactionRequestDto {
   // Una sola cuota es el valor por defecto: no se envía. En una transferencia solo la lleva un avance.
   if (draft.type !== 'income' && draft.installments !== undefined && draft.installments > 1) {
     body.installments = draft.installments;
-
-    if (draft.annualInterestRate != null) {
-      body.annualInterestRate = draft.annualInterestRate;
-    }
+  }
+  // La tasa va siempre que haya una: un avance la lleva aun a 1 cuota. El borrador ya la deja en
+  // null en las compras a 1 cuota y en las transferencias que no son avance.
+  if (draft.type !== 'income' && draft.annualInterestRate != null) {
+    body.annualInterestRate = draft.annualInterestRate;
   }
   // Sin comisión no se envía: en un PUT, eso la quita.
   if (draft.type === 'transfer' && draft.advanceFee != null) {

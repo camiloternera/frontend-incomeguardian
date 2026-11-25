@@ -643,6 +643,7 @@ describe('TransactionHttpRepository', () => {
           installments: 2,
           annualInterestRate: null,
           categoryId: null,
+          isAdvance: false,
         })
         .subscribe((value) => (result = value));
 
@@ -677,6 +678,7 @@ describe('TransactionHttpRepository', () => {
           installments: 3,
           annualInterestRate: 0,
           categoryId: 4,
+          isAdvance: false,
         })
         .subscribe();
 

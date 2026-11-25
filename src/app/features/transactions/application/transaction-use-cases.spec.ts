@@ -318,6 +318,7 @@ describe('transaction use cases', () => {
       installments: 3,
       annualInterestRate: null,
       categoryId: 4,
+      isAdvance: false,
     };
     let result: InstallmentPreview | undefined;
     TestBed.inject(PreviewInstallmentsUseCase)

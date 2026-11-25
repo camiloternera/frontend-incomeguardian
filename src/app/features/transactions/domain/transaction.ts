@@ -21,6 +21,8 @@ export const CARD_PAYMENT_CATEGORY_CODE = 'CARD_PAYMENT';
 export const CARD_ADVANCE_CATEGORY_CODE = 'CARD_ADVANCE';
 /** Código de la categoría de sistema de las comisiones del banco (tipo gasto), como la de un avance. */
 export const BANK_FEES_CATEGORY_CODE = 'BANK_FEES';
+/** Categorías de sistema que el backend reserva a una ruta de transferencia concreta. */
+export const ROUTE_CATEGORY_CODES: readonly string[] = [CARD_PAYMENT_CATEGORY_CODE, CARD_ADVANCE_CATEGORY_CODE];
 
 /** Clases de movimiento que registra el usuario. */
 export const TRANSACTION_TYPES = ['income', 'expense', 'transfer'] as const;
@@ -115,6 +117,8 @@ export interface InstallmentPreviewRequest {
   annualInterestRate: number | null;
   /** Con categoría, el backend calcula cuánto subirán los topes del presupuesto. */
   categoryId: number | null;
+  /** Un avance lleva interés aun a 1 cuota; una compra a 1 cuota no. */
+  isAdvance: boolean;
 }
 
 /** Cuánto sube el tope de una categoría en un mes por las cuotas de la compra. */
@@ -311,6 +315,22 @@ export function isCardAdvanceRoute(
   to: Pick<TransactionAccountOption, 'isCreditCard'> | null,
 ): boolean {
   return from?.isCreditCard === true && to !== null && !to.isCreditCard;
+}
+
+/**
+ * Categoría de sistema que el backend exige según la ruta de la transferencia: pago de tarjeta si
+ * llega a una tarjeta (también desde otra tarjeta), avance si sale de una tarjeta hacia una cuenta
+ * normal. null si la ruta admite cualquier categoría de transferencia del usuario.
+ */
+export function requiredRouteCategoryCode(
+  from: Pick<TransactionAccountOption, 'isCreditCard'> | null,
+  to: Pick<TransactionAccountOption, 'isCreditCard'> | null,
+): string | null {
+  if (to?.isCreditCard === true) {
+    return CARD_PAYMENT_CATEGORY_CODE;
+  }
+
+  return isCardAdvanceRoute(from, to) ? CARD_ADVANCE_CATEGORY_CODE : null;
 }
 
 export type TransactionDraft = IncomeDraft | ExpenseDraft | TransferDraft;
