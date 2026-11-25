@@ -74,6 +74,19 @@
           aria-labelledby="transaction-month"
           class="flex flex-col gap-4 border-b border-ig-border pb-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-10 sm:pb-6"
         >
+          @if (rangeLabel(); as range) {
+            <div class="flex min-w-0 flex-col gap-1">
+              <p class="m-0 text-[12px] text-ig-muted sm:text-[13px]">{{ t('transactions.filters.rangeTitle') }}</p>
+              <h2
+                id="transaction-month"
+                data-testid="range-label"
+                class="m-0 text-[17px] font-bold tracking-[-0.02em] sm:text-[20px]"
+                aria-live="polite"
+              >
+                {{ range }}
+              </h2>
+            </div>
+          } @else {
           <div class="flex items-center justify-between gap-2 sm:justify-start">
             <button
               data-testid="month-previous"
@@ -106,6 +119,7 @@
               <svg lucideChevronRight [size]="16" aria-hidden="true"></svg>
             </button>
           </div>
+          }
 
           <dl
             class="m-0 grid grid-cols-2 gap-4 tabular-nums sm:flex sm:flex-wrap sm:gap-x-8 sm:gap-y-2"
@@ -132,6 +146,16 @@
             </div>
           </dl>
         </section>
+
+        <app-transaction-filters
+          [value]="filters()"
+          [categories]="filterCategories()"
+          [accounts]="filterAccounts()"
+          [today]="todayDay"
+          [allCategoriesLabel]="t('transactions.filters.allCategories')"
+          [allAccountsLabel]="t('transactions.filters.allAccounts')"
+          (filtersChange)="applyFilters($event)"
+        />
 
         @if (result(); as current) {
           @if (groups().length) {
@@ -353,6 +377,24 @@
               (pageChange)="goToPage($event)"
               (pageSizeChange)="changePageSize($event)"
             />
+          } @else if (filtering()) {
+            <div
+              data-testid="transaction-no-matches"
+              class="flex flex-col items-start gap-4 rounded-lg border border-dashed border-ig-border px-6 py-8"
+            >
+              <div class="flex flex-col gap-2">
+                <h3 class="m-0 text-[15px] font-bold">{{ t('transactions.filters.empty.title') }}</h3>
+                <p class="m-0 max-w-[520px] text-[14px] text-ig-muted">{{ t('transactions.filters.empty.body') }}</p>
+              </div>
+              <button
+                data-testid="transaction-no-matches-clear"
+                class="inline-flex min-h-11 items-center justify-center rounded-lg border border-ig-border bg-transparent px-5 text-[14px] font-bold text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2"
+                type="button"
+                (click)="clearFilters()"
+              >
+                {{ t('transactions.filters.clear') }}
+              </button>
+            </div>
           } @else {
             <div
               data-testid="transaction-empty"

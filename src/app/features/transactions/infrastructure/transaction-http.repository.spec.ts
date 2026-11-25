@@ -898,7 +898,8 @@ describe('TransactionCategoryOptionsHttpRepository', () => {
     options.list().subscribe((value) => (result = value));
 
     const request = http.expectOne((req) => req.url === CATEGORIES_URL);
-    expect(request.request.params.keys()).toEqual([]);
+    expect(request.request.params.get('status')).toBe('all');
+    expect(request.request.params.has('transactionTypeId')).toBe(false);
     request.flush(
       ok([
         { ...base, id: 1, name: 'Salario', isActive: true, transactionTypeId: 1 },

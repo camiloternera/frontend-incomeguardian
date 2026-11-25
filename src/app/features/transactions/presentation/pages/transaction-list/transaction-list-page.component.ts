@@ -22,6 +22,7 @@ import { ThemeService } from '@core/theme/theme.service';
 import { ClosedMonthBadgeComponent, PeriodOverlaysComponent } from '@features/periods';
 import { PaginationComponent } from '@shared/ui/pagination.component';
 import { PageSizePreference } from '@shared/ui/page-size';
+import { SelectOption } from '@shared/ui/select/select.component';
 import {
   ListTransactionAccountOptionsUseCase,
   ListTransactionCategoryOptionsUseCase,
@@ -35,10 +36,13 @@ import {
   TransactionAccountOption,
   TransactionCategoryOption,
   TransactionMonth,
+  TransactionFilters,
   TransactionPage,
+  TransactionRange,
   TransactionSummary,
   compareMonths,
   dayOf,
+  dayRange,
   formatMonthKey,
   groupByDay,
   isCrossCurrency,
@@ -54,6 +58,12 @@ import { injectTransactionsTranslations } from '../../transactions-translations'
 import { TransactionWorkspace } from '../../transaction-workspace';
 import { TransactionDeleteConfirmationComponent } from '../../components/delete-confirmation/delete-confirmation.component';
 import { transactionName } from '../../transaction-name';
+import {
+  EMPTY_TRANSACTION_FILTERS,
+  TransactionFilterValues,
+  TransactionFiltersComponent,
+  hasTransactionFilters,
+} from '../../components/transaction-filters/transaction-filters.component';
 import { MoneyPipe } from '@shared/money/money.pipe';
 
 /** Texto ya resuelto para la fila de un movimiento. */
@@ -93,6 +103,25 @@ function previousDay(day: string): string {
   return new Date(Date.UTC(year, month - 1, date - 1)).toISOString().slice(0, 10);
 }
 
+/** Fecha `YYYY-MM-DD` válida, o null. */
+function parseDay(value: string | null): string | null {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return null;
+  }
+
+  const [year, month, date] = value.split('-').map(Number);
+  const parsed = new Date(Date.UTC(year, month - 1, date));
+
+  return parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === date ? value : null;
+}
+
+/** Id positivo de la URL, o null. */
+function parseId(value: string | null): number | null {
+  const id = Number(value);
+
+  return value && Number.isInteger(id) && id > 0 ? id : null;
+}
+
 /** Solo la primera letra en mayúscula. */
 function capitalized(text: string, locale: string): string {
   return text.charAt(0).toLocaleUpperCase(locale) + text.slice(1);
@@ -111,6 +140,7 @@ function capitalized(text: string, locale: string): string {
     TranslocoDirective,
     PaginationComponent,
     TransactionDeleteConfirmationComponent,
+    TransactionFiltersComponent,
     ClosedMonthBadgeComponent,
     PeriodOverlaysComponent,
     LucideArrowDownLeft,
@@ -170,6 +200,48 @@ export class TransactionListPageComponent {
   protected readonly monthStart = computed(() => `${formatMonthKey(this.month())}-01`);
   private readonly page = signal(1);
 
+  /** Filtros aplicados; viajan en la URL (`?q=&category=&account=&from=&to=`). */
+  protected readonly filters = signal<TransactionFilterValues>(EMPTY_TRANSACTION_FILTERS);
+  protected readonly filtering = computed(() => hasTransactionFilters(this.filters()));
+  /** Con un rango de fechas se dejan de navegar meses. */
+  protected readonly rangeActive = computed(() => this.filters().from !== null || this.filters().to !== null);
+  /** Hoy en hora de Colombia, para no elegir fechas futuras en los filtros. */
+  protected readonly todayDay = this.today;
+
+  /**
+   * Días del rango elegido: sin «Desde» empieza el primer día del mes de «Hasta»; sin «Hasta»
+   * termina hoy. `null` sin rango.
+   */
+  private readonly rangeDays = computed(() => {
+    const { from, to } = this.filters();
+
+    if (from === null && to === null) {
+      return null;
+    }
+
+    const end = to ?? this.today;
+
+    return { from: from ?? `${end.slice(0, 7)}-01`, to: end };
+  });
+
+  /** Instantes que se piden: los del rango elegido o los del mes. */
+  private readonly period = computed<TransactionRange>(() => {
+    const days = this.rangeDays();
+
+    return days ? dayRange(days.from, days.to) : monthRange(this.month());
+  });
+
+  /** Filtros que se envían al listado (el resumen solo recibe el periodo). */
+  private readonly queryFilters = computed<TransactionFilters>(() => {
+    const { search, categoryId, accountId } = this.filters();
+
+    return {
+      ...(search ? { search } : {}),
+      ...(categoryId !== null ? { categoryId } : {}),
+      ...(accountId !== null ? { accountId } : {}),
+    };
+  });
+
   /** Cuentas y categorías solo para poner nombres; si fallan, la lista se muestra sin ellos. */
   private readonly accounts = toSignal(
     this.listAccounts.execute().pipe(catchError(() => of<TransactionAccountOption[]>([]))),
@@ -204,6 +276,34 @@ export class TransactionListPageComponent {
 
   private readonly lang = toSignal(this.transloco.langChanges$, {
     initialValue: this.transloco.getActiveLang(),
+  });
+
+  /** Opciones de los filtros: categorías y cuentas por nombre, incluidas las desactivadas. */
+  protected readonly filterCategories = computed<SelectOption<number>[]>(() => {
+    const names = this.categoryNames();
+
+    return this.categoryOptions()
+      .map((category) => ({ value: category.id, label: String(names.get(category.id) ?? category.name) }))
+      .sort((a, b) => a.label.localeCompare(b.label, this.locale()));
+  });
+  protected readonly filterAccounts = computed<SelectOption<number>[]>(() =>
+    this.accounts().map((account) => ({ value: account.id, label: `${account.name} · ${account.currency}` })),
+  );
+
+  /** «1 nov 2026 – 24 nov 2026», para el título cuando hay un rango. */
+  protected readonly rangeLabel = computed(() => {
+    const days = this.rangeDays();
+    const locale = this.locale();
+
+    if (!days) {
+      return null;
+    }
+
+    // Mes en letras: «20 oct 2026» / «Oct 20, 2026».
+    const pattern = locale.startsWith('es') ? 'd MMM y' : 'MMM d, y';
+    const format = (day: string) => formatDate(`${day}T12:00:00Z`, pattern, locale, 'UTC');
+
+    return days.from === days.to ? format(days.from) : `${format(days.from)} – ${format(days.to)}`;
   });
 
   /** «Noviembre 2026». */
@@ -295,16 +395,22 @@ export class TransactionListPageComponent {
   constructor() {
     let first = true;
 
-    // Abrir o cerrar el panel también navega: solo se recarga si cambia el mes.
+    // Abrir o cerrar el panel también navega: solo se recarga si cambia el mes o algún filtro.
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       const next = this.readMonth(params.get('month'));
+      const filters = this.readFilters(params);
 
-      if (!first && compareMonths(next, this.month()) === 0) {
+      if (
+        !first &&
+        compareMonths(next, this.month()) === 0 &&
+        JSON.stringify(filters) === JSON.stringify(this.filters())
+      ) {
         return;
       }
 
       first = false;
       this.month.set(next);
+      this.filters.set(filters);
       this.reload();
     });
 
@@ -328,6 +434,24 @@ export class TransactionListPageComponent {
 
   protected goToCurrentMonth(): void {
     this.goToMonth(this.currentMonth);
+  }
+
+  /** Escribe los filtros en la URL; la URL recarga la lista. Sin valor, el parámetro se quita. */
+  protected applyFilters(filters: TransactionFilterValues): void {
+    void this.router.navigate([], {
+      queryParams: {
+        q: filters.search.trim() || null,
+        category: filters.categoryId,
+        account: filters.accountId,
+        from: filters.from,
+        to: filters.to,
+      },
+      queryParamsHandling: 'merge',
+    });
+  }
+
+  protected clearFilters(): void {
+    this.applyFilters(EMPTY_TRANSACTION_FILTERS);
   }
 
   protected goToPage(page: number): void {
@@ -414,18 +538,21 @@ export class TransactionListPageComponent {
     this.loadError.set('');
     this.request?.unsubscribe();
     this.request = this.listTransactions
-      .execute({ page, pageSize: this.pageSize(), ...monthRange(this.month()) })
+      .execute({ page, pageSize: this.pageSize(), ...this.period(), ...this.queryFilters() })
       .subscribe({
         next: (result) => this.result.set(result),
         error: (error: unknown) => this.loadError.set(this.messageOf(error)),
       });
   }
 
-  /** Pide el resumen del mes; si falla, el resumen queda vacío y la lista sigue. */
+  /**
+   * Pide el resumen del periodo visible (el mes o el rango elegido), sin los demás filtros; si
+   * falla, el resumen queda vacío y la lista sigue.
+   */
   private loadTotals(): void {
     this.totals.set(null);
     this.totalsRequest?.unsubscribe();
-    this.totalsRequest = this.summarize.execute(monthRange(this.month())).subscribe({
+    this.totalsRequest = this.summarize.execute(this.period()).subscribe({
       next: (summary) => this.totals.set(summary),
       error: () => this.totals.set(null),
     });
@@ -435,6 +562,26 @@ export class TransactionListPageComponent {
   private goToMonth(month: TransactionMonth): void {
     const value = compareMonths(month, this.currentMonth) === 0 ? null : formatMonthKey(month);
     void this.router.navigate([], { queryParams: { month: value }, queryParamsHandling: 'merge' });
+  }
+
+  /** Filtros de la URL; los inválidos o con fechas futuras se ignoran. */
+  private readFilters(params: { get(name: string): string | null }): TransactionFilterValues {
+    const day = (name: string) => {
+      const value = parseDay(params.get(name));
+
+      return value && value <= this.today ? value : null;
+    };
+    const from = day('from');
+    const to = day('to');
+
+    return {
+      search: params.get('q')?.trim() ?? '',
+      categoryId: parseId(params.get('category')),
+      accountId: parseId(params.get('account')),
+      from,
+      // Un «Hasta» anterior al «Desde» no forma un rango: se ignora.
+      to: from && to && to < from ? null : to,
+    };
   }
 
   /** Mes de la URL; uno inválido o futuro cae al mes en curso. */
