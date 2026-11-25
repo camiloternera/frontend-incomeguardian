@@ -524,13 +524,14 @@ describe('TransactionHttpRepository', () => {
       });
     });
 
-    it('sends the fee of a one-installment advance without installments', () => {
+    it('sends the fee and the rate of a one-installment advance without installments', () => {
       repository.create({ ...ADVANCE, installments: 1, annualInterestRate: 24.5, advanceFee: 15000 }).subscribe();
 
       const sent = body();
       expect(sent['advanceFee']).toBe(15000);
       expect('installments' in sent).toBe(false);
-      expect('annualInterestRate' in sent).toBe(false);
+      // Un avance lleva interés aun a 1 cuota.
+      expect(sent['annualInterestRate']).toBe(24.5);
     });
 
     it('omits the rate of an advance without interest', () => {
@@ -686,6 +687,46 @@ describe('TransactionHttpRepository', () => {
       // Una tasa de 0 es un valor, no la ausencia de interés.
       expect(request.request.body).toMatchObject({ annualInterestRate: 0, categoryId: 4 });
       request.flush(ok({ installmentAmount: 10000, totalInterest: 0, totalAmount: 30000, schedule: [] }));
+    });
+
+    it('review: sends the advance flag and interest in a one-installment HTTP preview', () => {
+      repository.previewInstallments({
+        fromAccountId: 20,
+        amount: 600000,
+        date: EXPENSE.date,
+        installments: 1,
+        annualInterestRate: 24.5,
+        categoryId: null,
+        isAdvance: true,
+      }).subscribe();
+
+      const request = http.expectOne(`${URL}/installments/preview`);
+      expect(request.request.method).toBe('POST');
+      expect(request.request.body).toEqual({
+        fromAccountId: 20,
+        amount: 600000,
+        date: EXPENSE.date,
+        installments: 1,
+        annualInterestRate: 24.5,
+        isAdvance: true,
+      });
+      request.flush(ok({ installmentAmount: 610000, totalInterest: 10000, totalAmount: 610000, schedule: [] }));
+    });
+
+    it.each(['create', 'update'] as const)('review: %s omits a leftover interest rate on a one-installment purchase', (operation) => {
+      const draft = { ...EXPENSE, installments: 1, annualInterestRate: 24.5 };
+      if (operation === 'create') {
+        repository.create(draft).subscribe();
+      } else {
+        repository.update(9, draft).subscribe();
+      }
+
+      const request = http.expectOne(operation === 'create' ? URL : `${URL}/9`);
+      const sent = request.request.body;
+      expect(request.request.method).toBe(operation === 'create' ? 'POST' : 'PUT');
+      request.flush(ok(LEGACY_DTO));
+
+      expect(sent).not.toHaveProperty('annualInterestRate');
     });
 
     it('sends the installments and the rate only with more than one installment', () => {

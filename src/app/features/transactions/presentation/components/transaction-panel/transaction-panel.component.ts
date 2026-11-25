@@ -1358,17 +1358,19 @@ export class TransactionPanelComponent {
 
   /**
    * Ajusta la categoría a la ruta de la transferencia. Si la ruta exige una categoría de sistema
-   * (pago de tarjeta o avance), se elige esa; si ya no exige ninguna y la elegida es una de ellas,
-   * se vacía, porque el backend la rechazaría.
+   * (pago de tarjeta o avance), se elige esa; si falta o está desactivada, se vacía la elegida
+   * para que no se envíe una que el backend rechazaría. Si la ruta ya no exige ninguna y la
+   * elegida es una de ellas, también se vacía.
    */
   private syncRouteCategory(required: string | null, categories: readonly TransactionCategoryOption[]): void {
     const control = this.form.controls.categoryId;
 
     if (required) {
       const category = categories.find((item) => item.code === required);
+      const expected = category?.id ?? null;
 
-      if (category && control.value !== category.id) {
-        control.setValue(category.id);
+      if (control.value !== expected) {
+        control.setValue(expected);
       }
 
       return;

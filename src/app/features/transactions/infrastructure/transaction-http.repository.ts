@@ -190,9 +190,11 @@ function toRequest(draft: TransactionDraft): TransactionRequestDto {
   if (draft.type !== 'income' && draft.installments !== undefined && draft.installments > 1) {
     body.installments = draft.installments;
   }
-  // La tasa va siempre que haya una: un avance la lleva aun a 1 cuota. El borrador ya la deja en
-  // null en las compras a 1 cuota y en las transferencias que no son avance.
-  if (draft.type !== 'income' && draft.annualInterestRate != null) {
+  // Un avance lleva su tasa aun a 1 cuota; una compra, solo a 2 cuotas o más (a 1 cuota el
+  // backend no cobra interés, así que una tasa que quedó escrita no se envía).
+  const rateApplies = draft.type === 'transfer' || (draft.type === 'expense' && (draft.installments ?? 1) > 1);
+
+  if (rateApplies && draft.annualInterestRate != null) {
     body.annualInterestRate = draft.annualInterestRate;
   }
   // Sin comisión no se envía: en un PUT, eso la quita.

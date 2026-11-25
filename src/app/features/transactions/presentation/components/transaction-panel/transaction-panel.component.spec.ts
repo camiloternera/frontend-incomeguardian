@@ -1448,6 +1448,77 @@ describe('TransactionPanelComponent', () => {
       expect(fieldText(element, 'transaction-category')).toContain('Card advance');
     });
 
+    it.each(['missing', 'inactive'])('review: blocks a stale advance category when the payment category is %s', async (state) => {
+      fakes.categories.categories = fakes.categories.categories.filter((category) => category.code !== 'CARD_PAYMENT');
+      if (state === 'inactive') {
+        fakes.categories.categories.push({
+          id: 7, name: 'Pago tarjeta', type: 'transfer', isActive: false, code: 'CARD_PAYMENT',
+        });
+      }
+      const { harness, element } = await openAdvance();
+      expect(fieldText(element, 'transaction-category')).toContain('Card advance');
+
+      choose(element, 'transaction-to', 'Mastercard', harness);
+      await settle(harness);
+      expect(query(element, 'transaction-category')).toBeNull();
+
+      submit(element);
+      await settle(harness);
+
+      expect(fakes.transactions.lastDraft).toBeNull();
+      expect(TestBed.inject(Router).url).toBe('/transactions/new/transfer');
+    });
+
+    it('review: blocks a user category when the advance category is missing', async () => {
+      fakes.categories.categories = fakes.categories.categories.filter((category) => category.code !== 'CARD_ADVANCE');
+      const { harness, element } = await open('/transactions/new/transfer');
+      type(element, 'transaction-amount', '600000');
+      choose(element, 'transaction-category', 'Ahorro', harness);
+      choose(element, 'transaction-from', 'Visa', harness);
+      await settle(harness);
+      choose(element, 'transaction-to', 'Bancolombia', harness);
+      await settle(harness);
+      expect(query(element, 'transaction-category')).toBeNull();
+
+      submit(element);
+      await settle(harness);
+
+      expect(fakes.transactions.lastDraft).toBeNull();
+      expect(TestBed.inject(Router).url).toBe('/transactions/new/transfer');
+    });
+
+    it('review: previews and saves interest on a one-installment advance', async () => {
+      const { harness, element } = await openAdvance();
+      click(element, 'with-interest');
+      await settle(harness);
+      type(element, 'transaction-interest-rate', '24,5');
+      await waitForPlan(harness);
+
+      expect(fakes.transactions.lastPreview).toMatchObject({
+        installments: 1, annualInterestRate: 24.5, isAdvance: true,
+      });
+      submit(element);
+      await settle(harness);
+
+      expect(fakes.transactions.lastDraft).toMatchObject({
+        type: 'transfer', installments: 1, annualInterestRate: 24.5,
+      });
+    });
+
+    it.each(['', '201'])('review: blocks a one-installment advance with an invalid interest rate "%s"', async (rate) => {
+      const { harness, element } = await openAdvance();
+      click(element, 'with-interest');
+      await settle(harness);
+      type(element, 'transaction-interest-rate', rate);
+      await settle(harness);
+
+      submit(element);
+      await settle(harness);
+
+      expect(submitButton(element).disabled).toBe(true);
+      expect(fakes.transactions.lastDraft).toBeNull();
+    });
+
     it('offers the interest rate on a one-installment advance and previews it as an advance', async () => {
       const { harness, element } = await openAdvance();
 
