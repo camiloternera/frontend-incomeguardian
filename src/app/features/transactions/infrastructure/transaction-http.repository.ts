@@ -216,6 +216,17 @@ function toListParams(query: TransactionQuery): HttpParams {
   if (query.toDate !== undefined) {
     params = params.set('toDate', query.toDate);
   }
+  // Texto vacío o solo espacios no filtra: no se envía.
+  const search = query.search?.trim();
+  if (search) {
+    params = params.set('search', search);
+  }
+  if (query.categoryId !== undefined) {
+    params = params.set('categoryId', query.categoryId);
+  }
+  if (query.accountId !== undefined) {
+    params = params.set('accountId', query.accountId);
+  }
 
   return params;
 }
@@ -377,7 +388,12 @@ export class TransactionCategoryOptionsHttpRepository extends TransactionCategor
   private readonly url = `${environment.apiUrl}/api/v1/categories`;
 
   list(type?: TransactionType): Observable<TransactionCategoryOption[]> {
-    const params = type ? new HttpParams().set('transactionTypeId', CATEGORY_TYPE_IDS[type]) : undefined;
+    // `status=all` trae también las desactivadas; sin él el backend solo devuelve las activas.
+    let params = new HttpParams().set('status', 'all');
+
+    if (type) {
+      params = params.set('transactionTypeId', CATEGORY_TYPE_IDS[type]);
+    }
 
     return this.http.get<ApiResponse<TransactionCategoryOptionDto[]>>(this.url, { params }).pipe(
       unwrap(),

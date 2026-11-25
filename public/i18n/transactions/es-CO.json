@@ -301,5 +301,22 @@
     "confirm": "Eliminar",
     "deleting": "Eliminando…",
     "withFee": "También se elimina su comisión del banco."
+  },
+  "filters": {
+    "label": "Filtrar movimientos",
+    "search": "Descripción",
+    "searchPlaceholder": "Buscar por descripción",
+    "category": "Categoría",
+    "allCategories": "Todas las categorías",
+    "account": "Cuenta",
+    "allAccounts": "Todas las cuentas",
+    "from": "Desde",
+    "to": "Hasta",
+    "clear": "Limpiar filtros",
+    "rangeTitle": "Rango de fechas",
+    "empty": {
+      "title": "Ningún movimiento coincide con los filtros",
+      "body": "Prueba con otra descripción, categoría, cuenta o rango de fechas."
+    }
   }
 }

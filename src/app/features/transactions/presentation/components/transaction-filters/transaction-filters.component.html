@@ -1,0 +1,85 @@
+<form
+  *transloco="let t"
+  data-testid="transaction-filters"
+  class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:items-end"
+  role="search"
+  [attr.aria-label]="t('transactions.filters.label')"
+  [formGroup]="form"
+  (submit)="$event.preventDefault()"
+>
+  <div class="flex min-w-0 flex-col gap-2 sm:col-span-2">
+    <label class="text-[13px] font-bold" for="transaction-filter-search">{{ t('transactions.filters.search') }}</label>
+    <div class="relative">
+      <svg
+        lucideSearch
+        [size]="18"
+        class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ig-muted"
+        aria-hidden="true"
+      ></svg>
+      <input
+        id="transaction-filter-search"
+        data-testid="transaction-filter-search"
+        class="min-h-12 w-full rounded-lg border border-ig-border bg-ig-surface pl-10 pr-3 text-[16px] text-ig-text outline-none placeholder:text-ig-muted focus-visible:border-ig-accent focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 lg:min-h-11 lg:text-[14px]"
+        type="search"
+        autocomplete="off"
+        formControlName="search"
+        [placeholder]="t('transactions.filters.searchPlaceholder')"
+      />
+    </div>
+  </div>
+
+  <div class="flex min-w-0 flex-col gap-2">
+    <label class="text-[13px] font-bold" for="transaction-filter-category">{{ t('transactions.filters.category') }}</label>
+    <app-select
+      data-testid="transaction-filter-category"
+      inputId="transaction-filter-category"
+      formControlName="categoryId"
+      [options]="categoryOptions()"
+    />
+  </div>
+
+  <div class="flex min-w-0 flex-col gap-2">
+    <label class="text-[13px] font-bold" for="transaction-filter-account">{{ t('transactions.filters.account') }}</label>
+    <app-select
+      data-testid="transaction-filter-account"
+      inputId="transaction-filter-account"
+      formControlName="accountId"
+      [options]="accountOptions()"
+    />
+  </div>
+
+  <div class="flex min-w-0 flex-col gap-2">
+    <label class="text-[13px] font-bold" for="transaction-filter-from">{{ t('transactions.filters.from') }}</label>
+    <app-date-picker
+      data-testid="transaction-filter-from"
+      inputId="transaction-filter-from"
+      formControlName="from"
+      [today]="today()"
+      [max]="fromMax()"
+    />
+  </div>
+
+  <div class="flex min-w-0 flex-col gap-2">
+    <label class="text-[13px] font-bold" for="transaction-filter-to">{{ t('transactions.filters.to') }}</label>
+    <app-date-picker
+      data-testid="transaction-filter-to"
+      inputId="transaction-filter-to"
+      formControlName="to"
+      [today]="today()"
+      [min]="toMin()"
+      [max]="today()"
+    />
+  </div>
+
+  @if (active()) {
+    <button
+      data-testid="transaction-filters-clear"
+      class="inline-flex min-h-12 items-center justify-center gap-2 justify-self-start rounded-lg border border-ig-border bg-transparent px-4 text-[14px] font-bold text-ig-text hover:bg-ig-surface-raised focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 sm:col-span-2 lg:col-span-1 lg:min-h-11"
+      type="button"
+      (click)="clear()"
+    >
+      <svg lucideX [size]="16" aria-hidden="true"></svg>
+      {{ t('transactions.filters.clear') }}
+    </button>
+  }
+</form>
