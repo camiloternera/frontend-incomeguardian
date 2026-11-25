@@ -9,6 +9,7 @@ import { LanguageService } from '@core/i18n/language.service';
 import { ThemeService } from '@core/theme/theme.service';
 import { matchesSearch } from '@shared/text/search-text';
 import { PaginationComponent } from '@shared/ui/pagination.component';
+import { PageSizePreference } from '@shared/ui/page-size';
 import { ListCategoriesUseCase } from '../../../application/category-use-cases';
 import { CATEGORY_TABS, Category, CategoryTab, matchesCategory, sortByTypeThenName } from '../../../domain/category';
 import { CategoryError } from '../../../domain/category-error';
@@ -44,7 +45,9 @@ export class CategoryListPageComponent {
 
   /** Una pestaña por tipo de movimiento para las activas, más la de desactivadas. */
   protected readonly tabs = CATEGORY_TABS;
-  protected readonly pageSize = CATEGORY_PAGE_SIZE;
+  /** Registros por página; la persona la elige y se recuerda para este listado. */
+  private readonly pageSizePreference = new PageSizePreference('categories', CATEGORY_PAGE_SIZE);
+  protected readonly pageSize = this.pageSizePreference.size;
   protected readonly theme = inject(ThemeService).theme;
   protected readonly locale = inject(LanguageService).language;
 
@@ -109,15 +112,15 @@ export class CategoryListPageComponent {
 
   /** Página mostrada; si una eliminación deja la página vacía, retrocede a la última que exista. */
   protected readonly page = computed(() => {
-    const lastPage = Math.max(1, Math.ceil(this.visible().length / CATEGORY_PAGE_SIZE));
+    const lastPage = Math.max(1, Math.ceil(this.visible().length / this.pageSize()));
 
     return Math.min(this.requestedPage(), lastPage);
   });
 
   protected readonly pageItems = computed(() => {
-    const start = (this.page() - 1) * CATEGORY_PAGE_SIZE;
+    const start = (this.page() - 1) * this.pageSize();
 
-    return this.visible().slice(start, start + CATEGORY_PAGE_SIZE);
+    return this.visible().slice(start, start + this.pageSize());
   });
   constructor() {
     this.load();
@@ -141,6 +144,12 @@ export class CategoryListPageComponent {
     this.requestedPage.set(1);
     this.pendingDeactivateId.set(null);
     this.actionError.set('');
+  }
+
+  /** Cambia los registros por página y vuelve a la primera. */
+  protected changePageSize(size: number): void {
+    this.pageSizePreference.set(size);
+    this.requestedPage.set(1);
   }
 
   protected goToPage(page: number): void {

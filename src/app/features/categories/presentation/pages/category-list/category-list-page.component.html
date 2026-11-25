@@ -214,7 +214,8 @@
             </div>
           }
 
-          <app-pagination [page]="page()" [totalItems]="visible().length" [pageSize]="pageSize" (pageChange)="goToPage($event)" />
+          <app-pagination [page]="page()" [totalItems]="visible().length" [pageSize]="pageSize()" (pageChange)="goToPage($event)"
+              (pageSizeChange)="changePageSize($event)" />
         } @else if (loadError()) {
           <div class="flex flex-col items-start gap-4 rounded-lg border border-ig-border bg-ig-surface px-6 py-8">
             <p data-testid="load-error" class="m-0 text-[14px]" role="alert">{{ loadError() }}</p>

@@ -56,9 +56,17 @@ describe('PaginationComponent', () => {
     expect(element.querySelector<HTMLButtonElement>('[data-testid="pagination-next"]')!.disabled).toBe(false);
   });
 
-  it('renders nothing for a single page', () => {
-    const element = render(1, 10).nativeElement as HTMLElement;
+  it('renders nothing when everything fits in the smallest page size', () => {
+    const element = render(1, 5, 5).nativeElement as HTMLElement;
 
     expect(element.querySelector('nav')).toBeNull();
+  });
+
+  it('keeps the page size selector without page buttons on a single page', () => {
+    // Con 20 por página todo cabe, pero se debe poder volver a una cantidad menor.
+    const element = render(1, 10, 20).nativeElement as HTMLElement;
+
+    expect(element.querySelector('[data-testid="pagination-size"]')).not.toBeNull();
+    expect(element.querySelector('[data-testid="pagination-next"]')).toBeNull();
   });
 });

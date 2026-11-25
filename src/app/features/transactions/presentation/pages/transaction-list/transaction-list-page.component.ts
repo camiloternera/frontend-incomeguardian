@@ -21,6 +21,7 @@ import { LanguageService } from '@core/i18n/language.service';
 import { ThemeService } from '@core/theme/theme.service';
 import { ClosedMonthBadgeComponent, PeriodOverlaysComponent } from '@features/periods';
 import { PaginationComponent } from '@shared/ui/pagination.component';
+import { PageSizePreference } from '@shared/ui/page-size';
 import {
   ListTransactionAccountOptionsUseCase,
   ListTransactionCategoryOptionsUseCase,
@@ -138,7 +139,9 @@ export class TransactionListPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
-  protected readonly pageSize = TRANSACTION_PAGE_SIZE;
+  /** Registros por página; la persona la elige y se recuerda para este listado. */
+  private readonly pageSizePreference = new PageSizePreference('transactions', TRANSACTION_PAGE_SIZE);
+  protected readonly pageSize = this.pageSizePreference.size;
   protected readonly theme = inject(ThemeService).theme;
   protected readonly locale = inject(LanguageService).language;
   protected readonly moneyDigits = moneyDigits;
@@ -332,6 +335,13 @@ export class TransactionListPageComponent {
     this.load(page);
   }
 
+  /** Cambia los registros por página y vuelve a pedir la primera. */
+  protected changePageSize(size: number): void {
+    this.pageSizePreference.set(size);
+    this.closeActions();
+    this.load(1);
+  }
+
   protected toggleMenu(id: number, event: Event): void {
     // Evita que el clic llegue al documento y cierre el menú en el mismo instante.
     event.stopPropagation();
@@ -404,7 +414,7 @@ export class TransactionListPageComponent {
     this.loadError.set('');
     this.request?.unsubscribe();
     this.request = this.listTransactions
-      .execute({ page, pageSize: TRANSACTION_PAGE_SIZE, ...monthRange(this.month()) })
+      .execute({ page, pageSize: this.pageSize(), ...monthRange(this.month()) })
       .subscribe({
         next: (result) => this.result.set(result),
         error: (error: unknown) => this.loadError.set(this.messageOf(error)),
