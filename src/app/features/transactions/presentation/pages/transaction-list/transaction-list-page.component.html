@@ -349,8 +349,9 @@
             <app-pagination
               [page]="current.page"
               [totalItems]="current.totalItems"
-              [pageSize]="pageSize"
+              [pageSize]="pageSize()"
               (pageChange)="goToPage($event)"
+              (pageSizeChange)="changePageSize($event)"
             />
           } @else {
             <div
