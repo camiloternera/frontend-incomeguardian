@@ -4,6 +4,7 @@ import { AuthError } from '../domain/auth-error';
 import { AuthRepository } from '../domain/auth.repository';
 import { AuthSession } from '../domain/auth-session';
 import { SessionStore } from '../domain/session.store';
+import { VerificationWindow } from '../domain/verification-window';
 import { LogoutUseCase } from './logout.use-case';
 
 const SESSION: AuthSession = {
@@ -41,8 +42,12 @@ class StubAuthRepository extends AuthRepository {
     return of(SESSION);
   }
 
-  register(): Observable<void> {
-    return of(undefined);
+  register(): Observable<VerificationWindow> {
+    return of({ email: SESSION.email, expiresAt: '', resendAvailableAt: '' });
+  }
+
+  resendCode(): Observable<VerificationWindow> {
+    return this.register();
   }
 
   confirmEmail(): Observable<void> {

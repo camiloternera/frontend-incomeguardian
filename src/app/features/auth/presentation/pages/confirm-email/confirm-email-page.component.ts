@@ -7,11 +7,12 @@ import {
   signal,
   viewChildren,
 } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { Location } from '@angular/common';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
-import { finalize } from 'rxjs';
+import { distinctUntilChanged, finalize } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { LanguageService } from '@core/i18n/language.service';
 import { ThemeService } from '@core/theme/theme.service';
@@ -58,6 +59,7 @@ export class ConfirmEmailPageComponent {
   private readonly resendCode = inject(ResendVerificationCodeUseCase);
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly router = inject(Router);
+  private readonly location = inject(Location);
   private readonly themeService = inject(ThemeService);
   private readonly languageService = inject(LanguageService);
   private readonly destroyRef = inject(DestroyRef);
@@ -65,14 +67,23 @@ export class ConfirmEmailPageComponent {
 
   /**
    * The address and the code deadlines come through router state, never a query param:
-   * the address is personal data and does not belong in the URL or the browser history.
+   * the address is personal data and does not belong in the URL.
    */
   private readonly navigationState = ((): ConfirmEmailNavigationState => {
     const router = inject(Router);
-    // `lastSuccessfulNavigation` is a signal in Angular 21; it covers a refresh of this route.
+    const current = router.getCurrentNavigation();
+    if (current?.extras.state) {
+      return current.extras.state;
+    }
+
+    // Reenvíos actualizan la entrada actual sin crear otra navegación.
+    const restored = this.location.getState() as ConfirmEmailNavigationState | null;
+    if (restored && typeof restored.email === 'string') {
+      return restored;
+    }
+
     const previous = router.lastSuccessfulNavigation;
-    const navigation =
-      router.getCurrentNavigation() ?? (typeof previous === 'function' ? previous() : previous);
+    const navigation = typeof previous === 'function' ? previous() : previous;
 
     return (navigation?.extras.state as ConfirmEmailNavigationState | undefined) ?? {};
   })();
@@ -114,6 +125,8 @@ export class ConfirmEmailPageComponent {
 
   /** El backend invalidó el código (venció o se agotaron los intentos) antes de que venciera aquí. */
   private readonly codeRejected = signal(false);
+  /** Identifica el correo y la generación del código a los que pertenece una respuesta. */
+  private verificationRevision = 0;
 
   protected readonly isResending = signal(false);
   /** Se acaba de enviar un código nuevo; la plantilla muestra el aviso. */
@@ -124,10 +137,12 @@ export class ConfirmEmailPageComponent {
 
   protected readonly hasDeadline = computed(() => this.expiresAt() !== null);
   protected readonly isExpired = computed(() => this.hasDeadline() && this.secondsToExpiry() === 0);
-  /** El código actual ya no puede confirmar la cuenta: solo queda pedir otro. */
-  protected readonly isCodeUnusable = computed(() => this.isExpired() || this.codeRejected());
+  /** Solo el servidor puede invalidar el código; el reloj del dispositivo puede estar desfasado. */
+  protected readonly isCodeUnusable = computed(() => this.codeRejected());
 
-  protected readonly canResend = computed(() => this.secondsToResend() === 0 && !this.isResending());
+  protected readonly canResend = computed(
+    () => this.secondsToResend() === 0 && !this.isResending() && !this.isSubmitting(),
+  );
   protected readonly countdown = computed(() => countdown(this.secondsToResend()));
   protected readonly expiryCountdown = computed(() => countdown(this.secondsToExpiry()));
 
@@ -146,6 +161,19 @@ export class ConfirmEmailPageComponent {
     const timer = setInterval(() => this.now.set(Date.now()), 1000);
 
     this.destroyRef.onDestroy(() => clearInterval(timer));
+    this.codeForm.controls.email.valueChanges
+      .pipe(distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.verificationRevision++;
+        this.codeRejected.set(false);
+        this.expiresAt.set(null);
+        this.resendAvailableAt.set(null);
+        this.confirmError.set('');
+        this.codeResent.set(false);
+        this.clearCode();
+        // Una dirección editada aún no tiene plazos conocidos.
+        this.persistWindow('');
+      });
   }
 
   protected get digits() {
@@ -220,21 +248,28 @@ export class ConfirmEmailPageComponent {
     this.confirmError.set('');
     this.codeResent.set(false);
     this.isResending.set(true);
+    const revision = this.verificationRevision;
     this.resendCode
       .execute(email.value)
-      .pipe(finalize(() => this.isResending.set(false)))
+      .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.isResending.set(false)))
       .subscribe({
         next: (issued) => {
+          if (revision !== this.verificationRevision) return;
+          this.verificationRevision++;
           this.applyWindow(issued);
           this.codeRejected.set(false);
           this.codeResent.set(true);
           this.clearCode();
         },
-        error: (error: unknown) => this.onResendError(error),
+        error: (error: unknown) => {
+          if (revision === this.verificationRevision) this.onResendError(error);
+        },
       });
   }
 
   protected submit(): void {
+    if (this.isSubmitting() || this.isResending()) return;
+
     this.confirmError.set('');
     this.codeResent.set(false);
     this.codeForm.markAllAsTouched();
@@ -244,12 +279,18 @@ export class ConfirmEmailPageComponent {
     }
 
     this.isSubmitting.set(true);
+    const revision = this.verificationRevision;
     this.confirmEmail
       .execute({ email: this.codeForm.controls.email.value, code: this.code() })
-      .pipe(finalize(() => this.isSubmitting.set(false)))
+      .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.isSubmitting.set(false)))
       .subscribe({
-        next: () => void this.router.navigate(['/login'], { state: { emailConfirmed: true } }),
+        next: () => {
+          if (revision === this.verificationRevision) {
+            void this.router.navigate(['/login'], { state: { emailConfirmed: true } });
+          }
+        },
         error: (error: unknown) => {
+          if (revision !== this.verificationRevision) return;
           // Un código vencido o bloqueado por intentos no vuelve a servir: solo queda reenviar.
           if (error instanceof AuthError && (error.reason === 'codeExpired' || error.reason === 'attemptsExceeded')) {
             this.codeRejected.set(true);
@@ -264,6 +305,17 @@ export class ConfirmEmailPageComponent {
   private applyWindow(issued: VerificationWindow): void {
     this.expiresAt.set(parseInstant(issued.expiresAt));
     this.resendAvailableAt.set(parseInstant(issued.resendAvailableAt) ?? this.fallbackResendAt());
+    this.persistWindow(this.codeForm.controls.email.value);
+  }
+
+  /** Conserva los plazos al recargar, sin añadir datos al URL ni otra entrada al historial. */
+  private persistWindow(email: string): void {
+    this.location.replaceState(this.location.path(true), '', {
+      ...(this.location.getState() as Record<string, unknown> | null),
+      email,
+      expiresAt: this.expiresAt()?.toISOString() ?? '',
+      resendAvailableAt: this.resendAvailableAt()?.toISOString() ?? '',
+    });
   }
 
   private onResendError(error: unknown): void {
@@ -275,6 +327,7 @@ export class ConfirmEmailPageComponent {
 
     if (error instanceof AuthError && error.reason === 'resendTooSoon') {
       this.resendAvailableAt.set(parseInstant(error.resendAvailableAt) ?? this.fallbackResendAt());
+      this.persistWindow(this.codeForm.controls.email.value);
     }
 
     this.displayError(error);

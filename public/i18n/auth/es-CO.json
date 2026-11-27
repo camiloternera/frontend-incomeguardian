@@ -114,6 +114,7 @@
     "resent": "Te enviamos un código nuevo. El anterior ya no sirve.",
     "expiresIn": "El código vence a las {{clock}} (en {{time}}).",
     "expired": "Este código ya no sirve. Pide uno nuevo con «Reenviar correo».",
+    "expiryUncertain": "Según el reloj de tu dispositivo, el código podría haber vencido. Aún puedes probarlo o pedir uno nuevo.",
     "expiryUnknown": "El código vence 10 minutos después de enviado.",
     "spamHint": "¿No ves nada en tu bandeja? Revisa spam o promociones.",
     "wrongAddress": "¿Correo equivocado?",

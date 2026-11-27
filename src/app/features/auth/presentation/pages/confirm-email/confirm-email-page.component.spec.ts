@@ -228,14 +228,14 @@ describe('ConfirmEmailPageComponent', () => {
     http.expectNone(CONFIRM_URL);
   });
 
-  it('maps the real rejection code to the English copy', () => {
+  it('maps the real rejection code to the English copy and blocks the rejected code', async () => {
     withNavigationEmail('camilo@example.com');
     const fixture = TestBed.createComponent(ConfirmEmailPageComponent);
     const http = TestBed.inject(HttpTestingController);
-    fixture.detectChanges();
+    await fixture.whenStable();
 
     fillCode(fixture.nativeElement, '123456');
-    fixture.detectChanges();
+    await fixture.whenStable();
     submit(fixture.nativeElement);
 
     // Envelope captured from the running backend.
@@ -253,10 +253,13 @@ describe('ConfirmEmailPageComponent', () => {
       },
       { status: 400, statusText: 'Bad Request' },
     );
-    fixture.detectChanges();
+    await fixture.whenStable();
 
     expect(fixture.nativeElement.querySelector('[data-testid="confirm-error"]').textContent).toContain(
-      'That code is wrong or has expired.',
+      'That code has expired. Get a new one with “Resend email”.',
     );
+    expect((fixture.nativeElement.querySelector('[data-testid="verify"]') as HTMLButtonElement).disabled).toBe(true);
+    submit(fixture.nativeElement);
+    http.expectNone(CONFIRM_URL);
   });
 });

@@ -55,7 +55,14 @@ describe('RegisterPageComponent', () => {
     }).compileComponents();
   });
 
+  afterEach(() => vi.restoreAllMocks());
+
   it('posts exactly the fields the endpoint contract declares', () => {
+    const options = new Intl.DateTimeFormat().resolvedOptions();
+    vi.spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions').mockReturnValue({
+      ...options, timeZone: 'America/Bogota',
+    });
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     const fixture = TestBed.createComponent(RegisterPageComponent);
     const http = TestBed.inject(HttpTestingController);
     fixture.detectChanges();
@@ -72,7 +79,9 @@ describe('RegisterPageComponent', () => {
       email: 'camilo@example.com',
       phoneNumber: '+57 300 000 0000',
       password: 'super-secret',
+      timeZone: 'America/Bogota',
     });
+    request.flush({ isSuccess: true, data: null, errors: [] });
   });
 
   it('does not submit when both passwords differ', () => {
@@ -130,8 +139,27 @@ describe('RegisterPageComponent', () => {
     fixture.detectChanges();
 
     expect(navigateSpy).toHaveBeenCalledWith(['/confirm-email'], {
-      state: { email: 'camilo@example.com' },
+      state: { email: 'camilo@example.com', expiresAt: '', resendAvailableAt: '' },
     });
+  });
+
+  it('passes the server email and code deadlines to the confirmation screen', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const fixture = TestBed.createComponent(RegisterPageComponent);
+    await fixture.whenStable();
+    fill(fixture.nativeElement);
+    await fixture.whenStable();
+    submit(fixture.nativeElement);
+    const issued = {
+      email: 'normalized@example.com',
+      expiresAt: '2026-11-27T12:20:00Z',
+      resendAvailableAt: '2026-11-27T12:01:00Z',
+    };
+    TestBed.inject(HttpTestingController).expectOne(REGISTER_URL).flush({
+      isSuccess: true, data: issued, errors: [],
+    });
+    await fixture.whenStable();
+    expect(navigate).toHaveBeenCalledWith(['/confirm-email'], { state: issued });
   });
 
   it('maps a known backend error code to the English copy', () => {

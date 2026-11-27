@@ -91,7 +91,7 @@
           data-testid="verify"
           class="mt-8 min-h-11 w-full rounded-lg border border-ig-accent bg-ig-accent text-[13px] font-extrabold text-ig-on-accent transition-transform duration-150 hover:-translate-y-px focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
           type="submit"
-          [disabled]="!isComplete() || isSubmitting() || isCodeUnusable()"
+          [disabled]="!isComplete() || isSubmitting() || isResending() || isCodeUnusable()"
         >
           {{ isSubmitting() ? t('auth.confirmEmail.submitting') : t('auth.confirmEmail.submit') }}
         </button>
@@ -119,6 +119,10 @@
       @if (isCodeUnusable()) {
         <p data-testid="code-expiry" class="text-[11px] font-bold leading-relaxed text-ig-accent-text" role="status">
           {{ t('auth.confirmEmail.expired') }}
+        </p>
+      } @else if (isExpired()) {
+        <p data-testid="code-expiry" class="text-[11px] leading-relaxed text-ig-muted" role="status">
+          {{ t('auth.confirmEmail.expiryUncertain') }}
         </p>
       } @else if (hasDeadline()) {
         <p data-testid="code-expiry" class="text-[11px] leading-relaxed text-ig-muted">

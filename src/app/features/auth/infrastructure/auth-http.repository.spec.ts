@@ -76,7 +76,9 @@ describe('AuthHttpRepository', () => {
       errors: [{ code: 'VERIFICATION_CODE_EXPIRED', message: 'Codigo expirado.' }],
     });
 
-    expect((error as AuthError).message).toBe('El código es incorrecto o ya expiró. Solicita uno nuevo.');
+    expect(error).toBeInstanceOf(AuthError);
+    expect((error as AuthError).reason).toBe('codeExpired');
+    expect((error as AuthError).message).toBe('El código venció. Pide uno nuevo con «Reenviar correo».');
   });
 
   it('falls back to the backend message for unmapped codes', () => {

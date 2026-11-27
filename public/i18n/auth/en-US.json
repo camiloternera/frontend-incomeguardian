@@ -114,6 +114,7 @@
     "resent": "We sent you a new code. The previous one no longer works.",
     "expiresIn": "The code expires at {{clock}} (in {{time}}).",
     "expired": "This code no longer works. Get a new one with “Resend email”.",
+    "expiryUncertain": "According to your device clock, this code may have expired. You can still try it or request a new one.",
     "expiryUnknown": "The code expires 10 minutes after it was sent.",
     "spamHint": "Nothing in your inbox? Look in spam or promotions.",
     "wrongAddress": "Wrong address?",
