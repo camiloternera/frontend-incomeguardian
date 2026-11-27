@@ -13,6 +13,7 @@ import { Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { finalize } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
+import { LanguageService } from '@core/i18n/language.service';
 import { ThemeService } from '@core/theme/theme.service';
 import {
   CONFIRMATION_CODE_LENGTH,
@@ -20,13 +21,30 @@ import {
   onlyDigits,
 } from '../../../domain/confirmation-code';
 import { ConfirmEmailUseCase } from '../../../application/confirm-email.use-case';
+import { ResendVerificationCodeUseCase } from '../../../application/resend-verification-code.use-case';
 import { AuthError } from '../../../domain/auth-error';
+import { VerificationWindow, parseInstant, secondsUntil } from '../../../domain/verification-window';
 import { confirmationCodeComplete } from '../../validators/confirmation-code.validator';
 
-const RESEND_SECONDS = 60;
+/**
+ * Espera local entre reenvíos cuando el backend no informa `resendAvailableAt`.
+ * Coincide con la del backend, que sigue siendo quien la hace cumplir.
+ */
+const FALLBACK_RESEND_SECONDS = 60;
+
+/** Lo que el registro deja en el router state al navegar a esta vista. */
+interface ConfirmEmailNavigationState {
+  email?: unknown;
+  expiresAt?: unknown;
+  resendAvailableAt?: unknown;
+}
 
 function countdown(seconds: number): string {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+}
+
+function asText(value: unknown): string {
+  return typeof value === 'string' ? value : '';
 }
 
 @Component({
@@ -37,26 +55,29 @@ function countdown(seconds: number): string {
 })
 export class ConfirmEmailPageComponent {
   private readonly confirmEmail = inject(ConfirmEmailUseCase);
+  private readonly resendCode = inject(ResendVerificationCodeUseCase);
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly router = inject(Router);
   private readonly themeService = inject(ThemeService);
+  private readonly languageService = inject(LanguageService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly transloco = inject(TranslocoService);
 
   /**
-   * The address comes through router state, never a query param: it is personal
-   * data and does not belong in the URL or the browser history.
+   * The address and the code deadlines come through router state, never a query param:
+   * the address is personal data and does not belong in the URL or the browser history.
    */
-  protected readonly navigationEmail = ((): string => {
+  private readonly navigationState = ((): ConfirmEmailNavigationState => {
     const router = inject(Router);
     // `lastSuccessfulNavigation` is a signal in Angular 21; it covers a refresh of this route.
     const previous = router.lastSuccessfulNavigation;
     const navigation =
       router.getCurrentNavigation() ?? (typeof previous === 'function' ? previous() : previous);
-    const state = navigation?.extras.state as { email?: string } | undefined;
 
-    return typeof state?.email === 'string' ? state.email : '';
+    return (navigation?.extras.state as ConfirmEmailNavigationState | undefined) ?? {};
   })();
+
+  protected readonly navigationEmail = asText(this.navigationState.email);
 
   protected readonly theme = this.themeService.theme;
   protected readonly digitInputs = viewChildren<ElementRef<HTMLInputElement>>('digitInput');
@@ -84,14 +105,45 @@ export class ConfirmEmailPageComponent {
   protected readonly code = computed(() => this.digitValues().join(''));
   protected readonly isComplete = computed(() => isConfirmationCodeComplete(this.code()));
 
-  protected readonly secondsLeft = signal(RESEND_SECONDS);
-  protected readonly canResend = computed(() => this.secondsLeft() === 0);
-  protected readonly countdown = computed(() => countdown(this.secondsLeft()));
+  /** Reloj de la vista: las cuentas regresivas se calculan contra fechas, no restando segundos. */
+  private readonly now = signal(Date.now());
+
+  /** Sin plazo conocido (recarga, visita directa) no hay cuenta regresiva y se puede reenviar ya. */
+  private readonly expiresAt = signal(parseInstant(asText(this.navigationState.expiresAt)));
+  private readonly resendAvailableAt = signal(parseInstant(asText(this.navigationState.resendAvailableAt)));
+
+  /** El backend invalidó el código (venció o se agotaron los intentos) antes de que venciera aquí. */
+  private readonly codeRejected = signal(false);
+
+  protected readonly isResending = signal(false);
+  /** Se acaba de enviar un código nuevo; la plantilla muestra el aviso. */
+  protected readonly codeResent = signal(false);
+
+  private readonly secondsToResend = computed(() => secondsUntil(this.resendAvailableAt(), this.now()));
+  private readonly secondsToExpiry = computed(() => secondsUntil(this.expiresAt(), this.now()));
+
+  protected readonly hasDeadline = computed(() => this.expiresAt() !== null);
+  protected readonly isExpired = computed(() => this.hasDeadline() && this.secondsToExpiry() === 0);
+  /** El código actual ya no puede confirmar la cuenta: solo queda pedir otro. */
+  protected readonly isCodeUnusable = computed(() => this.isExpired() || this.codeRejected());
+
+  protected readonly canResend = computed(() => this.secondsToResend() === 0 && !this.isResending());
+  protected readonly countdown = computed(() => countdown(this.secondsToResend()));
+  protected readonly expiryCountdown = computed(() => countdown(this.secondsToExpiry()));
+
+  /** Hora local de vencimiento en el idioma activo, por ejemplo `5:18 p. m.` o `5:18 PM`. */
+  protected readonly expiryClock = computed(() => {
+    const expiresAt = this.expiresAt();
+
+    return expiresAt
+      ? new Intl.DateTimeFormat(this.languageService.language(), { hour: 'numeric', minute: '2-digit' }).format(
+          expiresAt,
+        )
+      : '';
+  });
 
   constructor() {
-    const timer = setInterval(() => {
-      this.secondsLeft.update((seconds) => (seconds > 0 ? seconds - 1 : 0));
-    }, 1000);
+    const timer = setInterval(() => this.now.set(Date.now()), 1000);
 
     this.destroyRef.onDestroy(() => clearInterval(timer));
   }
@@ -158,15 +210,36 @@ export class ConfirmEmailPageComponent {
       return;
     }
 
-    this.secondsLeft.set(RESEND_SECONDS);
-    // TODO: send the code again once the backend exposes the endpoint.
+    const email = this.codeForm.controls.email;
+
+    if (email.invalid) {
+      email.markAsTouched();
+      return;
+    }
+
+    this.confirmError.set('');
+    this.codeResent.set(false);
+    this.isResending.set(true);
+    this.resendCode
+      .execute(email.value)
+      .pipe(finalize(() => this.isResending.set(false)))
+      .subscribe({
+        next: (issued) => {
+          this.applyWindow(issued);
+          this.codeRejected.set(false);
+          this.codeResent.set(true);
+          this.clearCode();
+        },
+        error: (error: unknown) => this.onResendError(error),
+      });
   }
 
   protected submit(): void {
     this.confirmError.set('');
+    this.codeResent.set(false);
     this.codeForm.markAllAsTouched();
 
-    if (this.codeForm.invalid) {
+    if (this.codeForm.invalid || this.isCodeUnusable()) {
       return;
     }
 
@@ -176,9 +249,50 @@ export class ConfirmEmailPageComponent {
       .pipe(finalize(() => this.isSubmitting.set(false)))
       .subscribe({
         next: () => void this.router.navigate(['/login'], { state: { emailConfirmed: true } }),
-        error: (error: unknown) =>
-          this.confirmError.set(error instanceof AuthError ? error.message : this.transloco.translate(GENERIC_ERROR_KEY)),
+        error: (error: unknown) => {
+          // Un código vencido o bloqueado por intentos no vuelve a servir: solo queda reenviar.
+          if (error instanceof AuthError && (error.reason === 'codeExpired' || error.reason === 'attemptsExceeded')) {
+            this.codeRejected.set(true);
+          }
+
+          this.displayError(error);
+        },
       });
+  }
+
+  /** Toma los plazos del código recién enviado; sin espera informada aplica la local. */
+  private applyWindow(issued: VerificationWindow): void {
+    this.expiresAt.set(parseInstant(issued.expiresAt));
+    this.resendAvailableAt.set(parseInstant(issued.resendAvailableAt) ?? this.fallbackResendAt());
+  }
+
+  private onResendError(error: unknown): void {
+    if (error instanceof AuthError && error.reason === 'alreadyRegistered') {
+      // La cuenta ya quedó confirmada (por ejemplo en otra pestaña): solo falta iniciar sesión.
+      void this.router.navigate(['/login'], { state: { emailConfirmed: true } });
+      return;
+    }
+
+    if (error instanceof AuthError && error.reason === 'resendTooSoon') {
+      this.resendAvailableAt.set(parseInstant(error.resendAvailableAt) ?? this.fallbackResendAt());
+    }
+
+    this.displayError(error);
+  }
+
+  private displayError(error: unknown): void {
+    this.confirmError.set(error instanceof AuthError ? error.message : this.transloco.translate(GENERIC_ERROR_KEY));
+  }
+
+  private fallbackResendAt(): Date {
+    return new Date(Date.now() + FALLBACK_RESEND_SECONDS * 1000);
+  }
+
+  /** Vacía las cajas para el código nuevo y deja el foco en la primera. */
+  private clearCode(): void {
+    this.digits.controls.forEach((digit) => digit.setValue(''));
+    this.digits.markAsUntouched();
+    this.focusAt(0);
   }
 
   private fillFrom(start: number, digits: string): void {
