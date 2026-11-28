@@ -122,7 +122,9 @@ export class ConfirmEmailPageComponent {
 
   /** Sin plazo conocido (recarga, visita directa) no hay cuenta regresiva y se puede reenviar ya. */
   private readonly expiresAt = signal(parseInstant(asText(this.navigationState.expiresAt)));
-  private readonly resendAvailableAt = signal(parseInstant(asText(this.navigationState.resendAvailableAt)));
+  private readonly resendAvailableAt = signal(
+    this.issuedResendAt(asText(this.navigationState.resendAvailableAt)),
+  );
 
   /** El backend invalidó el código (venció o se agotaron los intentos) antes de que venciera aquí. */
   private readonly codeRejected = signal(false);
@@ -261,6 +263,7 @@ export class ConfirmEmailPageComponent {
           this.codeRejected.set(false);
           this.codeResent.set(true);
           this.clearCode();
+          this.focusAt(0);
         },
         error: (error: unknown) => {
           if (revision === this.verificationRevision) this.onResendError(error);
@@ -305,7 +308,7 @@ export class ConfirmEmailPageComponent {
   /** Toma los plazos del código recién enviado; sin espera informada aplica la local. */
   private applyWindow(issued: VerificationWindow): void {
     this.expiresAt.set(parseInstant(issued.expiresAt));
-    this.resendAvailableAt.set(parseInstant(issued.resendAvailableAt) ?? this.fallbackResendAt());
+    this.resendAvailableAt.set(this.issuedResendAt(issued.resendAvailableAt) ?? this.fallbackResendAt());
     this.persistWindow(this.codeForm.controls.email.value);
   }
 
@@ -342,11 +345,21 @@ export class ConfirmEmailPageComponent {
     return new Date(Date.now() + FALLBACK_RESEND_SECONDS * 1000);
   }
 
-  /** Vacía las cajas para el código nuevo y deja el foco en la primera. */
+  /**
+   * Un código recién emitido solo requiere la espera habitual. Un reloj atrasado
+   * no debe convertirla en horas: el servidor valida cualquier reintento temprano.
+   * Los rechazos explícitos por reenvío prematuro conservan el plazo del servidor.
+   */
+  private issuedResendAt(value: string): Date | null {
+    const deadline = parseInstant(value);
+
+    return deadline ? new Date(Math.min(deadline.getTime(), this.fallbackResendAt().getTime())) : null;
+  }
+
+  /** Vacía las cajas sin quitar el foco al campo que el usuario está editando. */
   private clearCode(): void {
     this.digits.controls.forEach((digit) => digit.setValue(''));
     this.digits.markAsUntouched();
-    this.focusAt(0);
   }
 
   private fillFrom(start: number, digits: string): void {
