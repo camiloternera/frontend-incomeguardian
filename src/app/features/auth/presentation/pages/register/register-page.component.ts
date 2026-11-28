@@ -81,8 +81,15 @@ export class RegisterPageComponent {
         .execute(request)
         .pipe(finalize(() => this.isSubmitting.set(false)))
         .subscribe({
-          next: () =>
-            void this.router.navigate(['/confirm-email'], { state: { email: request.email } }),
+          // Los plazos viajan por router state, igual que el correo, para no exponerlos en la URL.
+          next: (issued) =>
+            void this.router.navigate(['/confirm-email'], {
+              state: {
+                email: issued.email,
+                expiresAt: issued.expiresAt,
+                resendAvailableAt: issued.resendAvailableAt,
+              },
+            }),
           error: (error: unknown) =>
             this.registerError.set(error instanceof AuthError ? error.message : this.transloco.translate(GENERIC_ERROR_KEY)),
         });

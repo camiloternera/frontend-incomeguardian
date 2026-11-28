@@ -1,0 +1,8 @@
+{
+  "extends": "../tsconfig.spec.json",
+  "include": [
+    "../src/**/*.d.ts",
+    "../src/app/features/auth/presentation/pages/confirm-email/email-verification.review.spec.ts",
+    "../src/app/features/auth/presentation/pages/register/register-page.component.spec.ts"
+  ]
+}

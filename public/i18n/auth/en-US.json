@@ -16,7 +16,13 @@
     "USER_ALREADY_EXISTS": "That email is already registered.",
     "USER_EMAIL_ALREADY_EXISTS": "That email is already registered.",
     "USER_EMAIL_NOT_CONFIRMED": "Confirm your email address before you sign in.",
-    "VERIFICATION_CODE_EXPIRED": "That code is wrong or has expired. Ask for a new one."
+    "USER_EMAIL_ALREADY_REGISTERED": "That email is already registered. Sign in instead.",
+    "VERIFICATION_CODE_EXPIRED": "That code has expired. Get a new one with “Resend email”.",
+    "VERIFICATION_CODE_INVALID": "That code is not right. Check it and try again.",
+    "VERIFICATION_CODE_INVALID_REMAINING": "That code is not right. Attempts left: {{count}}.",
+    "VERIFICATION_CODE_ATTEMPTS_EXCEEDED": "You ran out of attempts for this code. Get a new one with “Resend email”.",
+    "VERIFICATION_RESEND_TOO_SOON": "We just sent you a code. Wait a moment before asking for another.",
+    "VERIFICATION_REGISTRATION_NOT_FOUND": "We found no pending sign-up for this email. Create your account again."
   },
   "login": {
     "kicker": "WEB AUTHENTICATION / THEME STUDY",
@@ -104,7 +110,13 @@
     "submitting": "Verifying...",
     "resend": "Resend email",
     "resendIn": "Resend in {{time}}",
-    "expiry": "The code expires in 30 minutes. Nothing in your inbox? Look in spam or promotions.",
+    "resending": "Sending...",
+    "resent": "We sent you a new code. The previous one no longer works.",
+    "expiresIn": "The code expires at {{clock}} (in {{time}}).",
+    "expired": "This code no longer works. Get a new one with “Resend email”.",
+    "expiryUncertain": "According to your device clock, this code may have expired. You can still try it or request a new one.",
+    "expiryUnknown": "The code expires 10 minutes after it was sent.",
+    "spamHint": "Nothing in your inbox? Look in spam or promotions.",
     "wrongAddress": "Wrong address?",
     "useDifferentEmail": "Use a different email",
     "alreadyConfirmed": "Already confirmed?"
