@@ -6,7 +6,7 @@
 >
   <header class="mx-auto mb-6 flex max-w-[1920px] flex-col items-start justify-between gap-4 sm:flex-row">
     <a class="flex items-center gap-2.5 text-ig-text no-underline" routerLink="/login" [attr.aria-label]="t('brand.home')">
-      <span class="grid size-6 shrink-0 place-items-center rounded-md bg-ig-accent text-[11px] font-extrabold text-ig-on-accent">IG</span>
+      <app-brand-mark [size]="32" />
       <span>
         <strong class="block font-roboto text-2xl leading-none tracking-tight">{{ t('brand.name') }}</strong>
         <small class="mt-1 block text-[9px] tracking-[0.02em] text-ig-muted">{{ t('auth.register.kicker') }}</small>
@@ -20,7 +20,7 @@
   >
     <aside class="flex min-h-[310px] flex-col justify-between bg-ig-surface/88 p-6 md:min-h-[525px]">
       <div class="flex items-center gap-2">
-        <span class="grid size-6 shrink-0 place-items-center rounded-md bg-ig-accent text-[11px] font-extrabold text-ig-on-accent">IG</span>
+        <app-brand-mark [size]="24" />
         <span class="text-[11px] font-bold tracking-[0.02em]">income guardian</span>
       </div>
 

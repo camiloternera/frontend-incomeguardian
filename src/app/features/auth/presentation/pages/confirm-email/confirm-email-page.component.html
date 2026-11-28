@@ -6,7 +6,7 @@
 >
   <header class="mx-auto mb-6 flex w-full max-w-[1920px] flex-col items-start justify-between gap-4 sm:flex-row">
     <a class="flex items-center gap-2.5 text-ig-text no-underline" routerLink="/login" [attr.aria-label]="t('brand.home')">
-      <span class="grid size-6 shrink-0 place-items-center rounded-md bg-ig-accent text-[11px] font-extrabold text-ig-on-accent">IG</span>
+      <app-brand-mark [size]="32" />
       <span>
         <strong class="block font-roboto text-2xl leading-none tracking-tight">{{ t('brand.name') }}</strong>
         <small class="mt-1 block text-[9px] tracking-[0.02em] text-ig-muted">{{ t('auth.confirmEmail.kicker') }}</small>
