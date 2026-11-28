@@ -67,7 +67,7 @@
       [attr.aria-label]="t('brand.home')"
       (click)="closeMenu()"
     >
-      <span class="grid size-8 shrink-0 place-items-center rounded-lg bg-ig-accent text-[12px] font-bold text-ig-on-accent" aria-hidden="true">IG</span>
+      <app-brand-mark [size]="32" />
       <span class="text-[15px] font-bold tracking-[-0.01em]">{{ t('brand.name') }}</span>
     </a>
   </ng-template>

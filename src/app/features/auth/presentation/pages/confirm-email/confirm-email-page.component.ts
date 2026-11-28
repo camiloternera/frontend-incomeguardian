@@ -16,6 +16,7 @@ import { distinctUntilChanged, finalize } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { LanguageService } from '@core/i18n/language.service';
 import { ThemeService } from '@core/theme/theme.service';
+import { BrandMarkComponent } from '@shared/ui/brand-mark.component';
 import {
   CONFIRMATION_CODE_LENGTH,
   isConfirmationCodeComplete,
@@ -50,7 +51,7 @@ function asText(value: unknown): string {
 
 @Component({
   selector: 'app-confirm-email-page',
-  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective],
+  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective, BrandMarkComponent],
   templateUrl: './confirm-email-page.component.html',
   styleUrls: ['./confirm-email-page.component.css'],
 })
