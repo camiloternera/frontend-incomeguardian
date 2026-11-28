@@ -83,11 +83,15 @@
           <p data-testid="confirm-error" class="mt-4 text-[11px] text-ig-accent-text" role="alert">{{ confirmError() }}</p>
         }
 
+        @if (codeResent()) {
+          <p data-testid="code-resent" class="mt-4 text-[11px] text-ig-accent-text" role="status">{{ t('auth.confirmEmail.resent') }}</p>
+        }
+
         <button
           data-testid="verify"
           class="mt-8 min-h-11 w-full rounded-lg border border-ig-accent bg-ig-accent text-[13px] font-extrabold text-ig-on-accent transition-transform duration-150 hover:-translate-y-px focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
           type="submit"
-          [disabled]="!isComplete() || isSubmitting()"
+          [disabled]="!isComplete() || isSubmitting() || isResending() || isCodeUnusable()"
         >
           {{ isSubmitting() ? t('auth.confirmEmail.submitting') : t('auth.confirmEmail.submit') }}
         </button>
@@ -99,13 +103,35 @@
           [disabled]="!canResend()"
           (click)="resend()"
         >
-          {{ canResend() ? t('auth.confirmEmail.resend') : t('auth.confirmEmail.resendIn', { time: countdown() }) }}
+          @if (isResending()) {
+            {{ t('auth.confirmEmail.resending') }}
+          } @else if (canResend()) {
+            {{ t('auth.confirmEmail.resend') }}
+          } @else {
+            {{ t('auth.confirmEmail.resendIn', { time: countdown() }) }}
+          }
         </button>
       </form>
 
       <div class="my-7 h-px bg-ig-border" role="separator"></div>
 
-      <p class="text-[11px] leading-relaxed text-ig-muted">{{ t('auth.confirmEmail.expiry') }}</p>
+      <!-- El aviso de vencimiento se anuncia una vez; la cuenta regresiva no, para no repetirla cada segundo. -->
+      @if (isCodeUnusable()) {
+        <p data-testid="code-expiry" class="text-[11px] font-bold leading-relaxed text-ig-accent-text" role="status">
+          {{ t('auth.confirmEmail.expired') }}
+        </p>
+      } @else if (isExpired()) {
+        <p data-testid="code-expiry" class="text-[11px] leading-relaxed text-ig-muted" role="status">
+          {{ t('auth.confirmEmail.expiryUncertain') }}
+        </p>
+      } @else if (hasDeadline()) {
+        <p data-testid="code-expiry" class="text-[11px] leading-relaxed text-ig-muted">
+          {{ t('auth.confirmEmail.expiresIn', { time: expiryCountdown(), clock: expiryClock() }) }}
+        </p>
+      } @else {
+        <p data-testid="code-expiry" class="text-[11px] leading-relaxed text-ig-muted">{{ t('auth.confirmEmail.expiryUnknown') }}</p>
+      }
+      <p class="mt-2 text-[11px] leading-relaxed text-ig-muted">{{ t('auth.confirmEmail.spamHint') }}</p>
       <p class="mt-3 text-[11px] text-ig-muted">
         {{ t('auth.confirmEmail.wrongAddress') }}
         <a class="text-ig-accent-text no-underline hover:underline focus-visible:outline-2 focus-visible:outline-ig-accent focus-visible:outline-offset-2" routerLink="/register">{{ t('auth.confirmEmail.useDifferentEmail') }}</a>

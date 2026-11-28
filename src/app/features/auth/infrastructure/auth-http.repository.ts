@@ -4,7 +4,7 @@ import { TranslocoService } from '@jsverse/transloco';
 import { Observable, catchError, map, of, throwError } from 'rxjs';
 import { environment } from '@env/environment';
 import { ApiResponse } from '@core/http/api-response';
-import { resolveApiError } from '@core/http/api-error';
+import { apiErrorCode, apiErrorData, resolveApiError } from '@core/http/api-error';
 import { isLanguage } from '@core/i18n/language';
 import { isThemeName } from '@core/theme/theme-name';
 import { AuthError } from '../domain/auth-error';
@@ -13,8 +13,14 @@ import { AuthSession } from '../domain/auth-session';
 import { Credentials } from '../domain/credentials';
 import { EmailConfirmation } from '../domain/email-confirmation';
 import { NewUser } from '../domain/new-user';
-import { AUTH_ERROR_KEYS } from './auth-error-messages';
-import { ConfirmedUserDto, LoginResponseDto } from './auth.dto';
+import { CodeResendRequest, VerificationWindow } from '../domain/verification-window';
+import { AUTH_ERROR_KEYS, AUTH_ERROR_REASONS, REMAINING_ATTEMPTS_KEY } from './auth-error-messages';
+import {
+  ConfirmedUserDto,
+  LoginResponseDto,
+  RegistrationRequestedDto,
+  VerificationErrorDataDto,
+} from './auth.dto';
 
 function toSession(dto: LoginResponseDto): AuthSession {
   return {
@@ -30,6 +36,24 @@ function toSession(dto: LoginResponseDto): AuthSession {
   };
 }
 
+/**
+ * Plazos del código enviado. Si el sobre llega sin datos (una API anterior al contrato),
+ * conserva el correo pedido y deja las fechas vacías: la vista lo trata como plazo desconocido.
+ */
+function toWindow(dto: RegistrationRequestedDto | null | undefined, email: string): VerificationWindow {
+  return {
+    email: dto?.email || email,
+    expiresAt: dto?.expiresAt ?? '',
+    resendAvailableAt: dto?.resendAvailableAt ?? '',
+  };
+}
+
+function readVerificationData(error: unknown): VerificationErrorDataDto {
+  const data = apiErrorData(error);
+
+  return typeof data === 'object' && data !== null ? (data as VerificationErrorDataDto) : {};
+}
+
 @Injectable()
 export class AuthHttpRepository extends AuthRepository {
   private readonly http = inject(HttpClient);
@@ -37,6 +61,7 @@ export class AuthHttpRepository extends AuthRepository {
   private readonly loginUrl = `${environment.apiUrl}/api/v1/User/login`;
   private readonly registerUrl = `${environment.apiUrl}/api/v1/User`;
   private readonly confirmUrl = `${environment.apiUrl}/api/v1/User/confirm`;
+  private readonly resendUrl = `${environment.apiUrl}/api/v1/User/confirm/resend`;
   private readonly logoutUrl = `${environment.apiUrl}/api/v1/User/logout`;
 
   login(credentials: Credentials): Observable<AuthSession> {
@@ -52,17 +77,30 @@ export class AuthHttpRepository extends AuthRepository {
     );
   }
 
-  register(user: NewUser): Observable<void> {
-    return this.http.post<ApiResponse<unknown>>(this.registerUrl, user).pipe(
+  register(user: NewUser): Observable<VerificationWindow> {
+    return this.http.post<ApiResponse<RegistrationRequestedDto>>(this.registerUrl, user).pipe(
       map((response) => {
         // The API answers 200 with `isSuccess: false` for business failures.
         if (!response?.isSuccess) {
           throw response;
         }
+
+        return toWindow(response.data, user.email);
       }),
-      catchError((error: unknown) =>
-        throwError(() => new AuthError(this.toMessage(error))),
-      ),
+      catchError((error: unknown) => throwError(() => this.toAuthError(error))),
+    );
+  }
+
+  resendCode(request: CodeResendRequest): Observable<VerificationWindow> {
+    return this.http.post<ApiResponse<RegistrationRequestedDto>>(this.resendUrl, request).pipe(
+      map((response) => {
+        if (!response?.isSuccess) {
+          throw response;
+        }
+
+        return toWindow(response.data, request.email);
+      }),
+      catchError((error: unknown) => throwError(() => this.toAuthError(error))),
     );
   }
 
@@ -74,9 +112,7 @@ export class AuthHttpRepository extends AuthRepository {
           throw response;
         }
       }),
-      catchError((error: unknown) =>
-        throwError(() => new AuthError(this.toMessage(error))),
-      ),
+      catchError((error: unknown) => throwError(() => this.toAuthError(error))),
     );
   }
 
@@ -101,5 +137,24 @@ export class AuthHttpRepository extends AuthRepository {
 
   private toMessage(error: unknown): string {
     return resolveApiError(error, AUTH_ERROR_KEYS, (key) => this.transloco.translate(key));
+  }
+
+  /**
+   * Traduce el fallo a copy de UI y conserva el motivo y los datos que la vista necesita:
+   * hasta cuándo esperar para reenviar y, en un código incorrecto, los intentos que quedan.
+   */
+  private toAuthError(error: unknown): AuthError {
+    const code = apiErrorCode(error);
+    const data = readVerificationData(error);
+    const remaining = data.remainingAttempts;
+    const message =
+      code === 'VERIFICATION_CODE_INVALID' && typeof remaining === 'number'
+        ? this.transloco.translate(REMAINING_ATTEMPTS_KEY, { count: remaining })
+        : this.toMessage(error);
+
+    return new AuthError(message, {
+      reason: code ? AUTH_ERROR_REASONS[code] : undefined,
+      resendAvailableAt: typeof data.resendAvailableAt === 'string' ? data.resendAvailableAt : undefined,
+    });
   }
 }
