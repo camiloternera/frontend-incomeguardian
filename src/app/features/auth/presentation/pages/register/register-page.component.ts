@@ -7,6 +7,7 @@ import { finalize } from 'rxjs';
 import { GENERIC_ERROR_KEY } from '@core/http/api-error';
 import { ThemeService } from '@core/theme/theme.service';
 import { PasswordVisibilityIconComponent } from '@shared/ui/password-visibility-icon.component';
+import { BrandMarkComponent } from '@shared/ui/brand-mark.component';
 import { RegisterUserUseCase } from '../../../application/register-user.use-case';
 import { AuthError } from '../../../domain/auth-error';
 import { passwordStrength } from '../../../domain/password-strength';
@@ -18,7 +19,7 @@ interface StrengthSegment {
 
 @Component({
   selector: 'app-register-page',
-  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective, PasswordVisibilityIconComponent],
+  imports: [ReactiveFormsModule, RouterLink, TranslocoDirective, PasswordVisibilityIconComponent, BrandMarkComponent],
   templateUrl: './register-page.component.html',
   styleUrls: ['./register-page.component.css'],
 })

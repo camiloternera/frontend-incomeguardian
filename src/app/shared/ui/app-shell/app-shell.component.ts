@@ -17,6 +17,7 @@ import {
 } from '@lucide/angular';
 import { CurrentUser } from '@core/session/current-user';
 import { ThemeService } from '@core/theme/theme.service';
+import { BrandMarkComponent } from '../brand-mark.component';
 
 /** Una entrada de la navegación; sin `route` la sección aún no existe y se marca como próxima. */
 interface ShellNavItem {
@@ -70,6 +71,7 @@ const SETTINGS: ShellNavItem = { key: 'settings', icon: LucideSlidersHorizontal,
     LucideLogOut,
     LucideMenu,
     LucideX,
+    BrandMarkComponent,
   ],
   templateUrl: './app-shell.component.html',
 })
